@@ -148,6 +148,16 @@ assert(
 	ran == 1,
 	"second execute tap invokes selected game code in correct place"
 )
+-- A successful refresh invalidates the previously selected/confirmed game.
+manifest.Scripts = {}
+find("RefreshScripts").Activated:Fire()
+local beforeRemovedExecute = ran
+find("GameExecute").Activated:Fire()
+find("GameTeleport").Activated:Fire()
+assert(
+	ran == beforeRemovedExecute and #teleports == 2,
+	"removed stale game metadata cannot execute or teleport"
+)
 local gamePanel = find("GameScriptWindow")
 local statusObject = find("GameScriptStatus")
 local lastStatus = statusObject.Text

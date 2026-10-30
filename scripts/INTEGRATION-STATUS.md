@@ -1,24 +1,31 @@
-# Requested game integrations — not yet ported
+# Game integrations
 
-The loader now supports **Open Scripts library** as an action, game-detail windows, wrong-place prompts, separate Teleport/Execute actions, optional queue-on-arrival, retained source credits, and original vector UI assets. This is launch infrastructure, **not a completed port of the three game scripts**. The executable manifest remains empty rather than publish nonfunctional stubs or unreviewed third-party code.
+All three requested sources have been adapted and bundled. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
 
-| Requested Nullx11 title | Target place ID (provided by user) | Source/review status |
-| --- | --- | --- |
-| Nullx11 - Rosu Mania | 9051087354 | rscripts.net source inaccessible in this environment; upload source and license/permission. |
-| Nullx11 - Huss Valley | 107535308163741 | GitHub source inspected; header credits Wyrizon and the Yvetzal Team. Repository declares no license. Await permission/license for a derivative, or specify a clean-room feature rebuild. |
-| Nullx11 - +1 Loot to Forge | 118805555015549 | Pastebin source inaccessible in this environment; upload source and license/permission. Its GUI/assets have not been viewed or copied. |
+| Nullx11 workspace | Exact target place | Published file | Implementation status |
+| --- | --- | --- | --- |
+| Nullx11 - Rosu Mania | `9051087354` | [Nullx11-Rosu.luau](Nullx11-Rosu.luau) | Adapted note/input/timing controller; shared UI adapter; autoplay off; input-release and unload cleanup. |
+| Nullx11 - hussvalley | `107535308163741` | [Nullx11-Huss.luau](Nullx11-Huss.luau) | Adapted runner/catcher/progression controller; shared UI; tracked connections; repaired configuration builder; automation off. |
+| Nullx11 - +1 loot to forge | `118805555015549` | [Nullx11-Forge.luau](Nullx11-Forge.luau) | Adapted forge/gear/pet/stage/tower/session controller; full shared library; bounded requests/workers; automation off. |
 
-Sources supplied by the user:
-- Rosu Mania: https://rscripts.net/raw/open-source-autoplayer-yvetzalhub_1790657706332_LjcKmjXcCh.txt
-- Huss Valley: https://github.com/wyrizon/hussvalley/blob/main/main.lua
-- +1 Loot to Forge: https://pastebin.com/raw/L38rsf3f
+## Shared foundation
 
-No third-party source or asset has been vendored. Nullx11 branding can describe the integration/UI; it must not falsely replace the original authors' attribution. The folder/tab assets shipped in this change are drawn from original Roblox Frame geometry, not emoji or copied assets.
+`src/ui/Nullx11UI.luau` contains the supplied +1 UI library adapted to Nullx11: responsive tabs/groupboxes, controls, themes, vector/pixel art, dialogs/sheets, reactive state, spring motion, floating restore icon, configuration and language support. The default main workspace **actually constructs and uses this library**. It is embedded once as an inline function, not an unused source string. Original logos and Kanit fonts are vendored; the latter include their OFL license. The default skin uses a Nullx11 N emblem; original seasonal assets remain available through themes.
 
-## Finish a port
+Each game bundle contains this same shared library plus **only its selected game controller**. No runtime Sirius fetch, rscripts telemetry, original general-purpose loader, or main-client execution is included. Compatibility probes are not warmed automatically.
 
-1. Supply the actual blocked `.lua`/`.luau` files and their license or modification permission. Public availability or an “open-source” URL title is not itself a license.
-2. Review the complete dependency/HTTP chain and gameplay hooks. For Huss Valley this includes a remote UI dependency and game-specific ReplicatedStorage modules; do not just rename its labels or blindly execute it.
-3. Build/rewrite the approved game controller and its standalone Nullx11-style GUI; preserve required credits, implement cleanup, and gate game-specific initialization by target place.
-4. Test in the actual authorized experience/device. No Roblox/Delta runtime is available here.
-5. Publish the reviewed game file with `GamePlaceId`/`Author` metadata as documented in README.md, then Refresh the library. No main-loader execution should be queued on teleport.
+## Launch / consent
+
+- Three game entries are available immediately; Refresh is optional.
+- Opening Scripts or a launch window is an action, never an ON/OFF switch, and runs no game code.
+- Wrong-place execution is blocked. Teleport and Execute are distinct actions.
+- Execute-after-joining starts off. If enabled, queueing references only the selected bundle and checks its exact place.
+- Directly opening a bundle in the wrong game also creates a real teleport-consent window without starting its controller.
+- Failed teleports may leave executor-queued code behind. Closing/rerunning does not claim to clear that queue.
+- Default main shortcut: **Right Shift**. Default game shortcut: **Left Control**. Each has a draggable N restore icon and separate GUI identity.
+
+## Validation boundary
+
+**Implemented, compiled and development-tested; live Roblox/Delta validation is pending.** Tests exercise the actual adapter/session modules and non-rendering shared-library logic with isolated development fixtures. They do not emulate current game modules, server validation, native rendering, real teleports, touch hardware, or Delta.
+
+Use [the game validation checklist](../diagnostics/GAME-PORTS.md) on an authorized client before relying on a feature. Game updates can invalidate remote/module names. Runtime errors are reported instead of substituting simulated gameplay.
