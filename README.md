@@ -26,16 +26,19 @@ No external executor or `loadstring` is needed in Studio. With Rojo, map the `.c
 | **Tools / Style / Session** | Switch between utilities, appearance controls, and session/recovery actions. Pages scroll on short screens. |
 | **Teleport tools** | Opens a separate draggable position panel. Turning it off hides the panel without losing bookmarks. |
 | **01 / 02 / 03** | Select one of three independent bookmark slots. EMPTY / SAVED indicates slot state. |
+| **Bookmark name** | Edit the selected slot name. Names are trimmed, control characters are removed, and length is capped at 24 Unicode codepoints on commit. |
+| **Distance** | Shows the live straight-line distance to the selected saved pivot in studs, sampled twice a second. |
 | **Save position** | Saves your current character pivot, including orientation, and displays its coordinates. |
 | **Teleport to saved spot** | Moves your current character back to that pivot and clears root-part velocity. |
 | **Clear** | Deletes the saved position. |
 | **− on position panel** | Hides the utility and synchronizes its main toggle to OFF. |
-| **FPS meter** | Shows a draggable floating meter, sampled from actual rendered frames every half second. Color changes below 50 and 30 FPS. |
+| **FPS meter** | Shows a draggable floating meter, sampled from actual rendered frames every half second. Color changes below 50 and 30 FPS. A bounded twelve-sample history graph shows recent performance; graph height caps at 120 FPS while the number remains uncapped. |
 | **Glitch title** | Toggles short RGB-split / scrambled-text bursts on the `Nullx11` title every 3.6 seconds. Uses Roblox's built-in `Code` monospace font. |
 | **Position HUD** | Shows a separate draggable live-coordinate readout, sampled twice a second. |
 | **Violet / Mint / Ice** | Recolor accents in the current interface. |
 | **Reduced motion** | Disable transitions and turn off the glitch title immediately. |
 | **Lock windows** | Prevent accidental dragging of the dashboard and utilities. The dock remains movable. |
+| **Snap dock** | Optionally snap the icon to the nearest left/right safe-area edge on release; it adapts to orientation changes and does not count dragging as a tap. |
 | **Small / Default / Large** | Set interface scale to 85%, 100%, or 110%, limited by available screen space. |
 | **Session** | Show active session time, your local player name, and bookmark count. |
 | **Recenter all windows** | Recover/reset positions without deleting bookmarks or changing preferences. |
@@ -72,11 +75,12 @@ Remote code runs with the capabilities of your runtime. Review the source; ideal
 ## Design / mobile behavior
 
 - Original N monogram drawn from three rounded strokes and a signature cut; no asset upload required. A gradient-backed dock, small status dot, and matching header/position icons establish the visual identity.
-- A 440 × 360 launch panel expands to a dashboard up to 440 × 520. Short screens use shorter, scrollable pages instead of shrinking the entire dashboard. Position panel: 320 × 306; FPS meter: 132 × 48; coordinate HUD: 224 × 48; dock: 60 × 60, before applicable responsive scaling.
+- A 440 × 360 launch panel expands to a dashboard up to 440 × 520. Short screens use shorter, scrollable pages instead of shrinking the entire dashboard. Position panel: 320 × 362; FPS meter: 132 × 64; coordinate HUD: 224 × 48; dock: 60 × 60, before applicable responsive scaling.
 - Safe-area positioning, portrait/landscape resizing, touch/mouse dragging, edge clamping, and 44-pixel header controls before short-screen scaling.
 - Normal Roblox gamepad button selection/activation; dragging uses touch or mouse.
 - UI persists across respawns; rerunning replaces the prior GUI and disconnects its listeners.
 - The FPS meter and title share one render connection. No GUI instances are allocated each frame.
+- Animated pill switches include an ON/OFF text label, so state does not rely on color alone. Theme changes refresh switch accents as well.
 - No full-screen dimmer intercepts gameplay outside the windows.
 
 ## Customize / reduced motion
@@ -122,13 +126,13 @@ npm ci
 npm test
 ```
 
-The checks compile both Luau files and exercise deterministic API mocks for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs the same checks for pushes and PRs.
+The checks compile both Luau files and exercise deterministic API mocks for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs the same checks for pushes and PRs.
 
 These mocks do not emulate Roblox physics, rendering, real touch input, or Delta. Test in Studio's **Device Emulator**, your own game, and a real device. In particular, verify short-landscape layouts, drag-vs-tap behavior on the restore icon, respawns, closing while initialization yields, and whether your game's server accepts the intended movement.
 
 ## Small next-step ideas
 
-Keep extras opt-in: bookmark renaming, a compact changelog, or real asset preloading for your own experience. Avoid cluttering the loader with unrelated gameplay controls.
+Keep extras opt-in: a compact changelog or real asset preloading for your own experience. Avoid cluttering the loader with unrelated gameplay controls.
 
 ## Code size
 

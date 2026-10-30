@@ -35,8 +35,10 @@ local colors = {
 local dashboardOpen = false
 local interfaceScale = 1
 local windowsPinned = false
+local snapDockToEdge = false
 local alive = true
 local connections: {RBXScriptConnection} = {}
+local themeRefreshers: {() -> ()} = {}
 local activeTweens: {[Instance]: {[string]: Tween}} = {}
 local function connect(signal: RBXScriptSignal, callback: any): RBXScriptConnection
 	local connection = signal:Connect(callback)
@@ -156,6 +158,10 @@ title.Name = "Title"
 title.Font = Enum.Font.Code
 title.Position = UDim2.fromOffset(65, 26)
 title.Size = UDim2.new(1, -65, 0, 30)
+local edition = label(header, "CLIENT / WORKSPACE", 8, colors.Muted)
+edition.Font = Enum.Font.Code
+edition.Position = UDim2.fromOffset(65, 55)
+edition.Size = UDim2.new(1, -65, 0, 13)
 
 local function iconButton(text: string, x: number, description: string): TextButton
 	local button = create("TextButton", {
@@ -254,13 +260,23 @@ local function clampCenter(position: Vector2, size: Vector2): Vector2
 		math.clamp(position.Y, minY, math.max(minY, viewport.Y - minY))
 	)
 end
+-- Snap only the dock to the nearest horizontal edge; preserve its vertical position.
+local function snapDock(animated: boolean)
+	local viewport = root.AbsoluteSize
+	if not miniCenter or viewport.X <= 0 or viewport.Y <= 0 then return end
+	miniCenter = clampCenter(Vector2.new(if miniCenter.X < viewport.X / 2 then 0 else viewport.X, miniCenter.Y), mini.AbsoluteSize)
+	local destination = UDim2.fromOffset(miniCenter.X, miniCenter.Y)
+	if animated then tween(mini, { Position = destination }, 0.22) else mini.Position = destination end
+end
 local extraCenters: {[GuiObject]: Vector2} = {}
 local layoutExtras: (() -> ())? = nil
 local function layout()
 	local viewport = root.AbsoluteSize
 	if viewport.X <= 0 or viewport.Y <= 0 then return end
-	local animations = activeTweens[card]
-	if animations and animations.Position then animations.Position:Cancel() end
+	for _, target in ipairs({card, mini}) do
+		local animations = activeTweens[target]
+		if animations and animations.Position then animations.Position:Cancel() end
+	end
 	local height = if dashboardOpen then math.min(520, math.max(240, (viewport.Y - 24) / interfaceScale)) else 360
 	local scale = math.min(interfaceScale, math.max(0.1, (viewport.Y - 24) / height))
 	responsiveScale.Scale = scale
@@ -270,6 +286,7 @@ local function layout()
 	miniCenter = clampCenter(miniCenter or Vector2.new(if viewport.X > viewport.Y then viewport.X - 48 else 48, viewport.Y - 46), mini.AbsoluteSize)
 	card.Position = UDim2.fromOffset(panelCenter.X, panelCenter.Y)
 	mini.Position = UDim2.fromOffset(miniCenter.X, miniCenter.Y)
+	if snapDockToEdge then snapDock(false) end
 	if layoutExtras then layoutExtras() end
 end
 connect(root:GetPropertyChangedSignal("AbsoluteSize"), layout)
@@ -315,7 +332,10 @@ connect(UserInputService.InputChanged, function(input: InputObject)
 end)
 connect(UserInputService.InputEnded, function(input: InputObject)
 	if drag and input == drag.input then
-		if drag.target == mini and drag.moved then suppressRestoreUntil = os.clock() + 0.3 end
+		if drag.target == mini and drag.moved then
+			suppressRestoreUntil = os.clock() + 0.3
+			if snapDockToEdge then snapDock(true) end
+		end
 		drag = nil
 	end
 end)
@@ -369,23 +389,39 @@ local function toggleRow(name: string, hint: string, y: number, initial: boolean
 	corner(row, 10)
 	local heading = label(row, name, 13, colors.Text)
 	heading.Position = UDim2.fromOffset(12, 6)
-	heading.Size = UDim2.new(1, -78, 0, 20)
+	heading.Size = UDim2.new(1, -104, 0, 20)
 	heading.Font = Enum.Font.GothamMedium
 	local description = label(row, hint, 10, colors.Muted)
 	description.Position = UDim2.fromOffset(12, 27)
-	description.Size = UDim2.new(1, -78, 0, 16)
+	description.Size = UDim2.new(1, -104, 0, 16)
 	description.TextTruncate = Enum.TextTruncate.AtEnd
-	local indicator = label(row, "", 11, CONFIG.Accent)
+	local indicator = label(row, "", 9, CONFIG.Accent)
 	indicator.Name = "ToggleState"
 	indicator.Font = Enum.Font.Code
-	indicator.Position = UDim2.new(1, -57, 0, 0)
-	indicator.Size = UDim2.fromOffset(45, 50)
+	indicator.Position = UDim2.new(1, -91, 0, 0)
+	indicator.Size = UDim2.fromOffset(30, 50)
 	indicator.TextXAlignment = Enum.TextXAlignment.Center
+	local track = create("Frame", {
+		Name = "SwitchTrack", Position = UDim2.new(1, -56, 0, 13), Size = UDim2.fromOffset(44, 24),
+		BackgroundColor3 = colors.Border, BorderSizePixel = 0,
+	}, row)
+	corner(track, 12)
+	local thumb = create("Frame", {
+		Name = "SwitchThumb", Position = UDim2.fromOffset(3, 3), Size = UDim2.fromOffset(18, 18),
+		BackgroundColor3 = colors.Muted, BorderSizePixel = 0,
+	}, track)
+	corner(thumb, 9)
 	local function paint()
+		tween(track, { BackgroundColor3 = if enabled then CONFIG.Accent else colors.Border })
+		tween(thumb, {
+			Position = UDim2.fromOffset(if enabled then 23 else 3, 3),
+			BackgroundColor3 = if enabled then colors.Panel else colors.Muted,
+		})
 		indicator.Text = if enabled then "ON" else "OFF"
 		indicator.TextColor3 = if enabled then CONFIG.Accent else colors.Muted
 	end
 	paint()
+	table.insert(themeRefreshers, paint)
 	local function setEnabled(value: boolean)
 		enabled = value
 		paint()
@@ -397,7 +433,7 @@ end
 
 local teleportPanel = create("Frame", {
 	Name = "TeleportPanel", AnchorPoint = Vector2.new(0.5, 0.5),
-	Size = UDim2.fromOffset(320, 306), BackgroundColor3 = colors.Panel,
+	Size = UDim2.fromOffset(320, 362), BackgroundColor3 = colors.Panel,
 	BorderSizePixel = 0, Visible = false,
 }, root)
 corner(teleportPanel, 16)
@@ -425,13 +461,13 @@ end)
 local coordinates = label(teleportPanel, "No position saved", 12, colors.Muted)
 coordinates.Name = "Coordinates"
 coordinates.Font = Enum.Font.Code
-coordinates.Position = UDim2.fromOffset(16, 105)
+coordinates.Position = UDim2.fromOffset(16, 151)
 coordinates.Size = UDim2.new(1, -32, 0, 28)
 coordinates.TextScaled = true
 create("UITextSizeConstraint", { MinTextSize = 9, MaxTextSize = 12 }, coordinates)
 local teleportStatus = label(teleportPanel, "Save a spot, then return to it.", 11, colors.Muted)
 teleportStatus.Name = "TeleportStatus"
-teleportStatus.Position = UDim2.fromOffset(16, 254)
+teleportStatus.Position = UDim2.fromOffset(16, 313)
 teleportStatus.Size = UDim2.new(1, -32, 0, 38)
 teleportStatus.TextWrapped = true
 local function utilityButton(name: string, text: string, position: UDim2, size: UDim2, primary: boolean): TextButton
@@ -447,13 +483,44 @@ local function utilityButton(name: string, text: string, position: UDim2, size: 
 	connect(button.MouseLeave, function() tween(button, { BackgroundTransparency = 0 }, 0.1) end)
 	return button
 end
-local savePosition = utilityButton("SavePosition", "Save position", UDim2.fromOffset(16, 147), UDim2.new(0.5, -20, 0, 46), false)
-local clearPosition = utilityButton("ClearPosition", "Clear", UDim2.new(0.5, 4, 0, 147), UDim2.new(0.5, -20, 0, 46), false)
-local goPosition = utilityButton("TeleportToPosition", "Teleport to saved spot  →", UDim2.fromOffset(16, 201), UDim2.new(1, -32, 0, 46), true)
+local savePosition = utilityButton("SavePosition", "Save position", UDim2.fromOffset(16, 206), UDim2.new(0.5, -20, 0, 46), false)
+local clearPosition = utilityButton("ClearPosition", "Clear", UDim2.new(0.5, 4, 0, 206), UDim2.new(0.5, -20, 0, 46), false)
+local goPosition = utilityButton("TeleportToPosition", "Teleport to saved spot  →", UDim2.fromOffset(16, 260), UDim2.new(1, -32, 0, 46), true)
 local savedPivot: CFrame? = nil
 local savedPivots: {[number]: CFrame} = {}
 local selectedSlot = 1
 local slotButtons: {TextButton} = {}
+local bookmarkNames = {"Spot 1", "Spot 2", "Spot 3"}
+local nameInput = create("TextBox", {
+	Name = "BookmarkName", Text = bookmarkNames[1], PlaceholderText = "Name this spot",
+	ClearTextOnFocus = false, MultiLine = false, TextSize = 13, Font = Enum.Font.GothamMedium,
+	TextColor3 = colors.Text, PlaceholderColor3 = colors.Muted, TextXAlignment = Enum.TextXAlignment.Left,
+	BackgroundColor3 = colors.Surface, BorderSizePixel = 0,
+	Position = UDim2.fromOffset(16, 105), Size = UDim2.new(1, -32, 0, 40),
+}, teleportPanel)
+corner(nameInput, 10)
+create("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, nameInput)
+local distanceText = label(teleportPanel, "Save a spot to measure distance", 10, colors.Muted)
+distanceText.Name = "BookmarkDistance"
+distanceText.Font = Enum.Font.Code
+distanceText.Position = UDim2.fromOffset(16, 179)
+distanceText.Size = UDim2.new(1, -32, 0, 18)
+local updateDistance: (() -> ())? = nil
+local function commitBookmarkName()
+	if not alive then return end
+	-- Bound user text by Unicode codepoints, not bytes; never evaluate or persist it.
+	local value = string.gsub(nameInput.Text, "%c", " ")
+	value = string.match(value, "^%s*(.-)%s*$") or ""
+	local length = utf8.len(value)
+	if not length or length == 0 then value = "Spot " .. selectedSlot
+	elseif length > 24 then
+		local boundary = utf8.offset(value, 25)
+		if boundary then value = string.sub(value, 1, boundary - 1) end
+	end
+	bookmarkNames[selectedSlot] = value
+	nameInput.Text = value
+end
+connect(nameInput.FocusLost, commitBookmarkName)
 local function refreshSlots()
 	for i, button in ipairs(slotButtons) do
 		button.Text = string.format("%02d  %s", i, if savedPivots[i] then "SAVED" else "EMPTY")
@@ -476,11 +543,14 @@ for i = 1, 3 do
 	button.TextSize = 10
 	table.insert(slotButtons, button)
 	connect(button.Activated, function()
+		commitBookmarkName()
 		selectedSlot = index
+		nameInput.Text = bookmarkNames[index]
 		savedPivot = savedPivots[index]
 		refreshSlots()
 		refreshCoordinates()
-		teleportStatus.Text = "Selected bookmark " .. index .. "."
+		if updateDistance then updateDistance() end
+		teleportStatus.Text = "Selected " .. bookmarkNames[index] .. "."
 		teleportStatus.TextColor3 = colors.Muted
 	end)
 end
@@ -494,6 +564,17 @@ local function characterReady(): Model?
 	if not humanoid or humanoid.Health <= 0 or not character:FindFirstChild("HumanoidRootPart") then return nil end
 	return character
 end
+updateDistance = function()
+	local character = characterReady()
+	if not savedPivot then distanceText.Text = "Save a spot to measure distance"
+	elseif not character then distanceText.Text = "Distance available after spawning"
+	else
+		local current = character:GetPivot().Position
+		local saved = savedPivot.Position
+		local x, y, z = current.X - saved.X, current.Y - saved.Y, current.Z - saved.Z
+		distanceText.Text = string.format("%.0f studs away", math.sqrt(x * x + y * y + z * z))
+	end
+end
 local function reportPosition(message: string, failed: boolean?)
 	teleportStatus.Text = message
 	teleportStatus.TextColor3 = if failed then colors.Error else colors.Muted
@@ -501,17 +582,20 @@ end
 connect(savePosition.Activated, function()
 	local character = characterReady()
 	if not character then reportPosition("Wait for your character to spawn.", true) return end
+	commitBookmarkName()
 	savedPivot = character:GetPivot()
 	savedPivots[selectedSlot] = savedPivot
 	refreshSlots()
 	refreshCoordinates()
-	reportPosition("Bookmark " .. selectedSlot .. " saved for this session.")
+	if updateDistance then updateDistance() end
+	reportPosition(bookmarkNames[selectedSlot] .. " saved for this session.")
 end)
 connect(clearPosition.Activated, function()
 	savedPivot = nil
 	savedPivots[selectedSlot] = nil
 	refreshSlots()
 	coordinates.Text = "No position saved"
+	if updateDistance then updateDistance() end
 	reportPosition("Bookmark cleared.")
 end)
 connect(goPosition.Activated, function()
@@ -539,7 +623,7 @@ end)
 
 local fpsPanel = create("Frame", {
 	Name = "FPSMeter", AnchorPoint = Vector2.new(0.5, 0.5),
-	Size = UDim2.fromOffset(132, 48), BackgroundColor3 = colors.Panel,
+	Size = UDim2.fromOffset(132, 64), BackgroundColor3 = colors.Panel,
 	BorderSizePixel = 0, Active = true, Visible = false,
 }, root)
 corner(fpsPanel, 12)
@@ -556,7 +640,18 @@ local fpsText = label(fpsPanel, "— FPS", 14, colors.Text)
 fpsText.Name = "FPSValue"
 fpsText.Font = Enum.Font.Code
 fpsText.Position = UDim2.fromOffset(38, 0)
-fpsText.Size = UDim2.new(1, -44, 1, 0)
+fpsText.Size = UDim2.new(1, -44, 0, 36)
+local fpsHistory: {number} = {}
+local fpsBars: {Frame} = {}
+for i = 1, 12 do
+	local bar = create("Frame", {
+		Name = "FPSHistory" .. i, AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromOffset(14 + (i - 1) * 9, 54), Size = UDim2.fromOffset(6, 2),
+		BackgroundColor3 = CONFIG.Accent, BorderSizePixel = 0, Visible = false,
+	}, fpsPanel)
+	corner(bar, 2)
+	table.insert(fpsBars, bar)
+end
 
 local coordinatePanel = create("Frame", {
 	Name = "CoordinateHUD", AnchorPoint = Vector2.new(0.5, 0.5),
@@ -577,13 +672,13 @@ local sessionTime, telemetryTime = 0, 0
 
 layoutExtras = function()
 	local viewport = root.AbsoluteSize
-	local scale = math.min(interfaceScale, math.max(0.1, (viewport.X - 24) / 320), math.max(0.1, (viewport.Y - 24) / 306))
+	local scale = math.min(interfaceScale, math.max(0.1, (viewport.X - 24) / 320), math.max(0.1, (viewport.Y - 24) / 362))
 	teleportScale.Scale = scale
-	fpsScale.Scale = math.min(interfaceScale, math.max(0.1, (viewport.X - 24) / 132), math.max(0.1, (viewport.Y - 24) / 48))
+	fpsScale.Scale = math.min(interfaceScale, math.max(0.1, (viewport.X - 24) / 132), math.max(0.1, (viewport.Y - 24) / 64))
 	coordinateScale.Scale = math.min(interfaceScale, math.max(0.1, (viewport.X - 24) / 224), math.max(0.1, (viewport.Y - 24) / 48))
 	for _, floating in ipairs({teleportPanel, fpsPanel, coordinatePanel}) do
-		local size = if floating == teleportPanel then Vector2.new(320, 306) * scale
-			elseif floating == fpsPanel then Vector2.new(132, 48) * fpsScale.Scale
+		local size = if floating == teleportPanel then Vector2.new(320, 362) * scale
+			elseif floating == fpsPanel then Vector2.new(132, 64) * fpsScale.Scale
 			else Vector2.new(224, 48) * coordinateScale.Scale
 		local preferred = if floating == teleportPanel then Vector2.new(math.min(viewport.X - 170, viewport.X / 2 + 210), viewport.Y / 2)
 			elseif floating == fpsPanel then Vector2.new(viewport.X - 82, 40)
@@ -626,6 +721,8 @@ local setFPSEnabled = toggleRow("FPS meter", "Floating · drag to reposition", 5
 	fpsPanel.Visible = enabled
 	fpsFrames, fpsElapsed = 0, 0
 	fpsText.Text = "— FPS"
+	table.clear(fpsHistory)
+	for _, bar in ipairs(fpsBars) do bar.Visible = false end
 	layout()
 end)
 local setGlitchEnabled = toggleRow("Glitch title", "Subtle RGB split · monospace", 116, glitchEnabled, function(enabled)
@@ -644,6 +741,7 @@ connect(RunService.RenderStepped, function(dt: number)
 	telemetryTime += dt
 	if telemetryTime >= 0.5 then
 		telemetryTime = 0
+		if teleportPanel.Visible and updateDistance then updateDistance() end
 		if hudEnabled then
 			local character = characterReady()
 			if character then
@@ -660,6 +758,16 @@ connect(RunService.RenderStepped, function(dt: number)
 		fpsElapsed += dt
 		if fpsElapsed >= 0.5 then
 			local fps = math.floor(fpsFrames / fpsElapsed + 0.5)
+			table.insert(fpsHistory, fps)
+			if #fpsHistory > 12 then table.remove(fpsHistory, 1) end
+			for i, bar in ipairs(fpsBars) do
+				local sample = fpsHistory[i]
+				bar.Visible = sample ~= nil
+				if sample then
+					bar.Size = UDim2.fromOffset(6, math.clamp(sample / 120, 0.1, 1) * 12)
+					bar.BackgroundColor3 = if sample < 30 then colors.Error else CONFIG.Accent
+				end
+			end
 			fpsText.Text = string.format("%d FPS", fps)
 			fpsText.TextColor3 = if fps < 30 then colors.Error elseif fps < 50 then CONFIG.Accent else colors.Success
 			fpsFrames, fpsElapsed = 0, 0
@@ -717,7 +825,7 @@ do
 			ScrollBarImageColor3 = CONFIG.Accent,
 		}, card)
 	end
-	local stylePage = page("StylePage", 330)
+	local stylePage = page("StylePage", 390)
 	local sessionPage = page("SessionPage", 370)
 	local pages = {tools, stylePage, sessionPage}
 	local tabButtons: {TextButton} = {}
@@ -784,6 +892,7 @@ do
 				object.Color = ColorSequence.new(accent, Color3.fromRGB(112, 113, 221))
 			end
 		end
+		for _, refresh in ipairs(themeRefreshers) do refresh() end
 		refreshSlots()
 		status.Text = name .. " accent selected."
 	end
@@ -808,18 +917,22 @@ do
 		windowsPinned = enabled
 		if enabled then drag = nil end
 	end, stylePage)
-	section(stylePage, "02 / INTERFACE SIZE", 211)
+	toggleRow("Snap dock", "Snap to nearest side after dragging", 202, false, function(enabled)
+		snapDockToEdge = enabled
+		if enabled then snapDock(true) end
+	end, stylePage)
+	section(stylePage, "02 / INTERFACE SIZE", 269)
 	for i, size in ipairs({{ "Small", 0.85 }, { "Default", 1 }, { "Large", 1.1 }}) do
 		local factor = size[2] :: number
 		action(stylePage, "Scale" .. size[1], size[1] :: string,
-			UDim2.new((i - 1) / 3, 0, 0, 239), UDim2.new(1 / 3, -6, 0, 44), function()
+			UDim2.new((i - 1) / 3, 0, 0, 297), UDim2.new(1 / 3, -6, 0, 44), function()
 				interfaceScale = factor
 				layout()
 				status.Text = "Interface size updated."
 			end)
 	end
 	local motionHint = label(stylePage, "Preferences last for this run. No files are written.", 10, colors.Muted)
-	motionHint.Position = UDim2.fromOffset(0, 294)
+	motionHint.Position = UDim2.fromOffset(0, 352)
 	motionHint.Size = UDim2.new(1, -4, 0, 28)
 	motionHint.TextWrapped = true
 
@@ -869,6 +982,7 @@ do
 		savedPivot = nil
 		refreshCoordinates()
 		refreshSlots()
+		if updateDistance then updateDistance() end
 		button.Text = "Clear all bookmarks"
 		status.Text = "All bookmarks cleared."
 	end)
@@ -956,6 +1070,7 @@ connect(gui.Destroying, function()
 	drag = nil
 	for _, connection in ipairs(connections) do connection:Disconnect() end
 	table.clear(connections)
+	table.clear(themeRefreshers)
 	for _, animations in pairs(activeTweens) do
 		for _, animation in pairs(animations) do animation:Cancel() end
 	end

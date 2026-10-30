@@ -44,7 +44,7 @@ local Vector3 = {zero = {X=0,Y=0,Z=0}}
 local clock = 10
 local os = {clock = function() return clock end}
 local objects = {}
-local events = {RenderStepped=true, MouseButton1Down=true, MouseButton1Up=true, InputBegan=true, InputChanged=true, InputEnded=true, WindowFocusReleased=true,
+local events = {FocusLost=true, RenderStepped=true, MouseButton1Down=true, MouseButton1Up=true, InputBegan=true, InputChanged=true, InputEnded=true, WindowFocusReleased=true,
  MouseEnter=true, MouseLeave=true, SelectionGained=true, SelectionLost=true, Activated=true, Destroying=true}
 local methods = {}
 function methods:FindFirstChild(name)
@@ -55,7 +55,7 @@ function methods:FindFirstChild(name)
 end
 function methods:WaitForChild(name) return assert(self:FindFirstChild(name), name) end
 function methods:IsA(name)
- local guiClasses={Frame=true,TextLabel=true,TextButton=true,ScrollingFrame=true}
+ local guiClasses={Frame=true,TextBox=true,TextLabel=true,TextButton=true,ScrollingFrame=true}
  return self.ClassName==name or (name=="BasePart" and self.ClassName=="Part") or (name=="GuiObject" and guiClasses[self.ClassName]==true)
 end
 function methods:GetFocusedTextBox() return self.FocusedTextBox end
@@ -73,7 +73,7 @@ end
 function methods:FindFirstChildOfClass(name)
  for _,o in ipairs(objects) do if o.Parent==self and o.ClassName==name and not o.Destroyed then return o end end
 end
-function methods:GetPivot() return self.Pivot end
+function methods:GetPivot() return self.Pivot or {Position={X=0,Y=0,Z=0}} end
 function methods:PivotTo(pivot) self.Pivot=pivot self.MoveCount=(self.MoveCount or 0)+1 end
 function methods:GetPropertyChangedSignal(name)
  self.Signals[name]=self.Signals[name] or signal()
