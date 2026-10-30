@@ -5640,7 +5640,18 @@ do
 		local humanoid = if character
 			then character:FindFirstChildOfClass("Humanoid")
 			else nil
-		if not humanoid or humanoid.Health <= 0 then
+		local rootPart = if character
+			then character:FindFirstChild("HumanoidRootPart")
+			else nil
+		if
+			not character
+			or not character.Parent
+			or not humanoid
+			or humanoid.Health <= 0
+			or not engine.Finite(humanoid.Health)
+			or not rootPart
+			or not rootPart:IsA("BasePart")
+		then
 			engine.Status("Aim", "Wait for your character to spawn.")
 			return
 		end

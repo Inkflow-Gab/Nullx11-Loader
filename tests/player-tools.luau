@@ -184,6 +184,23 @@ camera.CameraType = Enum.CameraType.Custom
 inputService.WindowFocusReleased:Fire()
 advance(0.02)
 assert(camera.CFrame == stopped, "focus loss releases hold")
+inputService.InputBegan:Fire(mouse, false)
+local localAvatar = player.Character
+local localHumanoid = localAvatar:FindFirstChildOfClass("Humanoid")
+localHumanoid.Health = 0
+advance(0.02)
+assert(camera.CFrame == stopped, "dead local avatar pauses aim")
+localHumanoid.Health = 100
+local localRoot = localAvatar:FindFirstChild("HumanoidRootPart")
+localRoot.Parent = nil
+advance(0.02)
+assert(camera.CFrame == stopped, "partially spawned local avatar pauses aim")
+localRoot.Parent = localAvatar
+localAvatar.Parent = nil
+advance(0.02)
+assert(camera.CFrame == stopped, "removed local avatar pauses aim")
+localAvatar.Parent = workspaceService
+inputService.WindowFocusReleased:Fire()
 local touch = {
 	UserInputType = Enum.UserInputType.Touch,
 	Position = Vector2.new(100, 100),

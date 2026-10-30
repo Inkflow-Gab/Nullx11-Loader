@@ -213,4 +213,4 @@ Keep extras opt-in: a compact changelog or real asset preloading for your own ex
 
 ## Code size
 
-The standalone main script is **6,571 lines**, including the inline Design Studio, separate Visuals/Aim tools, startup reveal, and consistent 80-column formatting. **The requested 20,000-line target is not reached**: the implementation adds functional features rather than duplicate handlers or filler. No third-party GUI framework is bundled. Development-only formatter and test dependencies are not required by the executor.
+The standalone main script is **6,582 lines**, including the inline Design Studio, separate Visuals/Aim tools, startup reveal, and consistent 80-column formatting. **The requested 20,000-line target is not reached**: the implementation adds functional features rather than duplicate handlers or filler. No third-party GUI framework is bundled. Development-only formatter and test dependencies are not required by the executor.
