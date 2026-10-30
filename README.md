@@ -23,6 +23,8 @@ No external executor or `loadstring` is needed in Studio. With Rojo, map the `.c
 | Control | Behavior |
 | --- | --- |
 | **Load** | Opens the built-in tools after the game is ready. Also initializes an optional Studio `App` module. |
+| **Open Design Studio** | From Style, open the lazy-built appearance editor with six categories and 46 preferences. |
+| **Resize grip ↘** | After Load, drag the dashboard’s bottom-right grip. Lock windows disables resizing. |
 | **Tools / Style / Session** | Switch between utilities, appearance controls, and session/recovery actions. Pages scroll on short screens. |
 | **Teleport tools** | Opens a separate draggable position panel. Turning it off hides the panel without losing bookmarks. |
 | **01 / 02 / 03** | Select one of three independent bookmark slots. EMPTY / SAVED indicates slot state. |
@@ -98,6 +100,43 @@ local CONFIG = {
 
 Set `ReducedMotion = true` for a motion-free default. The Style tab can change it during a run; enabling it also switches the glitch toggle off. This is an explicit setting, not automatic OS preference detection. Other colors live in the `colors` table.
 
+## Design Studio
+
+Open **Load → Style → Open Design Studio**. The main executor script contains the entire editor; no additional files or modules are needed. Its controls are created once, on first use. Closing Studio hides it; closing the main loader destroys it.
+
+### Six searchable categories
+
+- **Color:** twelve accent presets, custom RGB, three/six-digit hex input, a tint/shade ladder, hue/complement adjustments, gradients, panel/dock opacity, corner roundness, borders, and an opaque-color contrast reference.
+- **Type:** built-in body fonts, technical monospace preservation, text scaling, brighter secondary text, focus outlines, larger setting-row controls, descriptions, and header/footer/status visibility. A real text preview updates with the settings.
+- **Layout:** preferred dashboard dimensions, interface scale, dock size/shape/monogram, caption/dot visibility, snapping, locking, alternate dashboard hotkeys, HUD width/precision, editor dimensions, arrangements, and a live normalized window map.
+- **Motion:** reduced motion, easing/duration, bounded title-glitch controls, FPS graph visibility, and instrument sample windows. Five motion recipes provide quick starting points. Reduced motion takes priority over glitch requests.
+- **Profiles:** eight design recipes, three named in-memory design slots, comparison against saved/default values, a settings inspector, bounded history, and JSON transfer.
+- **Help:** searchable usage guidance, Studio shortcut information, and a refreshable local diagnostic snapshot. It does not test or fingerprint the executor or server.
+
+Search filters each category using plain substring matching, not Lua patterns. Horizontal category navigation and vertical pages scroll on small screens. Layout preferences always yield to the safe area; arrangements may overlap on small phones.
+
+### History and quick controls
+
+Studio retains up to **24 undo snapshots**. A new change clears redo. After Studio has been opened, the quick Style controls synchronize into the editor and its history. Completed dashboard resizes are also recorded. Ordinary dragging, utility activation, profile-slot saves/deletions, and arrangement actions are not appearance-history entries.
+
+While Studio is visible and no text field is focused:
+
+- **Ctrl+Z:** undo.
+- **Ctrl+Y:** redo.
+- **Escape:** hide Studio.
+
+Processed input is ignored. The dashboard shortcut defaults to Right Shift and can be changed separately in Layout.
+
+### Settings-only export/import
+
+**Generate JSON** writes a versioned appearance object into a scrollable text field. Select/copy it manually; the script never silently writes files or uses executor clipboard APIs. Paste it back and choose **Validate and import** to restore it.
+
+Import is limited to **8192 bytes** and known settings with valid types, choices, finite numbers, and bounded ranges. The full patch is validated before application. Unsupported versions, extra fields, unknown settings, and invalid values are rejected. Imported data is never executed or fetched as a URL. Export does not include player identity, teleport locations, profile names, or game state.
+
+Saved designs and bookmarks are distinct. Both are session-only unless you manually retain an exported appearance JSON. JSON transfers appearance only, not bookmarks. Resetting appearance preserves bookmarks and saved design slots; deleting a saved design does not alter the active design.
+
+The contrast reference uses opaque base colors and standard relative-luminance math. Gameplay behind transparent windows can change actual contrast; this readout is **not an accessibility certification**.
+
 ## Optional Studio app hook
 
 Built-in tools work without this. To initialize your own game UI as well, add a **ModuleScript named `App` as a child of the loader LocalScript**:
@@ -122,11 +161,12 @@ end
 Development checks only; npm is **not** required to run the Roblox script:
 
 ```sh
-npm ci
+npm ci --ignore-scripts
+npm run format:check
 npm test
 ```
 
-The checks compile both Luau files and exercise deterministic API mocks for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs the same checks for pushes and PRs.
+The checks compile both Luau files and exercise deterministic API mocks for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
 
 These mocks do not emulate Roblox physics, rendering, real touch input, or Delta. Test in Studio's **Device Emulator**, your own game, and a real device. In particular, verify short-landscape layouts, drag-vs-tap behavior on the restore icon, respawns, closing while initialization yields, and whether your game's server accepts the intended movement.
 
@@ -136,4 +176,4 @@ Keep extras opt-in: a compact changelog or real asset preloading for your own ex
 
 ## Code size
 
-The client is intentionally kept around a thousand meaningful lines rather than inflated to 20,000 lines. The project prioritizes real behavior, shared helpers, cleanup, and reproducible tests over line-count padding. No generated filler or bundled third-party UI framework is included.
+The standalone main script is **5,222 lines**, including the inline Design Studio, its declarative setting/preset catalogs, help UI, and consistent 80-column formatting. This meets the requested roughly 5,000-line main-script target with UI customization features rather than duplicate handlers or empty-line padding. No third-party GUI framework is bundled. Development-only formatter and test dependencies are not required by the executor.

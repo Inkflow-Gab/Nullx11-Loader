@@ -3,9 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/check.mjs"
+    "test": "node tests/check.mjs",
+    "format": "stylua Nullx11.client.luau bootstrap.luau tests",
+    "format:check": "stylua --check Nullx11.client.luau bootstrap.luau tests"
   },
   "devDependencies": {
+    "@johnnymorganz/stylua-bin": "2.6.0",
     "luau-web": "1.5.1"
   }
 }
