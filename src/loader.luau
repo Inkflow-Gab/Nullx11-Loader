@@ -11,7 +11,7 @@ local RunService = game:GetService("RunService")
 
 local CONFIG = {
 	Name = "Nullx11",
-	Subtitle = "A quieter way to get started.",
+	Subtitle = "Developed by Gab.",
 	Accent = Color3.fromRGB(167, 146, 255),
 	ReducedMotion = false,
 	StartupAnimation = true,
@@ -219,9 +219,13 @@ local function drawIcon(
 		Size = UDim2.fromOffset(size, size),
 	}, parent)
 	for strokeIndex, geometry in ipairs({
-		{ 0.22, 0.5, 0.14, 0.64, 0 },
-		{ 0.5, 0.5, 0.14, 0.76, -36 },
-		{ 0.78, 0.5, 0.14, 0.64, 0 },
+		{ 0.35, 0.28, 0.1, 0.42, 55 },
+		{ 0.65, 0.28, 0.1, 0.42, -55 },
+		{ 0.35, 0.72, 0.1, 0.42, -55 },
+		{ 0.65, 0.72, 0.1, 0.42, 55 },
+		{ 0.18, 0.50, 0.08, 0.36, 0 },
+		{ 0.82, 0.50, 0.08, 0.36, 0 },
+		{ 0.50, 0.50, 0.21, 0.21, 45 },
 	}) do
 		local line = create("Frame", {
 			Name = "BrandStroke" .. strokeIndex,
@@ -234,16 +238,6 @@ local function drawIcon(
 		}, icon)
 		corner(line, 2)
 	end
-	local cut = create("Frame", {
-		Name = "SignatureCut",
-		Position = UDim2.fromScale(0.74, 0.05),
-		Size = UDim2.fromScale(0.2, 0.07),
-		Rotation = -36,
-		BackgroundColor3 = ink,
-		BackgroundTransparency = 0.25,
-		BorderSizePixel = 0,
-	}, icon)
-	corner(cut, 2)
 	return icon
 end
 drawIcon(mark, colors.Panel, UDim2.fromOffset(3, 3), 24)
@@ -252,7 +246,7 @@ title.Name = "Title"
 title.Font = Enum.Font.Code
 title.Position = UDim2.fromOffset(65, 26)
 title.Size = UDim2.new(1, -65, 0, 30)
-local edition = label(header, "CLIENT / WORKSPACE", 8, colors.Muted)
+local edition = label(header, "DEVELOPED BY GAB", 8, colors.Muted)
 edition.Font = Enum.Font.Code
 edition.Position = UDim2.fromOffset(65, 55)
 edition.Size = UDim2.new(1, -65, 0, 13)
@@ -509,18 +503,7 @@ do
 			duration,
 			if show then Enum.EasingStyle.Back else Enum.EasingStyle.Quint
 		)
-		halo.Size =
-			UDim2.fromOffset(if show then 42 else 92, if show then 42 else 92)
-		haloStroke.Transparency = 0.12
-		tween(halo, {
-			Size = UDim2.fromOffset(
-				if show then 92 else 42,
-				if show then 92 else 42
-			),
-		}, duration)
-		tween(haloStroke, { Transparency = 0.9 }, duration)
-		mini.Rotation = if show then -5 else 5
-		tween(mini, { Rotation = 0 }, duration)
+		-- The restore icon is intentionally static, including while windows move.
 		task.delay(duration * appearance.Duration, finish)
 	end
 	function portal.Settle()
@@ -6777,147 +6760,15 @@ do
 		return clean
 	end
 	-- @NULLX11_CATALOG
-	function catalog.QueueFunction(): any
-		if type(queue_on_teleport) == "function" then
-			return queue_on_teleport
-		end
-		if type(queueonteleport) == "function" then
-			return queueonteleport
-		end
-		if
-			type(syn) == "table"
-			and type(syn.queue_on_teleport) == "function"
-		then
-			return syn.queue_on_teleport
-		end
-		return nil
-	end
 	function catalog.GameMessage(message: string)
 		engine.Status("GameScript", message)
 		engine.Status("Scripts", message)
-	end
-	function catalog.TeleportSelected()
-		local entry = catalog.Selected
-		if not entry or not entry.GamePlaceId or catalog.Teleporting then
-			return
-		end
-		if game.PlaceId == entry.GamePlaceId then
-			catalog.GameMessage(
-				"Already in the target game. Use Execute game script."
-			)
-			return
-		end
-		if
-			not catalog.ExecuteOnArrival
-			and catalog.Queued
-			and catalog.Queued[entry.Id]
-		then
-			catalog.GameMessage(
-				"Earlier code may remain queued. Clear your runtime queue before requesting teleport-only."
-			)
-			return
-		end
-		local queued = false
-		if catalog.ExecuteOnArrival then
-			local enqueue = catalog.QueueFunction()
-			if not enqueue then
-				catalog.GameMessage(
-					"This runtime cannot queue a game script. Turn off execute-on-arrival to teleport only."
-				)
-				return
-			end
-			if type(loadstring) ~= "function" then
-				catalog.GameMessage(
-					"Client loadstring unavailable; automatic execution cannot be queued."
-				)
-				return
-			end
-			catalog.Queued = catalog.Queued or {}
-			if not catalog.Queued[entry.Id] then
-				-- Only this game file is queued. Never the main loader or another game.
-				local payload = string.format(
-					[[local ok,reason=pcall(function()
-if not game:IsLoaded() then game.Loaded:Wait() end
-if game.PlaceId~=%d then warn("[Nullx11] Queued game script skipped: wrong place") return end
-local source=game:HttpGet(%q,true)
-assert(type(source)=="string" and #source<=2097152,"Invalid selected game bundle")
-local run,compileError=loadstring(source,%q)
-assert(run,compileError or "Game script compilation failed")
-run()
-end)
-if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
-					entry.GamePlaceId,
-					CONFIG.ScriptBaseURL .. entry.File,
-					"Nullx11Game/" .. entry.File
-				)
-				local ok, reason = pcall(enqueue, payload)
-				if not ok then
-					catalog.GameMessage(
-						"Queue failed; no teleport requested: "
-							.. string.sub(tostring(reason), 1, 90)
-					)
-					return
-				end
-				catalog.Queued[entry.Id] = true
-			end
-			queued = true
-		end
-		local ok, reason = pcall(function()
-			local service = game:GetService("TeleportService")
-			if not catalog.TeleportFailure then
-				catalog.TeleportFailure = connect(
-					service.TeleportInitFailed,
-					function(who, result, message, placeId)
-						if
-							not alive
-							or who ~= player
-							or placeId ~= catalog.TeleportTarget
-						then
-							return
-						end
-						catalog.Teleporting = false
-						catalog.GameMessage(
-							"Teleport failed: "
-								.. string.sub(tostring(message), 1, 65)
-								.. (
-									if catalog.QueuePending
-										then " / queued code may remain until next teleport."
-										else ""
-								)
-						)
-					end
-				)
-			end
-			catalog.TeleportTarget = entry.GamePlaceId
-			catalog.QueuePending = queued
-			catalog.Teleporting = true
-			service:Teleport(entry.GamePlaceId, player)
-		end)
-		if not ok then
-			catalog.Teleporting = false
-			catalog.GameMessage(
-				"Teleport failed: "
-					.. string.sub(tostring(reason), 1, 70)
-					.. (if queued then " / queued code may remain." else "")
-			)
-		else
-			catalog.GameMessage(
-				if queued
-					then "Teleport requested / only the selected game script is queued."
-					else "Teleport requested / no code queued. Execute manually after joining."
-			)
-		end
 	end
 	function catalog.OpenGame(entry: any)
 		if catalog.Busy then
 			return
 		end
-		if catalog.Teleporting then
-			catalog.GameMessage("A teleport is already pending.")
-			return
-		end
 		catalog.Selected = entry
-		catalog.ExecuteOnArrival = false
 		catalog.Confirm = nil
 		if not engine.Windows.GameScript then
 			local window = engine.Window("GameScript")
@@ -6941,31 +6792,6 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 				detail("GameScriptDetails", 100, 14, colors.Muted)
 			catalog.GameCredit =
 				detail("GameScriptCredit", 50, 14, colors.Muted)
-			catalog.Arrival = engine.Button(
-				window,
-				"GameExecuteOnArrival",
-				"Execute game script after joining: OFF",
-				function()
-					if not catalog.QueueFunction() then
-						catalog.GameMessage(
-							"Queue-on-teleport unavailable. Teleport only, then execute manually."
-						)
-						return
-					end
-					catalog.ExecuteOnArrival = not catalog.ExecuteOnArrival
-					catalog.Arrival.Text = "Execute game script after joining: "
-						.. (if catalog.ExecuteOnArrival then "ON" else "OFF")
-					catalog.GameMessage(
-						"Only the selected game file is queued. A failed teleport may leave it queued; this UI cannot cancel it."
-					)
-				end
-			)
-			engine.Button(
-				window,
-				"GameTeleport",
-				"Teleport to game",
-				catalog.TeleportSelected
-			)
 			catalog.ExecuteButton = engine.Button(
 				window,
 				"GameExecute",
@@ -6975,9 +6801,12 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 					if not selected then
 						return
 					end
-					if game.PlaceId ~= selected.GamePlaceId then
+					if
+						selected.GamePlaceId
+						and game.PlaceId ~= selected.GamePlaceId
+					then
 						catalog.GameMessage(
-							"Wrong game. Teleport to the target before executing."
+							"Unsupported place. Join the game manually; no teleport was requested."
 						)
 						return
 					end
@@ -6992,20 +6821,22 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 		catalog.GameTitle.Text = entry.Name
 		catalog.GameDetails.Text = entry.Description
 			.. "\n\n"
-			.. (if game.PlaceId == entry.GamePlaceId
-				then "Target game detected. Execution still requires confirmation."
-				else "You are not in this game. Would you like to teleport?")
-			.. "\nTarget place: "
-			.. tostring(entry.GamePlaceId)
+			.. (
+				if not entry.GamePlaceId
+					then "Game modules are checked before startup."
+					elseif
+						game.PlaceId == entry.GamePlaceId
+					then "Target game detected. Confirm execution below."
+					else "Unsupported place. Join the game manually to use this script."
+			)
 		catalog.GameCredit.Text = "Source credits: "
 			.. (
 				entry.Author
 				or "See the reviewed script source; original attribution must be retained."
 			)
-		catalog.Arrival.Text = "Execute game script after joining: OFF"
 		catalog.ExecuteButton.Text = "Execute game script"
 		catalog.GameMessage(
-			"Teleport and Execute are separate actions. Automatic execution is opt-in."
+			"No game teleport prompts or queued auto-execution. Executed scripts survive loader unload."
 		)
 		layout()
 		portal.Play(catalog.GameWindow.Panel, true)
@@ -7021,7 +6852,10 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 			return
 		end
 		if entry.GamePlaceId and game.PlaceId ~= entry.GamePlaceId then
-			catalog.OpenGame(entry)
+			catalog.Message(
+				"Unsupported place. Join the game manually; no code was downloaded.",
+				true
+			)
 			return
 		end
 		if
@@ -7247,7 +7081,6 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 			if ok then
 				-- A refresh invalidates old detail/confirmation state, including removed entries.
 				catalog.Selected = nil
-				catalog.ExecuteOnArrival = false
 				catalog.Confirm = nil
 				if catalog.GameWindow then
 					portal.Play(catalog.GameWindow.Panel, false)

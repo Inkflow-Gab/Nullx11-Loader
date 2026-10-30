@@ -33,28 +33,19 @@ do
 				local welcomeGroup =
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
-					Title = "A quieter way to get started.",
-					Content = "Shared +1 interface, native player tools and three separate game workspaces. Nothing plays or farms until you enable it.",
+					Title = "Nullx11 / Developed by Gab",
+					Content = "Shared +1 interface, native player tools and four separate game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
-				local frames, elapsed, fps = 0, 0, 0
-				connect(RunService.RenderStepped, function(dt)
-					frames += 1
-					elapsed += dt
-					if elapsed >= 0.5 then
-						fps = math.floor(frames / elapsed + 0.5)
-						frames, elapsed = 0, 0
-					end
-				end)
 				library:Every(1, function()
-					if not alive then
+					if not alive or not window.Visible then
 						return
 					end
 					live:SetText(
 						string.format(
 							"%s / %d FPS / %d players / place %s",
 							player.DisplayName,
-							fps,
+							library:GetFPS(),
 							#Players:GetPlayers(),
 							tostring(game.PlaceId)
 						)
@@ -110,7 +101,9 @@ do
 				for _, entry in ipairs(catalog.Entries) do
 					local group = scriptsTab:AddLeftGroupbox(entry.Name, "play")
 					group:AddParagraph({
-						Title = "Place " .. tostring(entry.GamePlaceId),
+						Title = entry.GamePlaceId and ("Place " .. tostring(
+							entry.GamePlaceId
+						)) or "Game-module compatibility check",
 						Content = entry.Description,
 					})
 					group:AddLabel(entry.Author)
@@ -146,7 +139,7 @@ do
 				)
 				more:AddParagraph({
 					Title = "Separate game windows",
-					Content = "Wrong game? The launch window offers teleport. Execute after joining is optional and queues only the selected game bundle, never this loader. Teleports are Roblox operations, not guaranteed successes.",
+					Content = "No teleport questions or automatic game joins. Unsupported games show a compatibility message. Executed game windows keep running when this loader is unloaded.",
 				})
 				more:AddButton({
 					Text = "Browse / refresh GitHub library",
@@ -221,7 +214,7 @@ do
 						end
 						library:Notify(
 							"Session",
-							"Stopped registered game sessions. Executor teleport queues cannot be universally cleared.",
+							"Stopped registered game sessions by your explicit request.",
 							6,
 							"Info"
 						)
@@ -229,7 +222,7 @@ do
 				})
 				safety:AddParagraph({
 					Title = "Cleanup and consent",
-					Content = "Closing the workspace with Unload stops its registered game sessions and native tools. Hiding a window does not stop a feature. Previously queued teleport code can survive a failed teleport; check your executor before retrying.",
+					Content = "Unload closes only this loader and its native tools. Executed game scripts keep their own windows and controls. Use their Unload action, or the separate confirmed stop button above, to stop them.",
 				})
 				window:AddSettingsTab()
 				library:SetTitleGlitch(glitchEnabled)
@@ -242,19 +235,14 @@ do
 				end
 				local env = type(getgenv) == "function" and getgenv() or _G
 				env.Nullx11ReducedMotion = value == true
-				for _, session in pairs(env.Nullx11GameSessions or {}) do
-					if session.Library then
-						session.Library:SetReducedMotion(value)
-					end
-				end
 			end
 			library:CreateWindow({
 				Title = "Nullx11",
-				SubTitle = "personal workspace",
+				SubTitle = "Developed by Gab",
 				Theme = "Nullx11",
 				MenuKey = appearance.ToggleKey,
 				ConfigFolder = "Nullx11 Workspace",
-				Intro = CONFIG.StartupAnimation and not CONFIG.ReducedMotion,
+				Intro = false,
 				Watermark = false,
 				OnUnlocked = build,
 			})
@@ -270,14 +258,7 @@ do
 				end
 			end)
 			connect(gui.Destroying, function()
-				local env = type(getgenv) == "function" and getgenv() or _G
-				if type(env.Nullx11GameSessions) == "table" then
-					for _, session in
-						pairs(table.clone(env.Nullx11GameSessions))
-					do
-						pcall(session.Unload)
-					end
-				end
+				-- Games have independent ownership/lifetimes. Never stop them here.
 				library:Unload()
 			end)
 		end)

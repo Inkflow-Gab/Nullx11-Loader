@@ -1,6 +1,6 @@
 # Game integrations
 
-All three requested sources have been adapted and bundled. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
+All four supplied sources have been adapted and bundled. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
 
 | Nullx11 workspace | Exact target place | Published file | Implementation status |
 | --- | --- | --- | --- |
@@ -8,21 +8,24 @@ All three requested sources have been adapted and bundled. They are **real contr
 | Nullx11 - hussvalley | `107535308163741` | [Nullx11-Huss.luau](Nullx11-Huss.luau) | Adapted runner/catcher/progression controller; shared UI; tracked connections; repaired configuration builder; automation off. |
 | Nullx11 - +1 loot to forge | `118805555015549` | [Nullx11-Forge.luau](Nullx11-Forge.luau) | Adapted forge/gear/pet/stage/tower/session controller; full shared library; bounded requests/workers; automation off. |
 
+| Nullx11 - Steal An Egg | Core ModuleScript signature; no supplied place ID | [Nullx11-StealAnEgg.luau](Nullx11-StealAnEgg.luau) | Uploaded twelve-tab controller; local WindUI adapter; real multi-select/manual configs; cleanup on failed initialization; capped ESP; jobs off. |
+
 ## Shared foundation
 
-`src/ui/Nullx11UI.luau` contains the supplied +1 UI library adapted to Nullx11: responsive tabs/groupboxes, controls, themes, vector/pixel art, dialogs/sheets, reactive state, spring motion, floating restore icon, configuration and language support. The default main workspace **actually constructs and uses this library**. It is embedded once as an inline function, not an unused source string. Original logos and Kanit fonts are vendored; the latter include their OFL license. The default skin uses a Nullx11 N emblem; original seasonal assets remain available through themes.
+`src/ui/Nullx11UI.luau` contains the supplied +1 UI library adapted to Nullx11: responsive tabs/groupboxes, controls, themes, vector/pixel art, dialogs/sheets, reactive state, spring motion, floating restore icon, configuration and language support. The default main workspace **actually constructs and uses this library**. It is embedded once as an inline function, not an unused source string. Mario logo assets/character sprites were removed. Header/restore branding is a static native geometric prism, not an animated icon or letter. Kanit fonts retain their OFL license. Seasonal decoration and particles default off.
 
 Each game bundle contains this same shared library plus **only its selected game controller**. No runtime Sirius fetch, rscripts telemetry, original general-purpose loader, or main-client execution is included. Compatibility probes are not warmed automatically.
 
 ## Launch / consent
 
-- Three game entries are available immediately; Refresh is optional.
-- Opening Scripts or a launch window is an action, never an ON/OFF switch, and runs no game code.
-- Wrong-place execution is blocked. Teleport and Execute are distinct actions.
-- Execute-after-joining starts off. If enabled, queueing references only the selected bundle and checks its exact place.
-- Directly opening a bundle in the wrong game also creates a real teleport-consent window without starting its controller.
-- Failed teleports may leave executor-queued code behind. Closing/rerunning does not claim to clear that queue.
-- Default main shortcut: **Right Shift**. Default game shortcut: **Left Control**. Each has a draggable N restore icon and separate GUI identity.
+- Four game entries are available immediately; Refresh is optional.
+- Scripts/launch windows are opening actions, never ON/OFF navigation. Opening them runs no game code.
+- Wrong-place execution is blocked for the three known targets. Steal An Egg uses structural core-module detection and full required-module validation, not a fabricated place ID.
+- Launcher teleport questions, destination teleports and arrival queues have been removed. Standalone incompatibility UI offers only a notice and Close.
+- Default shortcuts: **Right Shift** for the loader, **Left Control** for game windows. Each has an independently movable static graphical restore icon.
+- **Loader unload/rerun does not stop executed scripts.** Each game has its own cleanup; the separate confirmed stop-games action remains explicit.
+- Steal An Egg configuration autoload is intentionally not offered. Manual config load/save/delete is real and reports missing filesystem capabilities.
+- Idle work is reduced, but zero FPS drops are not guaranteed. Games intentionally continue their own work after loader unload.
 
 ## Validation boundary
 

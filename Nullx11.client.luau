@@ -34,10 +34,8 @@ local function createNullx11UI(scope)
 		Root = "nullx11",
 		AssetDir = "nullx11/assets",
 		ConfigRoot = "nullx11/configs",
-		DefaultAssets = {
-			logo = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/assets/forge/logo.png",
-			logo_halloween = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/assets/forge/logo_halloween.png",
-		},
+		DefaultAssets = {},
+		Decorations = false,
 		SeasonTheme = "Nullx11",
 		FontDir = "nullx11/fonts",
 		HttpTimeout = 8,
@@ -293,7 +291,6 @@ local function createNullx11UI(scope)
 			Decor = { "Halloween", "✦", "FFB347" },
 			Glow = "F28A2E",
 			Fog = "8E5CD0",
-			Logo = "logo_halloween",
 			Particle = { { "✦", "✦", "•", "✧" }, false, "FFB347" },
 		}),
 		Light = Palette({
@@ -698,7 +695,7 @@ local function createNullx11UI(scope)
 	local Sprite = {}
 	local Assets = { Overrides = {}, Cache = {} }
 	local Fonts = { Texts = {}, Thai = nil }
-	local Particles = { Pool = {}, Enabled = not State.ReducedMotion }
+	local Particles = { Pool = {}, Enabled = false }
 	local Lang = {
 		Bound = {},
 		Listeners = setmetatable({}, { __mode = "k" }),
@@ -1384,7 +1381,7 @@ local function createNullx11UI(scope)
 		return Anim.Tween(scale, { Scale = 1 }, Config.Tween.Pop, "Back")
 	end
 
-	--@param rise Vertical bounce height in px (Mario block bump)
+	--@param rise Vertical bounce height in px (short vertical bounce)
 	function Anim.Bump(frame, rise)
 		if State.ReducedMotion then
 			return
@@ -2118,66 +2115,35 @@ local function createNullx11UI(scope)
 		return cloud
 	end
 
-	-- Resolve theme logo asset or fall back to default logo / vector M emblem
+	-- Static prism/circuit insignia: geometric geometry only, never an avatar,
+	-- a copyrighted character image or a single-letter monogram.
 	function Draw.Emblem(parent, size)
-		local holder = Draw.New("Frame", {
-			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(size, size),
-			Parent = parent,
-		})
-		local picture = Draw.New("ImageLabel", {
-			BackgroundTransparency = 1,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(1, 1),
-			ScaleType = Enum.ScaleType.Fit,
-			Visible = false,
-			Parent = holder,
-		})
-		local drawn = Draw.DrawnEmblem(holder, size)
-		Theme.OnRender(holder, function()
-			local content = State.ThemeName ~= "Nullx11"
-					and ((Theme.Colors.Logo and Assets.Resolve(
-						Theme.Colors.Logo
-					)) or Assets.Resolve("logo"))
-				or nil
-			picture.Image = content or ""
-			picture.Visible = content ~= nil
-			drawn.Visible = content == nil
-			picture.Size = UDim2.fromScale(
-				Theme.Colors.Logo and 1.25 or 1,
-				Theme.Colors.Logo and 1.25 or 1
-			)
-		end)
-		Anim.Loop("Emblem", picture, { Rotation = 6 }, 1.6, "Sine", true)
-		return holder
+		return Draw.DrawnEmblem(parent, size)
 	end
 
 	function Draw.DrawnEmblem(parent, size)
-		local emblem = Draw.Box(
-			"Frame",
-			{ Size = UDim2.fromOffset(size, size), Parent = parent },
-			"Accent",
-			"Outline",
-			UDim.new(1, 0),
-			2
-		)
-		local ring = Draw.New("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(0.7, 0.7),
-			Parent = emblem,
-		})
-		Draw.Corner(ring, UDim.new(1, 0))
-		Theme.Bind(ring, { BackgroundColor3 = "White" })
-		local letter = Draw.Text({
-			Text = "N",
-			Size = UDim2.fromScale(1, 1),
-			TextXAlignment = Enum.TextXAlignment.Center,
-			Position = UDim2.fromOffset(0, 1),
-			Parent = ring,
-		}, "Logo", math.floor(size * 0.5), "Accent")
-		letter.TextScaled = false
+		local emblem = Draw.Box("Frame", {
+			Name = "Nullx11Prism",
+			Size = UDim2.fromOffset(size, size),
+			Parent = parent,
+		}, "Panel", "Outline", 10, 2)
+		for _, shape in ipairs({
+			{ 0.35, 0.29, 0.075, 0.34, 55 },
+			{ 0.65, 0.29, 0.075, 0.34, -55 },
+			{ 0.35, 0.71, 0.075, 0.34, -55 },
+			{ 0.65, 0.71, 0.075, 0.34, 55 },
+			{ 0.19, 0.50, 0.055, 0.31, 0 },
+			{ 0.81, 0.50, 0.055, 0.31, 0 },
+			{ 0.50, 0.50, 0.19, 0.19, 45 },
+		}) do
+			Draw.Box("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(shape[1], shape[2]),
+				Size = UDim2.fromScale(shape[3], shape[4]),
+				Rotation = shape[5],
+				Parent = emblem,
+			}, "Accent", nil, 1)
+		end
 		return emblem
 	end
 
@@ -2281,332 +2247,55 @@ local function createNullx11UI(scope)
 	}
 
 	Sprite.Art = {
-		pumpkin = {
-			".....mm.....",
-			"....kmGk....",
-			"..kkkkkkkk..",
-			".koooBBooook",
-			"kooyyooyyook",
-			"koyyyooyyyok",
-			"koooooooooBk",
-			"kooyoyyoyook",
-			"koooyyyyoook",
-			".kooooBoook.",
-			"..kkkkkkkk..",
-			"............",
-		},
-		bat = {
-			"............",
-			"............",
-			"k..........k",
-			"kk...kk...kk",
-			"kpk.kppk.kpk",
-			"kppkpyypkppk",
-			"kppppppppppk",
-			".kppppppppk.",
-			"..kpk..kpk..",
-			"...k....k...",
-			"............",
-			"............",
-		},
-		spider = {
-			"............",
-			"............",
-			"k...kkkk...k",
-			".k.knnnnk.k.",
-			"..knynnynk..",
-			"kkknnnnnnkkk",
-			"..knnnnnnk..",
-			".k.knnnnk.k.",
-			"k...kkkk...k",
-			"............",
-			"............",
-			"............",
-		},
-		candy = {
-			"............",
-			".....kk.....",
-			"....kwwk....",
-			"....kwwk....",
-			"...kooook...",
-			"...kooook...",
-			"..kooooook..",
-			"..kyyyyyyk..",
-			".kyyyyyyyyk.",
-			".kyyyyyyyyk.",
-			"..kkkkkkkk..",
-			"............",
-		},
-		mushroom = {
-			"....kkkk....",
-			"..kkrrwwkk..",
-			".krrrrwwwrk.",
-			".kwwrrwwrrk.",
-			"kwwwwrrrrrrk",
-			"kwwwwrrrwwrk",
-			"krwwrrrwwwwk",
-			"krrrrrrwwwrk",
-			"kkkkkkkkkkkk",
-			".kssksskssk.",
-			".kssksskssk.",
-			"..kkkkkkkk..",
-		},
-		star = {
-			".....kk.....",
-			"....kyyk....",
-			"....kyyk....",
-			"kkkkkyykkkkk",
-			"kyyyyyyyyyyk",
-			".kyykyykyyk.",
-			"..kykyykyk..",
-			"...kyyyyk...",
-			"..kyyyyyyk..",
-			"..kyykkyyk..",
-			".kyyk..kyyk.",
-			".kkk....kkk.",
-		},
-		coin = {
-			"....kkkk....",
-			"...kyyyyk...",
-			"..kyywwyyk..",
-			"..kywyyYyk..",
-			".kywyyyYyyk.",
-			".kywyyyYyyk.",
-			".kywyyyYyyk.",
-			".kywyyyYyyk.",
-			"..kyyyyYyk..",
-			"..kyyYYYyk..",
-			"...kyyyyk...",
-			"....kkkk....",
-		},
 		qblock = {
-			"kkkkkkkkkkkk",
-			"kqqqqqqqqqqk",
-			"kqkqqqqqqkQk",
-			"kqqqwwwwqqQk",
-			"kqqwwQQwwqQk",
-			"kqqQQqqwwqQk",
-			"kqqqqqwwQqQk",
-			"kqqqqwwQqqQk",
-			"kqqqqQQqqqQk",
-			"kqkqqwwqqkQk",
-			"kqQQQQQQQQQk",
-			"kkkkkkkkkkkk",
-		},
-		brick = {
-			"BBBBBmBBBBBm",
-			"BBBBBmBBBBBm",
-			"mmmmmmmmmmmm",
-			"BBmBBBBBmBBB",
-			"BBmBBBBBmBBB",
-			"mmmmmmmmmmmm",
-			"BBBBBmBBBBBm",
-			"BBBBBmBBBBBm",
-			"mmmmmmmmmmmm",
-			"BBmBBBBBmBBB",
-			"BBmBBBBBmBBB",
-			"mmmmmmmmmmmm",
-		},
-		pipe = {
-			"kkkkkkkkkkkk",
-			"klgggggggGGk",
-			"klgggggggGGk",
-			"klgggggggGGk",
-			"kkkkkkkkkkkk",
-			".klggggggGk.",
-			".klggggggGk.",
-			".klggggggGk.",
-			".klggggggGk.",
-			".klggggggGk.",
-			".klggggggGk.",
-			".kkkkkkkkkk.",
-		},
-		flower = {
-			"...kkkkkk...",
-			"..krrrrrrk..",
-			".krryyyyrrk.",
-			".kryywwyyrk.",
-			".krryyyyrrk.",
-			"..krrrrrrk..",
-			"...kkggkk...",
-			".kgk.gg.kgk.",
-			".kggkggkggk.",
-			"..kggggggk..",
-			"...kkggkk...",
-			".....kk.....",
-		},
-		shell = {
-			"....kkkk....",
-			"..kkggggkk..",
-			".kggGGGGggk.",
-			".kgGggggGgk.",
-			"kggGggggGggk",
-			"kggGGGGGGggk",
-			"kggggggggggk",
-			"kwwwwwwwwwwk",
-			"kwkwwkkwwkwk",
-			".kyyyyyyyyk.",
-			"..kyyyyyyk..",
-			"...kkkkkk...",
-		},
-		boo = {
-			"....kkkk....",
-			"..kkwwwwkk..",
-			".kwwwwwwwwk.",
-			".kwwkwwkwwk.",
-			"kwwwkwwkwwwk",
-			"kwwwwwwwwwwk",
-			"kwwkrrrrkwwk",
-			"kwwwkrrkwwwk",
-			"kwwwwkkwwwwk",
-			"kwwwwwwwwwwk",
-			"kwwwkwwkwwwk",
-			"kkk.kkkk.kkk",
-		},
-		flag = {
-			".yy.........",
-			".yy.........",
-			"..nkkkkkkk..",
-			"..nkgggggk..",
-			"..nkggwggk..",
-			"..nkgwwwgk..",
-			"..nkggggk...",
-			"..nkgggk....",
-			"..nkkkk.....",
-			"..n.........",
-			"..n.........",
-			"kkkkk.......",
-		},
-		key = {
-			"...kkkk.....",
-			"..kyyyyk....",
-			".kyykkyyk...",
-			".kyk..kyk...",
-			".kyykkyyk...",
-			"..kyyyyk....",
-			"...kyyk.....",
-			"...kyyk.....",
-			"...kyykk....",
-			"...kyyyyk...",
-			"...kyykk....",
-			"...kkkk.....",
+			"..kkkk..",
+			".kppppk.",
+			"kppwwppk",
+			"kpwppwpk",
+			"kpwppwpk",
+			"kppwwppk",
+			".kppppk.",
+			"..kkkk..",
 		},
 		gear = {
-			"....kkkk....",
-			".kk.knnk.kk.",
-			".knkknnkknk.",
-			"..knnnnnnk..",
-			"kkknnkknnkkk",
-			"knnnk..knnnk",
-			"knnnk..knnnk",
-			"kkknnkknnkkk",
-			"..knnnnnnk..",
-			".knkknnkknk.",
-			".kk.knnk.kk.",
-			"....kkkk....",
+			"...ww...",
+			".wwwwww.",
+			".ww..ww.",
+			"ww.ww.ww",
+			"ww.ww.ww",
+			".ww..ww.",
+			".wwwwww.",
+			"...ww...",
+		},
+		star = {
+			"...ww...",
+			"..wppw..",
+			".wppppw.",
+			"wppwwppw",
+			"wppwwppw",
+			".wppppw.",
+			"..wppw..",
+			"...ww...",
 		},
 		heart = {
-			"............",
-			".kkk....kkk.",
-			"kwrrrkkrrrrk",
-			"kwrrrrrrrrrk",
-			"krrrrrrrrrrk",
-			".krrrrrrrrk.",
-			"..krrrrrrk..",
-			"...krrrrk...",
-			"....krrk....",
-			".....kk.....",
-			"............",
-			"............",
-		},
-		bomb = {
-			"........o.y.",
-			".......n.o..",
-			"......n.....",
-			"...kkkkkk...",
-			"..kNNNNNNk..",
-			".kNwwNNNNNk.",
-			".kNwNNwNwNk.",
-			".kNNNNwNwNk.",
-			".kNNNNNNNNk.",
-			"..kNNNNNNk..",
-			"..kyykkyyk..",
-			"..kkk..kkk..",
-		},
-		used = {
-			"kkkkkkkkkkkk",
-			"kBBBBBBBBBBk",
-			"kBmBBBBBBmBk",
-			"kBBBBBBBBBBk",
-			"kBBBBBBBBBBk",
-			"kBBBBBBBBBBk",
-			"kBBBBBBBBBBk",
-			"kBBBBBBBBBBk",
-			"kBBBBBBBBBBk",
-			"kBmBBBBBBmBk",
-			"kBBBBBBBBBBk",
-			"kkkkkkkkkkkk",
-		},
-		castle = {
-			"....B..B....",
-			"....BBBB....",
-			"....BkkB....",
-			"B.B.BBBB.B.B",
-			"BBBBBBBBBBBB",
-			"BBBBBBBBBBBB",
-			"mmmmmmmmmmmm",
-			"BBBBBkkBBBBB",
-			"BBBBkkkkBBBB",
-			"mmmmkkkkmmmm",
-			"BBBBkkkkBBBB",
-			"BBBBkkkkBBBB",
+			"........",
+			".ww..ww.",
+			"wppwwppw",
+			"wppppppw",
+			".wppppw.",
+			"..wppw..",
+			"...ww...",
+			"........",
 		},
 	}
-
 	Sprite.Alias = {
-		house = "castle",
-		home = "castle",
-		user = "oneup",
-		player = "oneup",
-		globe = "pipe",
-		map = "pipe",
-		teleport = "pipe",
-		eye = "boo",
-		visuals = "boo",
-		swords = "flower",
-		combat = "flower",
-		target = "bomb",
-		crosshair = "bomb",
-		shield = "shell",
-		zap = "star",
 		settings = "gear",
 		["sliders-horizontal"] = "gear",
-		bell = "coin",
-		shop = "coin",
-		code = "qblock",
-		info = "qblock",
-		key = "key",
-		play = "flag",
-		quest = "flag",
-		heart = "heart",
-		cookie = "mushroom",
-		["trash-2"] = "bomb",
-		terminal = "brick",
-		["refresh-cw"] = "pipe",
-		link = "pipe",
-		copy = "brick",
+		zap = "star",
 		check = "star",
-		save = "qblock",
-		download = "qblock",
-		upload = "qblock",
-		search = "boo",
-		misc = "qblock",
-		troll = "shell",
+		heart = "heart",
 	}
-
-	Sprite.Swaps = {
-		oneup = { base = "mushroom", swap = { r = "g" } },
-	}
+	Sprite.Swaps = {}
 
 	Sprite.Templates = {}
 
@@ -2625,7 +2314,7 @@ local function createNullx11UI(scope)
 			return Sprite.Templates[name]
 		end
 		local swap = Sprite.Swaps[name]
-		local rows = Sprite.Art[swap and swap.base or name]
+		local rows = Sprite.Art[swap and swap.base or name] or Sprite.Art.qblock
 		local recolor = swap and swap.swap or {}
 		local height, width = #rows, #rows[1]
 		local holder =
@@ -2985,11 +2674,6 @@ local function createNullx11UI(scope)
 	for spriteName, grid in pairs(ExtraSprites) do
 		Sprite.Art[spriteName] = grid
 	end
-
-	Sprite.Swaps.blueshell = { base = "shell", swap = { g = "b", G = "P" } }
-	Sprite.Swaps.iceflower = { base = "flower", swap = { r = "b", y = "w" } }
-	Sprite.Swaps.goldmushroom =
-		{ base = "mushroom", swap = { r = "y", w = "q" } }
 
 	local ExtraAliases = {
 		main = "mushroom",
@@ -8822,7 +8506,7 @@ local function createNullx11UI(scope)
 		end
 		local self = setmetatable({
 			Title = options.Title or "Nullx11",
-			SubTitle = options.SubTitle or "",
+			SubTitle = options.SubTitle or "Developed by Gab",
 			Desired = size,
 			Size = size,
 			Tabs = {},
@@ -9003,6 +8687,9 @@ local function createNullx11UI(scope)
 	-- Theme topbar decor: drifting clouds for day themes, twinkling stars/embers for night themes
 	function Window:BuildDecor(topbar)
 		self.Clouds, self.Stars = {}, {}
+		if not Config.Decorations then
+			return
+		end
 		for index, spot in ipairs({ { 0.44, 8, 42 }, { 0.6, 22, 30 } }) do
 			local cloud = Draw.Cloud(topbar, spot[3])
 			cloud.Position = UDim2.new(spot[1], 0, 0, spot[2])
@@ -9077,6 +8764,9 @@ local function createNullx11UI(scope)
 
 	-- Halloween window accents: orange glow border, purple bottom fog, hanging spider
 	function Window:BuildSpookyBody()
+		if not Config.Decorations then
+			return
+		end
 		self.SpookyBody = {}
 		local shadow, radius = Config.Window.Shadow, Config.Window.Radius
 		local glow = Draw.New("Frame", {
@@ -9262,6 +8952,9 @@ local function createNullx11UI(scope)
 	end
 
 	function Window:WaveTitle()
+		if not State.TitleGlitch then
+			return
+		end
 		if State.ReducedMotion then
 			return
 		end
@@ -10475,14 +10168,7 @@ local function createNullx11UI(scope)
 			Parent = button,
 		})
 		Float.Button, Float.Slot, Float.Size = button, slot, size
-		Anim.Loop(
-			"Dock",
-			slot,
-			{ Position = UDim2.fromOffset(0, -3) },
-			0.9,
-			"Sine",
-			true
-		)
+
 		Float.Render()
 		local moved = false
 		Gui.Draggable(button, function(begin, delta)
@@ -10501,8 +10187,6 @@ local function createNullx11UI(scope)
 			if moved or not State.Window then
 				return
 			end
-			Anim.Bump(Float.Sprite, 10)
-			Anim.CoinPop(button, UDim2.new(0.5, 0, 0, 0), 20)
 			State.Window:Toggle()
 		end)
 	end
@@ -13315,6 +12999,10 @@ local function createNullx11UI(scope)
 		end
 	end
 
+	function Library:GetFPS()
+		return math.floor(State.Fps + 0.5)
+	end
+
 	function Library:SetTitleGlitch(enabled)
 		State.TitleGlitch = enabled == true
 	end
@@ -13480,7 +13168,7 @@ local RunService = game:GetService("RunService")
 
 local CONFIG = {
 	Name = "Nullx11",
-	Subtitle = "A quieter way to get started.",
+	Subtitle = "Developed by Gab.",
 	Accent = Color3.fromRGB(167, 146, 255),
 	ReducedMotion = false,
 	StartupAnimation = true,
@@ -13688,9 +13376,13 @@ local function drawIcon(
 		Size = UDim2.fromOffset(size, size),
 	}, parent)
 	for strokeIndex, geometry in ipairs({
-		{ 0.22, 0.5, 0.14, 0.64, 0 },
-		{ 0.5, 0.5, 0.14, 0.76, -36 },
-		{ 0.78, 0.5, 0.14, 0.64, 0 },
+		{ 0.35, 0.28, 0.1, 0.42, 55 },
+		{ 0.65, 0.28, 0.1, 0.42, -55 },
+		{ 0.35, 0.72, 0.1, 0.42, -55 },
+		{ 0.65, 0.72, 0.1, 0.42, 55 },
+		{ 0.18, 0.50, 0.08, 0.36, 0 },
+		{ 0.82, 0.50, 0.08, 0.36, 0 },
+		{ 0.50, 0.50, 0.21, 0.21, 45 },
 	}) do
 		local line = create("Frame", {
 			Name = "BrandStroke" .. strokeIndex,
@@ -13703,16 +13395,6 @@ local function drawIcon(
 		}, icon)
 		corner(line, 2)
 	end
-	local cut = create("Frame", {
-		Name = "SignatureCut",
-		Position = UDim2.fromScale(0.74, 0.05),
-		Size = UDim2.fromScale(0.2, 0.07),
-		Rotation = -36,
-		BackgroundColor3 = ink,
-		BackgroundTransparency = 0.25,
-		BorderSizePixel = 0,
-	}, icon)
-	corner(cut, 2)
 	return icon
 end
 drawIcon(mark, colors.Panel, UDim2.fromOffset(3, 3), 24)
@@ -13721,7 +13403,7 @@ title.Name = "Title"
 title.Font = Enum.Font.Code
 title.Position = UDim2.fromOffset(65, 26)
 title.Size = UDim2.new(1, -65, 0, 30)
-local edition = label(header, "CLIENT / WORKSPACE", 8, colors.Muted)
+local edition = label(header, "DEVELOPED BY GAB", 8, colors.Muted)
 edition.Font = Enum.Font.Code
 edition.Position = UDim2.fromOffset(65, 55)
 edition.Size = UDim2.new(1, -65, 0, 13)
@@ -13978,18 +13660,7 @@ do
 			duration,
 			if show then Enum.EasingStyle.Back else Enum.EasingStyle.Quint
 		)
-		halo.Size =
-			UDim2.fromOffset(if show then 42 else 92, if show then 42 else 92)
-		haloStroke.Transparency = 0.12
-		tween(halo, {
-			Size = UDim2.fromOffset(
-				if show then 92 else 42,
-				if show then 92 else 42
-			),
-		}, duration)
-		tween(haloStroke, { Transparency = 0.9 }, duration)
-		mini.Rotation = if show then -5 else 5
-		tween(mini, { Rotation = 0 }, duration)
+		-- The restore icon is intentionally static, including while windows move.
 		task.delay(duration * appearance.Duration, finish)
 	end
 	function portal.Settle()
@@ -20255,7 +19926,7 @@ do
 					Description = "Note tracking, configurable hit/hold timing, input release and gameplay rescan. Autoplay starts off.",
 					File = "Nullx11-Rosu.luau",
 					GamePlaceId = 9051087354,
-					Author = "Nullx11 adaptation; original Yvetzal / Wyrizon / Infernum. Not for resale.",
+					Author = "Developed by Gab; Nullx11 adaptation; original Yvetzal / Wyrizon / Infernum. Not for resale.",
 				},
 				{
 					Id = "huss",
@@ -20263,7 +19934,7 @@ do
 					Description = "Runner routing, catcher assistance, progression tools and live status. Automation starts off; configurable per feature.",
 					File = "Nullx11-Huss.luau",
 					GamePlaceId = 107535308163741,
-					Author = "Nullx11 adaptation; original Wyrizon and Yvetzal Team.",
+					Author = "Developed by Gab; Nullx11 adaptation; original Wyrizon and Yvetzal Team.",
 				},
 				{
 					Id = "forge",
@@ -20271,156 +19942,28 @@ do
 					Description = "Forge, gear, pets, stages, tower, rewards and session tools on the full shared +1 UI. Bounded workers; automation starts off.",
 					File = "Nullx11-Forge.luau",
 					GamePlaceId = 118805555015549,
-					Author = "Nullx11 adaptation; original xDTaraZ controller and UI.",
+					Author = "Developed by Gab; Nullx11 adaptation; original xDTaraZ controller and UI.",
+				},
+				{
+					Id = "egg",
+					Name = "Nullx11 - Steal An Egg",
+					Description = "Egg farming, inventory, event, navigation and character tools from the supplied source. All jobs start off. Game-module compatibility is checked before startup.",
+					File = "Nullx11-StealAnEgg.luau",
+					Author = "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained.",
 				},
 			},
 		})
 		catalog.Loaded = true
-		local env = type(getgenv) == "function" and getgenv() or _G
-		env.Nullx11SelectedGameQueues = env.Nullx11SelectedGameQueues or {}
-		catalog.Queued = env.Nullx11SelectedGameQueues
-	end
-	function catalog.QueueFunction(): any
-		if type(queue_on_teleport) == "function" then
-			return queue_on_teleport
-		end
-		if type(queueonteleport) == "function" then
-			return queueonteleport
-		end
-		if
-			type(syn) == "table"
-			and type(syn.queue_on_teleport) == "function"
-		then
-			return syn.queue_on_teleport
-		end
-		return nil
 	end
 	function catalog.GameMessage(message: string)
 		engine.Status("GameScript", message)
 		engine.Status("Scripts", message)
 	end
-	function catalog.TeleportSelected()
-		local entry = catalog.Selected
-		if not entry or not entry.GamePlaceId or catalog.Teleporting then
-			return
-		end
-		if game.PlaceId == entry.GamePlaceId then
-			catalog.GameMessage(
-				"Already in the target game. Use Execute game script."
-			)
-			return
-		end
-		if
-			not catalog.ExecuteOnArrival
-			and catalog.Queued
-			and catalog.Queued[entry.Id]
-		then
-			catalog.GameMessage(
-				"Earlier code may remain queued. Clear your runtime queue before requesting teleport-only."
-			)
-			return
-		end
-		local queued = false
-		if catalog.ExecuteOnArrival then
-			local enqueue = catalog.QueueFunction()
-			if not enqueue then
-				catalog.GameMessage(
-					"This runtime cannot queue a game script. Turn off execute-on-arrival to teleport only."
-				)
-				return
-			end
-			if type(loadstring) ~= "function" then
-				catalog.GameMessage(
-					"Client loadstring unavailable; automatic execution cannot be queued."
-				)
-				return
-			end
-			catalog.Queued = catalog.Queued or {}
-			if not catalog.Queued[entry.Id] then
-				-- Only this game file is queued. Never the main loader or another game.
-				local payload = string.format(
-					[[local ok,reason=pcall(function()
-if not game:IsLoaded() then game.Loaded:Wait() end
-if game.PlaceId~=%d then warn("[Nullx11] Queued game script skipped: wrong place") return end
-local source=game:HttpGet(%q,true)
-assert(type(source)=="string" and #source<=2097152,"Invalid selected game bundle")
-local run,compileError=loadstring(source,%q)
-assert(run,compileError or "Game script compilation failed")
-run()
-end)
-if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
-					entry.GamePlaceId,
-					CONFIG.ScriptBaseURL .. entry.File,
-					"Nullx11Game/" .. entry.File
-				)
-				local ok, reason = pcall(enqueue, payload)
-				if not ok then
-					catalog.GameMessage(
-						"Queue failed; no teleport requested: "
-							.. string.sub(tostring(reason), 1, 90)
-					)
-					return
-				end
-				catalog.Queued[entry.Id] = true
-			end
-			queued = true
-		end
-		local ok, reason = pcall(function()
-			local service = game:GetService("TeleportService")
-			if not catalog.TeleportFailure then
-				catalog.TeleportFailure = connect(
-					service.TeleportInitFailed,
-					function(who, result, message, placeId)
-						if
-							not alive
-							or who ~= player
-							or placeId ~= catalog.TeleportTarget
-						then
-							return
-						end
-						catalog.Teleporting = false
-						catalog.GameMessage(
-							"Teleport failed: "
-								.. string.sub(tostring(message), 1, 65)
-								.. (
-									if catalog.QueuePending
-										then " / queued code may remain until next teleport."
-										else ""
-								)
-						)
-					end
-				)
-			end
-			catalog.TeleportTarget = entry.GamePlaceId
-			catalog.QueuePending = queued
-			catalog.Teleporting = true
-			service:Teleport(entry.GamePlaceId, player)
-		end)
-		if not ok then
-			catalog.Teleporting = false
-			catalog.GameMessage(
-				"Teleport failed: "
-					.. string.sub(tostring(reason), 1, 70)
-					.. (if queued then " / queued code may remain." else "")
-			)
-		else
-			catalog.GameMessage(
-				if queued
-					then "Teleport requested / only the selected game script is queued."
-					else "Teleport requested / no code queued. Execute manually after joining."
-			)
-		end
-	end
 	function catalog.OpenGame(entry: any)
 		if catalog.Busy then
 			return
 		end
-		if catalog.Teleporting then
-			catalog.GameMessage("A teleport is already pending.")
-			return
-		end
 		catalog.Selected = entry
-		catalog.ExecuteOnArrival = false
 		catalog.Confirm = nil
 		if not engine.Windows.GameScript then
 			local window = engine.Window("GameScript")
@@ -20444,31 +19987,6 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 				detail("GameScriptDetails", 100, 14, colors.Muted)
 			catalog.GameCredit =
 				detail("GameScriptCredit", 50, 14, colors.Muted)
-			catalog.Arrival = engine.Button(
-				window,
-				"GameExecuteOnArrival",
-				"Execute game script after joining: OFF",
-				function()
-					if not catalog.QueueFunction() then
-						catalog.GameMessage(
-							"Queue-on-teleport unavailable. Teleport only, then execute manually."
-						)
-						return
-					end
-					catalog.ExecuteOnArrival = not catalog.ExecuteOnArrival
-					catalog.Arrival.Text = "Execute game script after joining: "
-						.. (if catalog.ExecuteOnArrival then "ON" else "OFF")
-					catalog.GameMessage(
-						"Only the selected game file is queued. A failed teleport may leave it queued; this UI cannot cancel it."
-					)
-				end
-			)
-			engine.Button(
-				window,
-				"GameTeleport",
-				"Teleport to game",
-				catalog.TeleportSelected
-			)
 			catalog.ExecuteButton = engine.Button(
 				window,
 				"GameExecute",
@@ -20478,9 +19996,12 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 					if not selected then
 						return
 					end
-					if game.PlaceId ~= selected.GamePlaceId then
+					if
+						selected.GamePlaceId
+						and game.PlaceId ~= selected.GamePlaceId
+					then
 						catalog.GameMessage(
-							"Wrong game. Teleport to the target before executing."
+							"Unsupported place. Join the game manually; no teleport was requested."
 						)
 						return
 					end
@@ -20495,20 +20016,22 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 		catalog.GameTitle.Text = entry.Name
 		catalog.GameDetails.Text = entry.Description
 			.. "\n\n"
-			.. (if game.PlaceId == entry.GamePlaceId
-				then "Target game detected. Execution still requires confirmation."
-				else "You are not in this game. Would you like to teleport?")
-			.. "\nTarget place: "
-			.. tostring(entry.GamePlaceId)
+			.. (
+				if not entry.GamePlaceId
+					then "Game modules are checked before startup."
+					elseif
+						game.PlaceId == entry.GamePlaceId
+					then "Target game detected. Confirm execution below."
+					else "Unsupported place. Join the game manually to use this script."
+			)
 		catalog.GameCredit.Text = "Source credits: "
 			.. (
 				entry.Author
 				or "See the reviewed script source; original attribution must be retained."
 			)
-		catalog.Arrival.Text = "Execute game script after joining: OFF"
 		catalog.ExecuteButton.Text = "Execute game script"
 		catalog.GameMessage(
-			"Teleport and Execute are separate actions. Automatic execution is opt-in."
+			"No game teleport prompts or queued auto-execution. Executed scripts survive loader unload."
 		)
 		layout()
 		portal.Play(catalog.GameWindow.Panel, true)
@@ -20524,7 +20047,10 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 			return
 		end
 		if entry.GamePlaceId and game.PlaceId ~= entry.GamePlaceId then
-			catalog.OpenGame(entry)
+			catalog.Message(
+				"Unsupported place. Join the game manually; no code was downloaded.",
+				true
+			)
 			return
 		end
 		if
@@ -20750,7 +20276,6 @@ if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
 			if ok then
 				-- A refresh invalidates old detail/confirmation state, including removed entries.
 				catalog.Selected = nil
-				catalog.ExecuteOnArrival = false
 				catalog.Confirm = nil
 				if catalog.GameWindow then
 					portal.Play(catalog.GameWindow.Panel, false)
@@ -21393,28 +20918,19 @@ do
 				local welcomeGroup =
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
-					Title = "A quieter way to get started.",
-					Content = "Shared +1 interface, native player tools and three separate game workspaces. Nothing plays or farms until you enable it.",
+					Title = "Nullx11 / Developed by Gab",
+					Content = "Shared +1 interface, native player tools and four separate game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
-				local frames, elapsed, fps = 0, 0, 0
-				connect(RunService.RenderStepped, function(dt)
-					frames += 1
-					elapsed += dt
-					if elapsed >= 0.5 then
-						fps = math.floor(frames / elapsed + 0.5)
-						frames, elapsed = 0, 0
-					end
-				end)
 				library:Every(1, function()
-					if not alive then
+					if not alive or not window.Visible then
 						return
 					end
 					live:SetText(
 						string.format(
 							"%s / %d FPS / %d players / place %s",
 							player.DisplayName,
-							fps,
+							library:GetFPS(),
 							#Players:GetPlayers(),
 							tostring(game.PlaceId)
 						)
@@ -21470,7 +20986,9 @@ do
 				for _, entry in ipairs(catalog.Entries) do
 					local group = scriptsTab:AddLeftGroupbox(entry.Name, "play")
 					group:AddParagraph({
-						Title = "Place " .. tostring(entry.GamePlaceId),
+						Title = entry.GamePlaceId and ("Place " .. tostring(
+							entry.GamePlaceId
+						)) or "Game-module compatibility check",
 						Content = entry.Description,
 					})
 					group:AddLabel(entry.Author)
@@ -21506,7 +21024,7 @@ do
 				)
 				more:AddParagraph({
 					Title = "Separate game windows",
-					Content = "Wrong game? The launch window offers teleport. Execute after joining is optional and queues only the selected game bundle, never this loader. Teleports are Roblox operations, not guaranteed successes.",
+					Content = "No teleport questions or automatic game joins. Unsupported games show a compatibility message. Executed game windows keep running when this loader is unloaded.",
 				})
 				more:AddButton({
 					Text = "Browse / refresh GitHub library",
@@ -21581,7 +21099,7 @@ do
 						end
 						library:Notify(
 							"Session",
-							"Stopped registered game sessions. Executor teleport queues cannot be universally cleared.",
+							"Stopped registered game sessions by your explicit request.",
 							6,
 							"Info"
 						)
@@ -21589,7 +21107,7 @@ do
 				})
 				safety:AddParagraph({
 					Title = "Cleanup and consent",
-					Content = "Closing the workspace with Unload stops its registered game sessions and native tools. Hiding a window does not stop a feature. Previously queued teleport code can survive a failed teleport; check your executor before retrying.",
+					Content = "Unload closes only this loader and its native tools. Executed game scripts keep their own windows and controls. Use their Unload action, or the separate confirmed stop button above, to stop them.",
 				})
 				window:AddSettingsTab()
 				library:SetTitleGlitch(glitchEnabled)
@@ -21602,19 +21120,14 @@ do
 				end
 				local env = type(getgenv) == "function" and getgenv() or _G
 				env.Nullx11ReducedMotion = value == true
-				for _, session in pairs(env.Nullx11GameSessions or {}) do
-					if session.Library then
-						session.Library:SetReducedMotion(value)
-					end
-				end
 			end
 			library:CreateWindow({
 				Title = "Nullx11",
-				SubTitle = "personal workspace",
+				SubTitle = "Developed by Gab",
 				Theme = "Nullx11",
 				MenuKey = appearance.ToggleKey,
 				ConfigFolder = "Nullx11 Workspace",
-				Intro = CONFIG.StartupAnimation and not CONFIG.ReducedMotion,
+				Intro = false,
 				Watermark = false,
 				OnUnlocked = build,
 			})
@@ -21630,14 +21143,7 @@ do
 				end
 			end)
 			connect(gui.Destroying, function()
-				local env = type(getgenv) == "function" and getgenv() or _G
-				if type(env.Nullx11GameSessions) == "table" then
-					for _, session in
-						pairs(table.clone(env.Nullx11GameSessions))
-					do
-						pcall(session.Unload)
-					end
-				end
+				-- Games have independent ownership/lifetimes. Never stop them here.
 				library:Unload()
 			end)
 		end)

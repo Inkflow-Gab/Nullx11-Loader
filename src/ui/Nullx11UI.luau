@@ -27,10 +27,8 @@ local Config = {
 	Root = "nullx11",
 	AssetDir = "nullx11/assets",
 	ConfigRoot = "nullx11/configs",
-	DefaultAssets = {
-		logo = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/assets/forge/logo.png",
-		logo_halloween = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/assets/forge/logo_halloween.png",
-	},
+	DefaultAssets = {},
+	Decorations = false,
 	SeasonTheme = "Nullx11",
 	FontDir = "nullx11/fonts",
 	HttpTimeout = 8,
@@ -282,7 +280,6 @@ local Themes = {
 		Decor = { "Halloween", "✦", "FFB347" },
 		Glow = "F28A2E",
 		Fog = "8E5CD0",
-		Logo = "logo_halloween",
 		Particle = { { "✦", "✦", "•", "✧" }, false, "FFB347" },
 	}),
 	Light = Palette({
@@ -687,7 +684,7 @@ local Draw = {}
 local Sprite = {}
 local Assets = { Overrides = {}, Cache = {} }
 local Fonts = { Texts = {}, Thai = nil }
-local Particles = { Pool = {}, Enabled = not State.ReducedMotion }
+local Particles = { Pool = {}, Enabled = false }
 local Lang = {
 	Bound = {},
 	Listeners = setmetatable({}, { __mode = "k" }),
@@ -1357,7 +1354,7 @@ function Anim.Pop(scale, from)
 	return Anim.Tween(scale, { Scale = 1 }, Config.Tween.Pop, "Back")
 end
 
---@param rise Vertical bounce height in px (Mario block bump)
+--@param rise Vertical bounce height in px (short vertical bounce)
 function Anim.Bump(frame, rise)
 	if State.ReducedMotion then
 		return
@@ -2072,66 +2069,35 @@ function Draw.Cloud(parent, width, token)
 	return cloud
 end
 
--- Resolve theme logo asset or fall back to default logo / vector M emblem
+-- Static prism/circuit insignia: geometric geometry only, never an avatar,
+-- a copyrighted character image or a single-letter monogram.
 function Draw.Emblem(parent, size)
-	local holder = Draw.New("Frame", {
-		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(size, size),
-		Parent = parent,
-	})
-	local picture = Draw.New("ImageLabel", {
-		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(1, 1),
-		ScaleType = Enum.ScaleType.Fit,
-		Visible = false,
-		Parent = holder,
-	})
-	local drawn = Draw.DrawnEmblem(holder, size)
-	Theme.OnRender(holder, function()
-		local content = State.ThemeName ~= "Nullx11"
-				and ((Theme.Colors.Logo and Assets.Resolve(Theme.Colors.Logo)) or Assets.Resolve(
-					"logo"
-				))
-			or nil
-		picture.Image = content or ""
-		picture.Visible = content ~= nil
-		drawn.Visible = content == nil
-		picture.Size = UDim2.fromScale(
-			Theme.Colors.Logo and 1.25 or 1,
-			Theme.Colors.Logo and 1.25 or 1
-		)
-	end)
-	Anim.Loop("Emblem", picture, { Rotation = 6 }, 1.6, "Sine", true)
-	return holder
+	return Draw.DrawnEmblem(parent, size)
 end
 
 function Draw.DrawnEmblem(parent, size)
-	local emblem = Draw.Box(
-		"Frame",
-		{ Size = UDim2.fromOffset(size, size), Parent = parent },
-		"Accent",
-		"Outline",
-		UDim.new(1, 0),
-		2
-	)
-	local ring = Draw.New("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.7, 0.7),
-		Parent = emblem,
-	})
-	Draw.Corner(ring, UDim.new(1, 0))
-	Theme.Bind(ring, { BackgroundColor3 = "White" })
-	local letter = Draw.Text({
-		Text = "N",
-		Size = UDim2.fromScale(1, 1),
-		TextXAlignment = Enum.TextXAlignment.Center,
-		Position = UDim2.fromOffset(0, 1),
-		Parent = ring,
-	}, "Logo", math.floor(size * 0.5), "Accent")
-	letter.TextScaled = false
+	local emblem = Draw.Box("Frame", {
+		Name = "Nullx11Prism",
+		Size = UDim2.fromOffset(size, size),
+		Parent = parent,
+	}, "Panel", "Outline", 10, 2)
+	for _, shape in ipairs({
+		{ 0.35, 0.29, 0.075, 0.34, 55 },
+		{ 0.65, 0.29, 0.075, 0.34, -55 },
+		{ 0.35, 0.71, 0.075, 0.34, -55 },
+		{ 0.65, 0.71, 0.075, 0.34, 55 },
+		{ 0.19, 0.50, 0.055, 0.31, 0 },
+		{ 0.81, 0.50, 0.055, 0.31, 0 },
+		{ 0.50, 0.50, 0.19, 0.19, 45 },
+	}) do
+		Draw.Box("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(shape[1], shape[2]),
+			Size = UDim2.fromScale(shape[3], shape[4]),
+			Rotation = shape[5],
+			Parent = emblem,
+		}, "Accent", nil, 1)
+	end
 	return emblem
 end
 
@@ -2235,332 +2201,55 @@ Sprite.Palette = {
 }
 
 Sprite.Art = {
-	pumpkin = {
-		".....mm.....",
-		"....kmGk....",
-		"..kkkkkkkk..",
-		".koooBBooook",
-		"kooyyooyyook",
-		"koyyyooyyyok",
-		"koooooooooBk",
-		"kooyoyyoyook",
-		"koooyyyyoook",
-		".kooooBoook.",
-		"..kkkkkkkk..",
-		"............",
-	},
-	bat = {
-		"............",
-		"............",
-		"k..........k",
-		"kk...kk...kk",
-		"kpk.kppk.kpk",
-		"kppkpyypkppk",
-		"kppppppppppk",
-		".kppppppppk.",
-		"..kpk..kpk..",
-		"...k....k...",
-		"............",
-		"............",
-	},
-	spider = {
-		"............",
-		"............",
-		"k...kkkk...k",
-		".k.knnnnk.k.",
-		"..knynnynk..",
-		"kkknnnnnnkkk",
-		"..knnnnnnk..",
-		".k.knnnnk.k.",
-		"k...kkkk...k",
-		"............",
-		"............",
-		"............",
-	},
-	candy = {
-		"............",
-		".....kk.....",
-		"....kwwk....",
-		"....kwwk....",
-		"...kooook...",
-		"...kooook...",
-		"..kooooook..",
-		"..kyyyyyyk..",
-		".kyyyyyyyyk.",
-		".kyyyyyyyyk.",
-		"..kkkkkkkk..",
-		"............",
-	},
-	mushroom = {
-		"....kkkk....",
-		"..kkrrwwkk..",
-		".krrrrwwwrk.",
-		".kwwrrwwrrk.",
-		"kwwwwrrrrrrk",
-		"kwwwwrrrwwrk",
-		"krwwrrrwwwwk",
-		"krrrrrrwwwrk",
-		"kkkkkkkkkkkk",
-		".kssksskssk.",
-		".kssksskssk.",
-		"..kkkkkkkk..",
-	},
-	star = {
-		".....kk.....",
-		"....kyyk....",
-		"....kyyk....",
-		"kkkkkyykkkkk",
-		"kyyyyyyyyyyk",
-		".kyykyykyyk.",
-		"..kykyykyk..",
-		"...kyyyyk...",
-		"..kyyyyyyk..",
-		"..kyykkyyk..",
-		".kyyk..kyyk.",
-		".kkk....kkk.",
-	},
-	coin = {
-		"....kkkk....",
-		"...kyyyyk...",
-		"..kyywwyyk..",
-		"..kywyyYyk..",
-		".kywyyyYyyk.",
-		".kywyyyYyyk.",
-		".kywyyyYyyk.",
-		".kywyyyYyyk.",
-		"..kyyyyYyk..",
-		"..kyyYYYyk..",
-		"...kyyyyk...",
-		"....kkkk....",
-	},
 	qblock = {
-		"kkkkkkkkkkkk",
-		"kqqqqqqqqqqk",
-		"kqkqqqqqqkQk",
-		"kqqqwwwwqqQk",
-		"kqqwwQQwwqQk",
-		"kqqQQqqwwqQk",
-		"kqqqqqwwQqQk",
-		"kqqqqwwQqqQk",
-		"kqqqqQQqqqQk",
-		"kqkqqwwqqkQk",
-		"kqQQQQQQQQQk",
-		"kkkkkkkkkkkk",
-	},
-	brick = {
-		"BBBBBmBBBBBm",
-		"BBBBBmBBBBBm",
-		"mmmmmmmmmmmm",
-		"BBmBBBBBmBBB",
-		"BBmBBBBBmBBB",
-		"mmmmmmmmmmmm",
-		"BBBBBmBBBBBm",
-		"BBBBBmBBBBBm",
-		"mmmmmmmmmmmm",
-		"BBmBBBBBmBBB",
-		"BBmBBBBBmBBB",
-		"mmmmmmmmmmmm",
-	},
-	pipe = {
-		"kkkkkkkkkkkk",
-		"klgggggggGGk",
-		"klgggggggGGk",
-		"klgggggggGGk",
-		"kkkkkkkkkkkk",
-		".klggggggGk.",
-		".klggggggGk.",
-		".klggggggGk.",
-		".klggggggGk.",
-		".klggggggGk.",
-		".klggggggGk.",
-		".kkkkkkkkkk.",
-	},
-	flower = {
-		"...kkkkkk...",
-		"..krrrrrrk..",
-		".krryyyyrrk.",
-		".kryywwyyrk.",
-		".krryyyyrrk.",
-		"..krrrrrrk..",
-		"...kkggkk...",
-		".kgk.gg.kgk.",
-		".kggkggkggk.",
-		"..kggggggk..",
-		"...kkggkk...",
-		".....kk.....",
-	},
-	shell = {
-		"....kkkk....",
-		"..kkggggkk..",
-		".kggGGGGggk.",
-		".kgGggggGgk.",
-		"kggGggggGggk",
-		"kggGGGGGGggk",
-		"kggggggggggk",
-		"kwwwwwwwwwwk",
-		"kwkwwkkwwkwk",
-		".kyyyyyyyyk.",
-		"..kyyyyyyk..",
-		"...kkkkkk...",
-	},
-	boo = {
-		"....kkkk....",
-		"..kkwwwwkk..",
-		".kwwwwwwwwk.",
-		".kwwkwwkwwk.",
-		"kwwwkwwkwwwk",
-		"kwwwwwwwwwwk",
-		"kwwkrrrrkwwk",
-		"kwwwkrrkwwwk",
-		"kwwwwkkwwwwk",
-		"kwwwwwwwwwwk",
-		"kwwwkwwkwwwk",
-		"kkk.kkkk.kkk",
-	},
-	flag = {
-		".yy.........",
-		".yy.........",
-		"..nkkkkkkk..",
-		"..nkgggggk..",
-		"..nkggwggk..",
-		"..nkgwwwgk..",
-		"..nkggggk...",
-		"..nkgggk....",
-		"..nkkkk.....",
-		"..n.........",
-		"..n.........",
-		"kkkkk.......",
-	},
-	key = {
-		"...kkkk.....",
-		"..kyyyyk....",
-		".kyykkyyk...",
-		".kyk..kyk...",
-		".kyykkyyk...",
-		"..kyyyyk....",
-		"...kyyk.....",
-		"...kyyk.....",
-		"...kyykk....",
-		"...kyyyyk...",
-		"...kyykk....",
-		"...kkkk.....",
+		"..kkkk..",
+		".kppppk.",
+		"kppwwppk",
+		"kpwppwpk",
+		"kpwppwpk",
+		"kppwwppk",
+		".kppppk.",
+		"..kkkk..",
 	},
 	gear = {
-		"....kkkk....",
-		".kk.knnk.kk.",
-		".knkknnkknk.",
-		"..knnnnnnk..",
-		"kkknnkknnkkk",
-		"knnnk..knnnk",
-		"knnnk..knnnk",
-		"kkknnkknnkkk",
-		"..knnnnnnk..",
-		".knkknnkknk.",
-		".kk.knnk.kk.",
-		"....kkkk....",
+		"...ww...",
+		".wwwwww.",
+		".ww..ww.",
+		"ww.ww.ww",
+		"ww.ww.ww",
+		".ww..ww.",
+		".wwwwww.",
+		"...ww...",
+	},
+	star = {
+		"...ww...",
+		"..wppw..",
+		".wppppw.",
+		"wppwwppw",
+		"wppwwppw",
+		".wppppw.",
+		"..wppw..",
+		"...ww...",
 	},
 	heart = {
-		"............",
-		".kkk....kkk.",
-		"kwrrrkkrrrrk",
-		"kwrrrrrrrrrk",
-		"krrrrrrrrrrk",
-		".krrrrrrrrk.",
-		"..krrrrrrk..",
-		"...krrrrk...",
-		"....krrk....",
-		".....kk.....",
-		"............",
-		"............",
-	},
-	bomb = {
-		"........o.y.",
-		".......n.o..",
-		"......n.....",
-		"...kkkkkk...",
-		"..kNNNNNNk..",
-		".kNwwNNNNNk.",
-		".kNwNNwNwNk.",
-		".kNNNNwNwNk.",
-		".kNNNNNNNNk.",
-		"..kNNNNNNk..",
-		"..kyykkyyk..",
-		"..kkk..kkk..",
-	},
-	used = {
-		"kkkkkkkkkkkk",
-		"kBBBBBBBBBBk",
-		"kBmBBBBBBmBk",
-		"kBBBBBBBBBBk",
-		"kBBBBBBBBBBk",
-		"kBBBBBBBBBBk",
-		"kBBBBBBBBBBk",
-		"kBBBBBBBBBBk",
-		"kBBBBBBBBBBk",
-		"kBmBBBBBBmBk",
-		"kBBBBBBBBBBk",
-		"kkkkkkkkkkkk",
-	},
-	castle = {
-		"....B..B....",
-		"....BBBB....",
-		"....BkkB....",
-		"B.B.BBBB.B.B",
-		"BBBBBBBBBBBB",
-		"BBBBBBBBBBBB",
-		"mmmmmmmmmmmm",
-		"BBBBBkkBBBBB",
-		"BBBBkkkkBBBB",
-		"mmmmkkkkmmmm",
-		"BBBBkkkkBBBB",
-		"BBBBkkkkBBBB",
+		"........",
+		".ww..ww.",
+		"wppwwppw",
+		"wppppppw",
+		".wppppw.",
+		"..wppw..",
+		"...ww...",
+		"........",
 	},
 }
-
 Sprite.Alias = {
-	house = "castle",
-	home = "castle",
-	user = "oneup",
-	player = "oneup",
-	globe = "pipe",
-	map = "pipe",
-	teleport = "pipe",
-	eye = "boo",
-	visuals = "boo",
-	swords = "flower",
-	combat = "flower",
-	target = "bomb",
-	crosshair = "bomb",
-	shield = "shell",
-	zap = "star",
 	settings = "gear",
 	["sliders-horizontal"] = "gear",
-	bell = "coin",
-	shop = "coin",
-	code = "qblock",
-	info = "qblock",
-	key = "key",
-	play = "flag",
-	quest = "flag",
-	heart = "heart",
-	cookie = "mushroom",
-	["trash-2"] = "bomb",
-	terminal = "brick",
-	["refresh-cw"] = "pipe",
-	link = "pipe",
-	copy = "brick",
+	zap = "star",
 	check = "star",
-	save = "qblock",
-	download = "qblock",
-	upload = "qblock",
-	search = "boo",
-	misc = "qblock",
-	troll = "shell",
+	heart = "heart",
 }
-
-Sprite.Swaps = {
-	oneup = { base = "mushroom", swap = { r = "g" } },
-}
+Sprite.Swaps = {}
 
 Sprite.Templates = {}
 
@@ -2579,7 +2268,7 @@ function Sprite.Template(name)
 		return Sprite.Templates[name]
 	end
 	local swap = Sprite.Swaps[name]
-	local rows = Sprite.Art[swap and swap.base or name]
+	local rows = Sprite.Art[swap and swap.base or name] or Sprite.Art.qblock
 	local recolor = swap and swap.swap or {}
 	local height, width = #rows, #rows[1]
 	local holder =
@@ -2937,10 +2626,6 @@ local ExtraSprites = {
 for spriteName, grid in pairs(ExtraSprites) do
 	Sprite.Art[spriteName] = grid
 end
-
-Sprite.Swaps.blueshell = { base = "shell", swap = { g = "b", G = "P" } }
-Sprite.Swaps.iceflower = { base = "flower", swap = { r = "b", y = "w" } }
-Sprite.Swaps.goldmushroom = { base = "mushroom", swap = { r = "y", w = "q" } }
 
 local ExtraAliases = {
 	main = "mushroom",
@@ -8624,7 +8309,7 @@ function Window.New(options)
 	end
 	local self = setmetatable({
 		Title = options.Title or "Nullx11",
-		SubTitle = options.SubTitle or "",
+		SubTitle = options.SubTitle or "Developed by Gab",
 		Desired = size,
 		Size = size,
 		Tabs = {},
@@ -8800,6 +8485,9 @@ end
 -- Theme topbar decor: drifting clouds for day themes, twinkling stars/embers for night themes
 function Window:BuildDecor(topbar)
 	self.Clouds, self.Stars = {}, {}
+	if not Config.Decorations then
+		return
+	end
 	for index, spot in ipairs({ { 0.44, 8, 42 }, { 0.6, 22, 30 } }) do
 		local cloud = Draw.Cloud(topbar, spot[3])
 		cloud.Position = UDim2.new(spot[1], 0, 0, spot[2])
@@ -8874,6 +8562,9 @@ end
 
 -- Halloween window accents: orange glow border, purple bottom fog, hanging spider
 function Window:BuildSpookyBody()
+	if not Config.Decorations then
+		return
+	end
 	self.SpookyBody = {}
 	local shadow, radius = Config.Window.Shadow, Config.Window.Radius
 	local glow = Draw.New("Frame", {
@@ -9047,6 +8738,9 @@ function Window:BuildTitle(parent)
 end
 
 function Window:WaveTitle()
+	if not State.TitleGlitch then
+		return
+	end
 	if State.ReducedMotion then
 		return
 	end
@@ -10252,14 +9946,7 @@ function Float.Build()
 		Parent = button,
 	})
 	Float.Button, Float.Slot, Float.Size = button, slot, size
-	Anim.Loop(
-		"Dock",
-		slot,
-		{ Position = UDim2.fromOffset(0, -3) },
-		0.9,
-		"Sine",
-		true
-	)
+
 	Float.Render()
 	local moved = false
 	Gui.Draggable(button, function(begin, delta)
@@ -10278,8 +9965,6 @@ function Float.Build()
 		if moved or not State.Window then
 			return
 		end
-		Anim.Bump(Float.Sprite, 10)
-		Anim.CoinPop(button, UDim2.new(0.5, 0, 0, 0), 20)
 		State.Window:Toggle()
 	end)
 end
@@ -13006,6 +12691,10 @@ function Library:SetReducedMotion(enabled)
 	for group in pairs(Anim.Loops) do
 		Anim.SetGroupActive(group, not enabled)
 	end
+end
+
+function Library:GetFPS()
+	return math.floor(State.Fps + 0.5)
 end
 
 function Library:SetTitleGlitch(enabled)

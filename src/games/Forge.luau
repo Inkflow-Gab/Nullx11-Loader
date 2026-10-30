@@ -8453,7 +8453,9 @@ local function BuildInterface()
 
 	Library:CreateWindow({
 		Title = "Nullx11",
-		SubTitle = "Nullx11 - +1 loot to forge",
+		SubTitle = "Nullx11 - +1 loot to forge / Gab",
+		Intro = false,
+		Watermark = false,
 		MenuKey = Enum.KeyCode.LeftControl,
 		ConfigFolder = Config.SaveFolder,
 		Language = "Auto",

@@ -79,8 +79,8 @@ assert(
 	"open game detail without downloading/executing"
 )
 assert(
-	string.find(find("GameScriptDetails").Text, "not in this game", 1, true),
-	"wrong-place prompt"
+	string.find(find("GameScriptDetails").Text, "Unsupported place", 1, true),
+	"compatibility notice, not teleport question"
 )
 assert(
 	string.find(find("GameScriptCredit").Text, "Original author", 1, true),
@@ -88,57 +88,11 @@ assert(
 )
 find("GameExecute").Activated:Fire()
 assert(ran == 0 and #requests == before, "wrong-place execute is blocked")
-find("GameTeleport").Activated:Fire()
 assert(
-	teleports[1] == 9051087354 and #queued == 0,
-	"default teleport-only action"
+	not pcall(find, "GameTeleport") and not pcall(find, "GameExecuteOnArrival"),
+	"No game teleport controls"
 )
-services.TeleportService.TeleportInitFailed:Fire(
-	player,
-	nil,
-	"test failure",
-	9051087354
-)
-find("GameExecuteOnArrival").Activated:Fire()
-find("GameTeleport").Activated:Fire()
-assert(#queued == 1 and #teleports == 2, "opt-in queue then teleport")
-assert(
-	string.find(queued[1], "9051087354", 1, true)
-		and string.find(queued[1], "/scripts/rosu.luau", 1, true),
-	"queue only the selected game file and exact place guard"
-)
-assert(
-	not string.find(queued[1], "Nullx11.client.luau", 1, true),
-	"never queue main loader"
-)
-services.TeleportService.TeleportInitFailed:Fire(
-	player,
-	nil,
-	"test failure",
-	9051087354
-)
-find("GameExecuteOnArrival").Activated:Fire()
-find("GameTeleport").Activated:Fire()
-assert(
-	#teleports == 2,
-	"cannot promise teleport-only while earlier selected code remains queued"
-)
-find("RunScript_huss").Activated:Fire()
-find("GameExecuteOnArrival").Activated:Fire()
-queueFails = true
-find("GameTeleport").Activated:Fire()
-assert(
-	#teleports == 2,
-	"queue failure prevents teleport when execute-on-arrival was requested"
-)
-queueFails = false
-queue_on_teleport = nil
-find("RunScript_forge").Activated:Fire()
-find("GameExecuteOnArrival").Activated:Fire()
-assert(
-	string.find(find("GameScriptStatus").Text, "unavailable", 1, true),
-	"unsupported queue is explicit"
-)
+assert(#teleports == 0 and #queued == 0)
 game.PlaceId = 118805555015549
 find("RunScript_forge").Activated:Fire()
 find("GameExecute").Activated:Fire()
@@ -153,20 +107,21 @@ manifest.Scripts = {}
 find("RefreshScripts").Activated:Fire()
 local beforeRemovedExecute = ran
 find("GameExecute").Activated:Fire()
-find("GameTeleport").Activated:Fire()
 assert(
-	ran == beforeRemovedExecute and #teleports == 2,
+	ran == beforeRemovedExecute and #teleports == 0,
 	"removed stale game metadata cannot execute or teleport"
 )
 local gamePanel = find("GameScriptWindow")
-local statusObject = find("GameScriptStatus")
-local lastStatus = statusObject.Text
-local failure = services.TeleportService.TeleportInitFailed
+local independentUnloads = 0
+getgenv().Nullx11GameSessions =
+	{ egg = {
+		Unload = function()
+			independentUnloads += 1
+		end,
+	} }
 find("Close").Activated:Fire()
-failure:Fire(player, nil, "late failure", 9051087354)
 assert(
-	gamePanel.Destroyed and statusObject.Text == lastStatus,
-	"main close destroys game dialog and disconnects late teleport updates"
+	gamePanel.Destroyed and independentUnloads == 0,
+	"Closing loader leaves executed scripts alive"
 )
-return "PASS: Scripts action/window, game-place prompts, separate teleport and execute, opt-in queue, exact selected-file payload, queue/teleport failures, credits and cleanup (development doubles only)",
-	queued[1]
+return "PASS: Scripts navigation, no teleport/queue controls, compatibility blocking, confirmed execution, refreshed-selection invalidation and independent cleanup (development doubles only)"

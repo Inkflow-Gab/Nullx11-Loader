@@ -27,22 +27,25 @@ try {
   const module = (name, path) => `local ${name}=(function()\n${read(path)}\nend)()`;
   const portContracts = read('tests/game-port-contracts.luau')
     .replace('-- @PORT_MODULES', module('makeAdapter', 'src/ui/Gen2Adapter.luau') + '\n' + module('makeSession', 'src/games/Context.luau'))
-    .replace('-- @LAUNCH_MODULE', module('wrongPlace', 'src/games/BundleLauncher.luau'));
+    .replace('-- @LAUNCH_MODULE', module('wrongPlace', 'src/games/BundleLauncher.luau'))
+    .replace('-- @WIND_MODULE', module('makeWindAdapter', 'src/ui/WindAdapter.luau'))
+    .replace('-- @WORKSPACE_TEARDOWN', read('src/ui/Workspace.luau').match(/connect\(gui\.Destroying, function\(\)[\s\S]*?\n\s*end\)/)[0]);
   const portResults = await state.loadstring(portContracts, 'game-port-contracts', true)();
-  state.loadstring(portResults[1], 'standalone-selected-game-payload', true);
   console.log(portResults[0]);
   const coreChecks = read('tests/roblox-mock.luau') + '\n' + read('tests/player-tools-mock.luau') + '\n'
     + read('tests/shared-ui-core.luau').replace('-- @SHARED_UI', `local function createNullx11UI(scope)\n${read('src/ui/Nullx11UI.luau')}\nend`);
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 3);
-  assert.deepEqual(manifest.Scripts.map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549]);
+  assert.equal(manifest.Scripts.length, 4);
+  assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
-    assert.ok(bundle.includes('if game.PlaceId ~= entry.GamePlaceId then'), 'exact place gate before game controller starts');
+    assert.ok(bundle.includes(entry.Id === 'egg' ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
+    assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
+    assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');
     assert.ok(Buffer.byteLength(bundle, 'utf8') < 2097152, 'bundle fits reviewed source size budget');
   }
   const huss = read('src/games/Huss.luau');
@@ -56,12 +59,23 @@ try {
   console.log(...await state.loadstring(arrivalTest, 'forge-arrival-contracts', true)());
   assert.ok(forge.includes('SuperLootAura = false') && forge.includes('ExecuteAfterHop = false'));
   assert.ok(!/:FireServer\(|:InvokeServer\(|\.FireServer,|\.InvokeServer,/.test(forge), 'explicit forge remote calls use cancellation-aware budget');
-  for (const file of ['logo.png','logo_halloween.png']) {
-    const bytes = readFileSync(new URL(`../assets/forge/${file}`, import.meta.url));
-    assert.equal(bytes.subarray(0,8).toString('hex'), '89504e470d0a1a0a', 'vendored source logo is an actual PNG');
-  }
+  assert.ok(!read('src/ui/Nullx11UI.luau').includes('logo_halloween'));
+  const floatBuild = read('src/ui/Nullx11UI.luau').split('function Float.Build()')[1].split('function Float.Render()')[0];
+  assert.ok(!/Anim\.(Loop|Bump|CoinPop)/.test(floatBuild), 'restore icon is not animated');
+  assert.ok(read('src/ui/Nullx11UI.luau').includes('Nullx11Prism'));
+  const egg = read('src/games/StealAnEgg.luau');
+  assert.ok(!egg.includes('SetAutoLoad') && egg.includes('context.RegisterCleanup'));
+  assert.ok(egg.includes('runtime:Destroy()\n\terror('), 'failed module startup cleans up');
+  const between = (text, start, end) => text.slice(text.indexOf(start), text.indexOf(end, text.indexOf(start)));
+  const helpers = between(egg, 'function utils.remember(', 'function utils.mark(')
+    + between(egg, 'function utils.esp()', 'function utils.eggHolders()')
+    + between(egg, 'function utils.applyCharacter()', 'function utils.antiTrap()');
+  const eggChecks = read('tests/egg-idle.luau')
+    .replace('-- @EGG_HELPERS', helpers)
+    .replace('-- @EGG_COMPATIBLE', between(read('scripts/Nullx11-StealAnEgg.luau'), 'local function compatible()', 'if not compatible() then'));
+  console.log(...await state.loadstring(eggChecks, 'egg-idle-contracts', true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: three actual bundle targets, source/dependency/default-state/budget/size contracts and vendored PNG/font license checks');
+  console.log('PASS: four actual controllers, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),
@@ -89,12 +103,11 @@ try {
   );
   console.log(...await polishChecks());
   const gameChecks = state.loadstring(
-    read('tests/roblox-mock.luau') + '\nlocal loadstring, queue_on_teleport\nlocal function runLoader()\n' + logicSource
+    read('tests/roblox-mock.luau') + '\nlocal sessionEnvironment = {}\nlocal getgenv = function() return sessionEnvironment end\nlocal loadstring, queue_on_teleport\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/game-launcher.luau'),
     'game-launcher-smoke', true,
   );
   const gameResults = await gameChecks();
-  state.loadstring(gameResults[1], 'generated-game-teleport-payload', true);
   console.log(gameResults[0]);
   const introChecks = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + source.replace('EnhancedWorkspace = true', 'EnhancedWorkspace = false')

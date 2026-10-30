@@ -319,107 +319,96 @@ assert(
 	"rerun replaces only its game session"
 )
 
--- Standalone wrong-place UI: default teleport-only, then selected-file opt-in,
--- rejected queues/teleports and disconnected late failure callbacks.
-local player = {}
-local teleports, payloads = {}, {}
-local failedQueue, failedTeleport = false, false
-local teleportService = { TeleportInitFailed = newSignal() }
-function teleportService:Teleport(id, who)
-	assert(who == player)
-	if failedTeleport then
-		error("fixture teleport rejected")
-	end
-	table.insert(teleports, id)
-end
-local game = { PlaceId = 1 }
-function game:GetService(name)
-	return name == "Players" and { LocalPlayer = player } or teleportService
-end
-local queue_on_teleport = function(payload)
-	if failedQueue then
-		error("fixture queue rejected")
-	end
-	table.insert(payloads, payload)
-end
-local loadstring = function()
-	error("The queued payload must not execute in this place")
+-- Wrong-place notice has no teleport service or queue dependency.
+local game = {
+	GetService = function()
+		error("No service may be requested by this notice")
+	end,
+}
+local queue_on_teleport = function()
+	error("No game-launch queue")
 end
 -- @LAUNCH_MODULE
-local entry = {
+local wrong = fixtureLibrary()
+wrongPlace(wrong, {
 	Id = "huss",
 	Name = "Nullx11 - hussvalley",
-	GamePlaceId = 107535308163741,
-	Author = "Wyrizon / Yvetzal",
-}
-local url =
-	"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/Nullx11-Huss.luau"
-local function launch()
-	local l = fixtureLibrary()
-	wrongPlace(l, entry, url)
-	local teleport, status
-	for _, c in ipairs(l.Controls) do
-		if c.Title == "Teleport to selected game" then
-			teleport = c
-		end
-		if c.Kind == "Label" and c.Title:find("Teleport only", 1, true) then
-			status = c
-		end
-	end
-	return l, teleport, status
+	Author = "Original attribution",
+}, "unused")
+assert(#wrong.Controls == 3)
+assert(wrong.Controls[1].Content:find("No teleport", 1, true))
+assert(wrong.Controls[2].Content == "Original attribution")
+wrong.Controls[3].Spec.Func()
+assert(wrong.Unloaded)
+
+-- @WIND_MODULE
+local eggLib = fixtureLibrary()
+local wind = makeWindAdapter(eggLib, makeAdapter(eggLib, "Steal An Egg", "egg"))
+local eggWindow = wind:CreateWindow({})
+local eggTab = eggWindow:Tab({ Title = "Inventory" })
+eggTab:Select()
+eggTab:Section({ Title = "Filters" })
+local selected
+local multi = eggTab:Dropdown({
+	Title = "Rarities",
+	Values = { "Rare", "Epic" },
+	Multi = true,
+	Value = {},
+	Callback = function(value)
+		selected = value
+	end,
+})
+assert(multi.Native.Spec.Multi == true)
+multi:Set({ Epic = true })
+assert(#selected == 1 and selected[1] == "Epic")
+multi:Refresh({ "Cosmic" })
+multi:Set({ Cosmic = true })
+assert(selected[1] == "Cosmic")
+local speed = eggTab:Slider({
+	Title = "Speed",
+	Value = { Min = 10, Max = 200, Default = 120, Step = 0.5 },
+})
+assert(
+	speed.Native.Spec.Min == 10
+		and speed.Native.Spec.Max == 200
+		and speed.Native.Value == 120
+)
+local label = eggTab:Paragraph({ Title = "Idle", Desc = "Ready" })
+label:SetTitle("Active")
+assert(label.Native.Title == "Active")
+assert(
+	eggWindow.ConfigManager:DeleteConfig("egg-save")
+		and eggLib.Deleted == "egg-save"
+)
+local destroyed = 0
+eggWindow:OnDestroy(function()
+	destroyed += 1
+end)
+eggWindow:Destroy()
+eggWindow:Destroy()
+assert(eggLib.Unloaded and destroyed == 1)
+
+-- Actual workspace teardown hook, evaluated with independent real game contexts.
+local stoppedByLoader = 0
+local gameLib = fixtureLibrary()
+local independent = makeSession("egg", gameLib)
+independent.RegisterCleanup(function()
+	stoppedByLoader += 1
+end)
+local library = fixtureLibrary()
+local gui = { Destroying = newSignal() }
+local function connect(signal, callback)
+	return signal:Connect(callback)
 end
-local wrong, teleport, launchStatus = launch()
-assert(wrong.Controls.SelectedAfterJoin.Value == false and #payloads == 0)
-teleport.Spec.Func()
+-- @WORKSPACE_TEARDOWN
+gui.Destroying:Fire()
 assert(
-	teleports[1] == entry.GamePlaceId and #payloads == 0,
-	"default must not queue"
+	library.Unloaded
+		and independent.Alive
+		and not gameLib.Unloaded
+		and stoppedByLoader == 0,
+	"Loader unload must preserve executed scripts"
 )
-teleportService.TeleportInitFailed:Fire(
-	player,
-	"Failed",
-	"denied",
-	entry.GamePlaceId
-)
-wrong.Controls.SelectedAfterJoin:SetValue(true)
-failedQueue = true
-teleport.Spec.Func()
-assert(
-	#teleports == 1
-		and #payloads == 0
-		and launchStatus.Text:find("no teleport", 1, true)
-)
-failedQueue = false
-failedTeleport = true
-teleport.Spec.Func()
-assert(
-	#payloads == 1
-		and #teleports == 1
-		and launchStatus.Text:find("remain queued", 1, true)
-)
-assert(
-	payloads[1]:find(url, 1, true)
-		and payloads[1]:find(tostring(entry.GamePlaceId), 1, true)
-)
-assert(
-	not payloads[1]:find("Nullx11.client.luau", 1, true)
-		and not payloads[1]:find("Nullx11-Rosu", 1, true)
-)
-wrong.Controls.SelectedAfterJoin:SetValue(false)
-failedTeleport = false
-teleport.Spec.Func()
-assert(
-	#teleports == 1
-		and launchStatus.Text:find("Clear the executor queue", 1, true)
-)
-wrong:Unload()
-local before = launchStatus.Text
-teleportService.TeleportInitFailed:Fire(
-	player,
-	"Failed",
-	"late",
-	entry.GamePlaceId
-)
-assert(launchStatus.Text == before)
-return "PASS: real Gen2 adapter, session budget/cancellation/rerun, standalone selected-game consent and failure contracts (development fixtures, not native gameplay)",
-	payloads[1]
+env.Nullx11GameSessions.egg.Unload()
+assert(stoppedByLoader == 1 and not independent.Alive)
+return "PASS: real adapters (including multi-select), isolated sessions, pacing, explicit cleanup and no-teleport compatibility notice (development fixtures only)"

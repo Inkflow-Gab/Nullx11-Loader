@@ -57,7 +57,7 @@ return function(library, title, folder)
 		local window = {}
 		local native = library:CreateWindow({
 			Title = "Nullx11",
-			SubTitle = title,
+			SubTitle = title .. " / Gab",
 			ConfigFolder = folder,
 			Theme = "Nullx11",
 			MenuKey = Enum.KeyCode.LeftControl,
@@ -122,6 +122,7 @@ return function(library, title, folder)
 						Description = info.description,
 						Icon = info.icon,
 						Values = info.options or {},
+						Multi = info.multi == true,
 						Default = info.value,
 						Callback = info.callback,
 					}),
@@ -199,6 +200,9 @@ return function(library, title, folder)
 			library:OnUnload(callback)
 		end
 		local manager = {}
+		function manager:DeleteConfig(name)
+			return library.Configs.Delete(name)
+		end
 		function manager:AllConfigs()
 			return library.Configs.List()
 		end

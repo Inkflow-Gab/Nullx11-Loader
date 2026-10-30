@@ -7,6 +7,7 @@ const read = (file) => readFileSync(resolve(root, file), 'utf8').trimEnd();
 const check = process.argv.includes('--check');
 const ui = read('src/ui/Nullx11UI.luau');
 const adapter = read('src/ui/Gen2Adapter.luau');
+const wind = read('src/ui/WindAdapter.luau');
 const session = read('src/games/Context.luau');
 const launcher = read('src/games/BundleLauncher.luau');
 const catalog = JSON.parse(read('src/games/catalog.json'));
@@ -43,11 +44,11 @@ function output(file, source) {
 const banner = '-- GENERATED from src/ by tools/build.mjs. Edit the sources, then run npm run build.\n';
 let main = read('src/loader.luau')
   .replace('-- @NULLX11_UI_FACTORY', factory)
-  .replace('-- @NULLX11_CATALOG', `if CONFIG.EnhancedWorkspace then\ncatalog.Entries=catalog.Validate(${lua(catalog)})\ncatalog.Loaded=true\nlocal env=type(getgenv)=="function" and getgenv() or _G\nenv.Nullx11SelectedGameQueues=env.Nullx11SelectedGameQueues or {}\ncatalog.Queued=env.Nullx11SelectedGameQueues\nend`)
+  .replace('-- @NULLX11_CATALOG', `if CONFIG.EnhancedWorkspace then\ncatalog.Entries=catalog.Validate(${lua(catalog)})\ncatalog.Loaded=true\nend`)
   .replace('-- @NULLX11_WORKSPACE', read('src/ui/Workspace.luau'));
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
-  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge'})[entry.Id];
+  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg'})[entry.Id];
   if (!name) {
     // Other reviewed repository scripts can participate without being generated.
     if (!/^[\w/.-]+\.luau$/.test(entry.File) || entry.File.includes('..') || entry.File.startsWith('/')) throw new Error('Invalid external script path');
@@ -59,6 +60,7 @@ for (const entry of catalog.Scripts) {
 ${factory}
 ${module('makeAdapter', adapter)}
 ${module('makeSession', session)}
+${entry.Id === 'egg' ? module('makeWindAdapter', wind) : ''}
 ${module('wrongPlace', launcher)}
 local function runGame(context)
 ${controller}
@@ -67,12 +69,22 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 local entry=${lua(entry)}
 local environment=type(getgenv)=="function" and getgenv() or _G
 local library=createNullx11UI({Id=${quote(name)},ReducedMotion=environment.Nullx11ReducedMotion==true})
-if game.PlaceId~=entry.GamePlaceId then
+${entry.Id === 'egg' ? `local function compatible()
+local storage=game:GetService("ReplicatedStorage")
+for _,path in ipairs({"Shared.Remotes","Shared.Save","Client.EggState","Client.PlotState","Client.AssetRoster","Data.Assets","Data.Rarity"}) do
+local node=storage
+for part in path:gmatch("[^.]+") do node=node and node:FindFirstChild(part) end
+if not node or not node:IsA("ModuleScript") then return false end
+end
+return true
+end
+if not compatible() then` : 'if game.PlaceId~=entry.GamePlaceId then'}
 wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/' + entry.File)})
 return
 end
 local context=makeSession(entry.Id,library)
 context.Adapter=makeAdapter(library,entry.Name,"Nullx11 "..${quote(name)})
+${entry.Id === 'egg' ? 'context.WindAdapter=makeWindAdapter(library,context.Adapter)' : ''}
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
 if not ok then
 library:Unload()
@@ -92,4 +104,4 @@ end
 output('scripts/manifest.json',JSON.stringify(catalog,null,2)+'\n');
 const lines=read('Nullx11.client.luau').split('\n').length;
 if (lines <= 15000) throw new Error(`Main script must exceed 15,000 meaningful lines; got ${lines}`);
-console.log(`${check?'Verified':'Built'} shared UI, 3 selected-game bundles and ${lines}-line main client.`);
+console.log(`${check?'Verified':'Built'} shared UI, ${catalog.Scripts.length} selected-game bundles and ${lines}-line main client.`);

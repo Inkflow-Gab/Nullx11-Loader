@@ -35,11 +35,19 @@
     },
     "assets/forge/logo.png": {
       "sha256": "11365f43420f0aed4c0933f64ed139b88d451b3524692ad16a2b6d805f3c7b1f",
-      "bytes": 343460
+      "bytes": 343460,
+      "status": "Historical input only; removed from distribution on 2026-10-31"
     },
     "assets/forge/logo_halloween.png": {
       "sha256": "b413d299cfeb66b6dbededaf5cc08038e21c68b3dd7ea0bb3f2ee9d3fca401a7",
-      "bytes": 133767
+      "bytes": 133767,
+      "status": "Historical input only; removed from distribution on 2026-10-31"
+    },
+    "steal-an-egg-original.luau": {
+      "source": "User upload Main.luau.txt",
+      "sha256": "89aab6560361ffeb28d0b34539ecc709d4cf51bae1cc1b27630e2919aced7e8f",
+      "bytes": 199482
     }
-  }
+  },
+  "Updated": "2026-10-31"
 }

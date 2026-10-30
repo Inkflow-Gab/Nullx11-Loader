@@ -2,7 +2,7 @@
 
 This folder is connected to **Workspace → Scripts / Open Scripts library** in `Nullx11.client.luau` (also available through classic Tools).
 
-The manifest publishes the three adapted Rosu, Huss Valley and +1 Loot to Forge bundles. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
+The manifest publishes the four adapted Rosu, Huss Valley, +1 Loot to Forge and Steal An Egg bundles. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
 
 ## Add a script later
 
@@ -50,7 +50,7 @@ Remote scripts inherit the runtime's permissions. The confirmation is consent, n
 
 ## Game-specific launch windows
 
-Scripts is now an **Open library** action rather than an ON/OFF switch. To use the game-detail/teleport flow, a reviewed, working published entry can add:
+Scripts is now an **Open library** action rather than an ON/OFF switch. To use the game-detail/compatibility flow, a reviewed, working published entry can add:
 
 ```json
 {
@@ -65,14 +65,12 @@ Scripts is now an **Open library** action rather than an ON/OFF switch. To use t
 
 - `GamePlaceId`: optional positive integer up to JavaScript/Luau's exact integer limit (9,007,199,254,740,991). This is a specific **place ID**, not a universe ID. Such entries remain visible outside their game, even if legacy `PlaceIds` filters were also specified.
 - `Author`: optional string up to 160 bytes, displayed as source credit. Preserve the actual original attribution.
-- **Open game window** does not download or run code. The detail window asks whether to teleport when in the wrong place. Direct Execute is blocked there.
-- **Teleport to game** and **Execute game script** are separate actions. Execution in the correct place still requires two-tap confirmation.
-- **Execute game script after joining** starts OFF. If the runtime supplies `queue_on_teleport`, `queueonteleport`, or `syn.queue_on_teleport`, an explicit teleport can queue **only the selected game file**, with an exact target-place guard—not `Nullx11.client.luau` or another game's code.
-- Queue support is not emulated. If requested queueing fails, no teleport is attempted. Without queue support, teleport-only and manual execution remain available.
-- A failed teleport can leave accepted code in the runtime's queue. Nullx11 cannot universally cancel that queue; it warns, deduplicates retries, and refuses to call a subsequent same-game action “teleport-only” while it knows code may remain queued. Rerunning/closing Nullx11 does **not** clear an executor's queue. Clear it in the runtime or restart the session if necessary.
-- Teleport failures are reported via both thrown errors and the actual `TeleportInitFailed` event. This is not proof of a successful join; status says “requested.” Roblox Studio may reject teleports.
+- **Open game window** does not download or run code. Unsupported places show a compatibility notice; direct Execute is blocked. No teleport question, game join or arrival queue exists in the launcher.
+- **Execute game script** requires two-tap confirmation. Existing explicit in-game server-hop/rejoin tools remain separate features, not launcher prompts.
+- Steal An Egg omits `GamePlaceId` because the uploaded source provides none. Its bundle validates core ModuleScript paths before initializing the actual controller. Do not fabricate a place ID.
+- Ordinary loader unload/rerun leaves executed scripts running. Stop a bundled game through its own Unload control, or the loader's separately confirmed stop-all-game-scripts action.
 
-See [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md) for all three implemented ports and the remaining native-runtime validation boundary.
+See [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md) for all four implemented ports and the remaining native-runtime validation boundary.
 
 ## Build and cleanup
 
