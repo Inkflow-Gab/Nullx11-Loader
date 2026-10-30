@@ -1,0 +1,36 @@
+{
+  "Version": 1,
+  "Scripts": [
+    {
+      "Id": "rosu",
+      "Name": "Nullx11 - Rosu Mania",
+      "Description": "Note tracking, configurable hit/hold timing, input release and gameplay rescan. Autoplay starts off.",
+      "File": "Nullx11-Rosu.luau",
+      "GamePlaceId": 9051087354,
+      "Author": "Developed by Gab; Nullx11 adaptation; original Yvetzal / Wyrizon / Infernum. Not for resale."
+    },
+    {
+      "Id": "huss",
+      "Name": "Nullx11 - hussvalley",
+      "Description": "Runner routing, catcher assistance, progression tools and live status. Automation starts off; configurable per feature.",
+      "File": "Nullx11-Huss.luau",
+      "GamePlaceId": 107535308163741,
+      "Author": "Developed by Gab; Nullx11 adaptation; original Wyrizon and Yvetzal Team."
+    },
+    {
+      "Id": "forge",
+      "Name": "Nullx11 - +1 loot to forge",
+      "Description": "Forge, gear, pets, stages, tower, rewards and session tools on the full shared +1 UI. Bounded workers; automation starts off.",
+      "File": "Nullx11-Forge.luau",
+      "GamePlaceId": 118805555015549,
+      "Author": "Developed by Gab; Nullx11 adaptation; original xDTaraZ controller and UI."
+    },
+    {
+      "Id": "egg",
+      "Name": "Nullx11 - Steal An Egg",
+      "Description": "Egg farming, inventory, event, navigation and character tools from the supplied source. All jobs start off. Game-module compatibility is checked before startup.",
+      "File": "Nullx11-StealAnEgg.luau",
+      "Author": "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained."
+    }
+  ]
+}

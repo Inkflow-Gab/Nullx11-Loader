@@ -1,0 +1,16 @@
+{
+  "name": "nullx11-loader-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/check.mjs",
+    "format": "stylua src bootstrap.luau tests diagnostics && node tools/build.mjs",
+    "format:check": "stylua --check src Nullx11.client.luau scripts/*.luau bootstrap.luau tests diagnostics && node tools/build.mjs --check",
+    "build": "node tools/build.mjs",
+    "build:check": "node tools/build.mjs --check"
+  },
+  "devDependencies": {
+    "@johnnymorganz/stylua-bin": "2.6.0",
+    "luau-web": "1.5.1"
+  }
+}

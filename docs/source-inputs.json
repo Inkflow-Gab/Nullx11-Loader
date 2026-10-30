@@ -1,0 +1,53 @@
+{
+  "Recorded": "2026-10-30",
+  "Inputs": {
+    "rosu-original.luau": {
+      "sha256": "fd2ab58cf953617ed69dae9dc9b2268f94c405283ed09f802e662c1e59ea0f54",
+      "bytes": 44755
+    },
+    "huss-original.luau": {
+      "sha256": "75fdf5939de4859a8c5f4cecbe6332ed9ebe88902bf1191d843d101f2cfd6901",
+      "bytes": 199065
+    },
+    "forge-original.luau": {
+      "sha256": "390ab5713331c533583c6fa95361b95d7ced3eaabcad17b0559182b7c14d3c5f",
+      "bytes": 228099
+    },
+    "forge-ui-original.luau": {
+      "sha256": "a3daad7dd58542533920fad69795b6a74fa67a6f23171945f2b3d733f4b258a8",
+      "bytes": 347671
+    },
+    "assets/fonts/Kanit-Medium.ttf": {
+      "sha256": "50a237034244026a7c63fe55e24e0b4298babe363cde043e032075b764c545a2",
+      "bytes": 174628
+    },
+    "assets/fonts/Kanit-Regular.ttf": {
+      "sha256": "27170c049660b2f962d3ed28441fd20f4c743503ca031fec9c2b4542d6c52736",
+      "bytes": 173148
+    },
+    "assets/fonts/Kanit-SemiBold.ttf": {
+      "sha256": "67e64baf1a7e6e076435518ff0e6bf25c4d74b98143cd1a2688db906c0abce11",
+      "bytes": 174796
+    },
+    "assets/fonts/OFL.txt": {
+      "sha256": "1f5d3dd287f8524cf0bb916fbf32185e240fd87f5e24318600fc416dee5077fe",
+      "bytes": 4382
+    },
+    "assets/forge/logo.png": {
+      "sha256": "11365f43420f0aed4c0933f64ed139b88d451b3524692ad16a2b6d805f3c7b1f",
+      "bytes": 343460,
+      "status": "Historical input only; removed from distribution on 2026-10-31"
+    },
+    "assets/forge/logo_halloween.png": {
+      "sha256": "b413d299cfeb66b6dbededaf5cc08038e21c68b3dd7ea0bb3f2ee9d3fca401a7",
+      "bytes": 133767,
+      "status": "Historical input only; removed from distribution on 2026-10-31"
+    },
+    "steal-an-egg-original.luau": {
+      "source": "User upload Main.luau.txt",
+      "sha256": "89aab6560361ffeb28d0b34539ecc709d4cf51bae1cc1b27630e2919aced7e8f",
+      "bytes": 199482
+    }
+  },
+  "Updated": "2026-10-31"
+}
