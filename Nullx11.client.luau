@@ -12,6 +12,7 @@ local CONFIG = {
 	Subtitle = "A quieter way to get started.",
 	Accent = Color3.fromRGB(167, 146, 255),
 	ReducedMotion = false,
+	StartupAnimation = true,
 }
 
 -- External runtimes may not provide the LocalScript instance.
@@ -53,6 +54,7 @@ local appearance = {
 	DockOpacity = 100,
 }
 local studioBridge: { [string]: any } = {}
+local playerToolsBridge: { [string]: any } = {}
 local dashboardOpen = false
 local interfaceScale = 1
 local windowsPinned = false
@@ -1614,7 +1616,10 @@ do
 			end
 			setFPSEnabled(false)
 			setHUDEnabled(false)
-			status.Text = "Floating utilities hidden."
+			if playerToolsBridge.HideWindows then
+				playerToolsBridge.HideWindows()
+			end
+			status.Text = "Floating utilities hidden; player tools off."
 		end
 	)
 	local clearDeadline = 0
@@ -2757,6 +2762,9 @@ do
 			window.BackgroundTransparency = 1 - values.PanelOpacity / 100
 		end
 		appearance.DockOpacity = values.DockOpacity
+		if playerToolsBridge.Style then
+			playerToolsBridge.Style(values)
+		end
 		mini.BackgroundTransparency = 1 - values.DockOpacity / 100
 		mini.Size = UDim2.fromOffset(values.DockSize, values.DockSize)
 		local dockCorner = mini:FindFirstChildOfClass("UICorner")
@@ -5050,6 +5058,12 @@ do
 		studio.Message("Design Studio ready. Changes stay local to this run.")
 	end
 
+	studioBridge.RegisterUI = function()
+		if studio.Built and alive then
+			studio.CaptureStyles()
+			studio.Render(studio.Settings)
+		end
+	end
 	studioBridge.Open = studio.Open
 	studioBridge.Resized = function(width: number, height: number)
 		if not studio.Built then
@@ -5071,6 +5085,1194 @@ do
 		table.clear(studio.UndoStack)
 		table.clear(studio.RedoStack)
 		table.clear(studio.Saved)
+	end
+end
+
+-- Local player tools. No remote events, automatic firing, or server modifications.
+do
+	local toolsState: { [string]: any } = {
+		Visuals = false,
+		Chams = true,
+		Boxes = true,
+		Lines = false,
+		Names = true,
+		Health = true,
+		Distance = true,
+		ThroughWalls = false,
+		VisualTeamCheck = true,
+		VisualDistance = 1000,
+		VisualColor = "Violet",
+		VisualRate = 30,
+		Aim = false,
+		Circle = false,
+		Radius = 140,
+		Strength = 50,
+		AimDistance = 1000,
+		AimTeamCheck = true,
+		AimPart = "Head",
+		CircleColor = "Violet",
+		TouchPad = true,
+	}
+	local engine: { [string]: any } = {
+		Workspace = game:GetService("Workspace"),
+		Records = {},
+		Highlights = {},
+		Windows = {},
+		Setters = {},
+		Bound = false,
+		BindName = "Nullx11_PlayerTools",
+		VisualClock = 0,
+		MouseHeld = false,
+		TouchInput = nil,
+		MaxOverlays = 32,
+		MaxHighlights = 24,
+		MaxVisualRays = 48,
+		Palette = {
+			Violet = Color3.fromRGB(167, 146, 255),
+			Mint = Color3.fromRGB(126, 222, 185),
+			Cyan = Color3.fromRGB(108, 221, 225),
+			Red = Color3.fromRGB(255, 133, 145),
+			White = Color3.fromRGB(242, 241, 249),
+		},
+	}
+
+	function engine.Status(windowName: string, message: string)
+		local window = engine.Windows[windowName]
+		if window and window.Status.Text ~= message then
+			window.Status.Text = message
+		end
+	end
+
+	function engine.Hide(record: any)
+		if record.Box then
+			record.Box.Visible = false
+			record.Line.Visible = false
+			record.NameLabel.Visible = false
+			record.HealthBar.Visible = false
+		end
+		if record.Highlight then
+			record.Highlight.Enabled = false
+		end
+	end
+
+	function engine.Remove(other: Player)
+		local record = engine.Records[other]
+		if not record then
+			return
+		end
+		if record.Container then
+			record.Container:Destroy()
+		end
+		if record.Highlight then
+			record.Highlight.Enabled = false
+			record.Highlight.Adornee = nil
+		end
+		engine.Records[other] = nil
+	end
+
+	function engine.EnsureOverlay()
+		if engine.Overlay then
+			return
+		end
+		engine.Overlay = create("ScreenGui", {
+			Name = "Nullx11PlayerOverlay",
+			ResetOnSpawn = false,
+			IgnoreGuiInset = true,
+			ScreenInsets = Enum.ScreenInsets.None,
+			DisplayOrder = 90,
+			ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		}, playerGui)
+		engine.HighlightFolder = create(
+			"Folder",
+			{ Name = "Nullx11HighlightPool" },
+			engine.Workspace
+		)
+		engine.Circle = create("Frame", {
+			Name = "AimFOVCircle",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Visible = false,
+		}, engine.Overlay)
+		create("UICorner", { CornerRadius = UDim.new(1, 0) }, engine.Circle)
+		engine.CircleStroke = create("UIStroke", {
+			Color = engine.Palette.Violet,
+			Thickness = 1.5,
+			Transparency = 0.15,
+		}, engine.Circle)
+	end
+
+	function engine.EnsureRecord(record: any)
+		if record.Container then
+			return
+		end
+		engine.EnsureOverlay()
+		record.Container = create("Frame", {
+			Name = "PlayerOverlay_" .. tostring(record.Player.UserId),
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+		}, engine.Overlay)
+		record.Box = create("Frame", {
+			Name = "PlayerBox",
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Visible = false,
+		}, record.Container)
+		record.BoxStroke = create("UIStroke", {
+			Color = engine.Palette.Violet,
+			Thickness = 1.25,
+		}, record.Box)
+		record.Line = create("Frame", {
+			Name = "PlayerTracer",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BorderSizePixel = 0,
+			Visible = false,
+		}, record.Container)
+		record.NameLabel = label(record.Container, "", 12, colors.Text)
+		record.NameLabel.Name = "PlayerTag"
+		record.NameLabel.TextXAlignment = Enum.TextXAlignment.Center
+		record.NameLabel.TextStrokeTransparency = 0.35
+		record.NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		record.NameLabel.Visible = false
+		record.HealthBar = create("Frame", {
+			Name = "PlayerHealth",
+			BackgroundColor3 = colors.Surface,
+			BorderSizePixel = 0,
+			Visible = false,
+		}, record.Container)
+		record.HealthFill = create("Frame", {
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.fromScale(0, 1),
+			BackgroundColor3 = colors.Success,
+			BorderSizePixel = 0,
+		}, record.HealthBar)
+	end
+
+	function engine.Finite(value: number): boolean
+		return value == value and math.abs(value) < math.huge
+	end
+
+	function engine.PositionValid(position: Vector3): boolean
+		return engine.Finite(position.X)
+			and engine.Finite(position.Y)
+			and engine.Finite(position.Z)
+	end
+
+	function engine.Character(other: Player, teamCheck: boolean): any
+		if other == player then
+			return nil
+		end
+		if
+			teamCheck
+			and not player.Neutral
+			and not other.Neutral
+			and player.Team ~= nil
+			and player.Team == other.Team
+		then
+			return nil
+		end
+		local character = other.Character
+		if not character or not character.Parent then
+			return nil
+		end
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		local part = character:FindFirstChild("HumanoidRootPart")
+		if
+			not humanoid
+			or humanoid.Health <= 0
+			or not part
+			or not part:IsA("BasePart")
+		then
+			return nil
+		end
+		if
+			not engine.Finite(humanoid.Health)
+			or not engine.Finite(humanoid.MaxHealth)
+			or not engine.PositionValid(part.Position)
+		then
+			return nil
+		end
+		return { Model = character, Humanoid = humanoid, Root = part }
+	end
+
+	function engine.Visible(
+		camera: Camera,
+		model: Model,
+		position: Vector3
+	): boolean
+		if not engine.RayParams then
+			engine.RayParams = RaycastParams.new()
+			engine.RayParams.FilterType = Enum.RaycastFilterType.Exclude
+			engine.RayParams.IgnoreWater = true
+		end
+		engine.RayParams.FilterDescendantsInstances = if player.Character
+			then { player.Character, camera }
+			else { camera }
+		local origin = camera.CFrame.Position
+		local result = engine.Workspace:Raycast(
+			origin,
+			position - origin,
+			engine.RayParams
+		)
+		return result == nil or result.Instance:IsDescendantOf(model)
+	end
+
+	function engine.Bounds(camera: Camera, model: Model): any
+		local ok, transform, size = pcall(model.GetBoundingBox, model)
+		if not ok or not engine.PositionValid(size) then
+			return nil
+		end
+		local minimumX, minimumY = math.huge, math.huge
+		local maximumX, maximumY = -math.huge, -math.huge
+		for x = -1, 1, 2 do
+			for y = -1, 1, 2 do
+				for z = -1, 1, 2 do
+					local point = transform:PointToWorldSpace(
+						Vector3.new(
+							size.X * x / 2,
+							size.Y * y / 2,
+							size.Z * z / 2
+						)
+					)
+					local projected = camera:WorldToViewportPoint(point)
+					-- Never stretch a box across the camera's near plane.
+					if
+						not engine.PositionValid(projected)
+						or projected.Z <= 0.1
+					then
+						return nil
+					end
+					minimumX = math.min(minimumX, projected.X)
+					minimumY = math.min(minimumY, projected.Y)
+					maximumX = math.max(maximumX, projected.X)
+					maximumY = math.max(maximumY, projected.Y)
+				end
+			end
+		end
+		local viewport = camera.ViewportSize
+		minimumX = math.clamp(minimumX, 0, viewport.X)
+		minimumY = math.clamp(minimumY, 0, viewport.Y)
+		maximumX = math.clamp(maximumX, 0, viewport.X)
+		maximumY = math.clamp(maximumY, 0, viewport.Y)
+		if maximumX - minimumX < 2 or maximumY - minimumY < 2 then
+			return nil
+		end
+		return {
+			X = minimumX,
+			Y = minimumY,
+			Width = maximumX - minimumX,
+			Height = maximumY - minimumY,
+		}
+	end
+
+	function engine.Draw(
+		record: any,
+		info: any,
+		camera: Camera,
+		distance: number,
+		index: number
+	)
+		local ink = engine.Palette[toolsState.VisualColor]
+		local box = engine.Bounds(camera, info.Model)
+		if not box then
+			engine.Hide(record)
+			return false
+		end
+		engine.EnsureRecord(record)
+		record.Box.Position = UDim2.fromOffset(box.X, box.Y)
+		record.Box.Size = UDim2.fromOffset(box.Width, box.Height)
+		record.Box.Visible = toolsState.Boxes
+		record.BoxStroke.Color = ink
+		local rootPosition = camera:WorldToViewportPoint(info.Root.Position)
+		local start =
+			Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y - 8)
+		local finish = Vector2.new(rootPosition.X, rootPosition.Y)
+		local delta = finish - start
+		record.Line.Position =
+			UDim2.fromOffset((start.X + finish.X) / 2, (start.Y + finish.Y) / 2)
+		record.Line.Size = UDim2.fromOffset(delta.Magnitude, 1.5)
+		record.Line.Rotation = math.deg(math.atan2(delta.Y, delta.X))
+		record.Line.BackgroundColor3 = ink
+		record.Line.Visible = toolsState.Lines
+		local caption = if toolsState.Names
+			then record.Player.DisplayName
+			else ""
+		if toolsState.Distance then
+			caption ..= string.format("  %.0f st", distance)
+		end
+		record.NameLabel.Text = caption
+		record.NameLabel.Position =
+			UDim2.fromOffset(box.X - 40, math.max(0, box.Y - 20))
+		record.NameLabel.Size = UDim2.fromOffset(box.Width + 80, 18)
+		record.NameLabel.TextColor3 = ink
+		record.NameLabel.Visible = toolsState.Names or toolsState.Distance
+		record.HealthBar.Position =
+			UDim2.fromOffset(math.max(0, box.X - 6), box.Y)
+		record.HealthBar.Size = UDim2.fromOffset(3, box.Height)
+		record.HealthBar.Visible = toolsState.Health
+		local fraction = math.clamp(
+			info.Humanoid.Health / math.max(1, info.Humanoid.MaxHealth),
+			0,
+			1
+		)
+		record.HealthFill.Size = UDim2.fromScale(1, fraction)
+		record.HealthFill.BackgroundColor3 = if fraction < 0.3
+			then colors.Error
+			else colors.Success
+		if toolsState.Chams and index <= engine.MaxHighlights then
+			if not engine.Highlights[index] then
+				engine.Highlights[index] = create(
+					"Highlight",
+					{ Name = "Nullx11Chams" .. index },
+					engine.HighlightFolder
+				)
+			end
+			record.Highlight = engine.Highlights[index]
+			record.Highlight.Adornee = info.Model
+			record.Highlight.FillColor = ink
+			record.Highlight.OutlineColor = ink
+			record.Highlight.FillTransparency = 0.65
+			record.Highlight.OutlineTransparency = 0.1
+			record.Highlight.DepthMode = if toolsState.ThroughWalls
+				then Enum.HighlightDepthMode.AlwaysOnTop
+				else Enum.HighlightDepthMode.Occluded
+			record.Highlight.Enabled = true
+		end
+		return true
+	end
+
+	function engine.ClearHighlights()
+		for _, highlight in pairs(engine.Highlights) do
+			highlight.Enabled = false
+			highlight:Destroy()
+		end
+		table.clear(engine.Highlights)
+		for _, record in pairs(engine.Records) do
+			record.Highlight = nil
+		end
+	end
+
+	function engine.UpdateVisuals(camera: Camera)
+		local candidates = {}
+		for _, highlight in pairs(engine.Highlights) do
+			highlight.Enabled = false
+			highlight.Adornee = nil
+		end
+		for _, record in pairs(engine.Records) do
+			engine.Hide(record)
+			record.Highlight = nil
+			local info =
+				engine.Character(record.Player, toolsState.VisualTeamCheck)
+			if not info then
+				continue
+			end
+			local distance = (info.Root.Position - camera.CFrame.Position).Magnitude
+			local projected, onScreen =
+				camera:WorldToViewportPoint(info.Root.Position)
+			if
+				distance <= toolsState.VisualDistance
+				and onScreen
+				and projected.Z > 0
+			then
+				table.insert(
+					candidates,
+					{ Record = record, Info = info, Distance = distance }
+				)
+			end
+		end
+		table.sort(candidates, function(a, b)
+			return a.Distance < b.Distance
+		end)
+		local shown = 0
+		local tested = 0
+		for _, entry in ipairs(candidates) do
+			if shown >= engine.MaxOverlays then
+				break
+			end
+			if not toolsState.ThroughWalls then
+				if tested >= engine.MaxVisualRays then
+					break
+				end
+				tested += 1
+			end
+			if
+				not toolsState.ThroughWalls
+				and not engine.Visible(
+					camera,
+					entry.Info.Model,
+					entry.Info.Root.Position
+				)
+			then
+				continue
+			end
+			if
+				engine.Draw(
+					entry.Record,
+					entry.Info,
+					camera,
+					entry.Distance,
+					shown + 1
+				)
+			then
+				shown += 1
+			end
+		end
+		engine.Status(
+			"Visuals",
+			string.format(
+				"Visuals ON / %d players / %d Hz",
+				shown,
+				toolsState.VisualRate
+			)
+		)
+	end
+
+	function engine.SelectTarget(camera: Camera): any
+		local center = camera.ViewportSize / 2
+		local candidates = {}
+		for _, record in pairs(engine.Records) do
+			local info =
+				engine.Character(record.Player, toolsState.AimTeamCheck)
+			if not info then
+				continue
+			end
+			local part = if toolsState.AimPart == "Head"
+				then info.Model:FindFirstChild("Head")
+				else info.Root
+			if not part or not part:IsA("BasePart") then
+				part = info.Root
+			end
+			if not engine.PositionValid(part.Position) then
+				continue
+			end
+			local distance = (part.Position - camera.CFrame.Position).Magnitude
+			if distance < 0.01 or distance > toolsState.AimDistance then
+				continue
+			end
+			local projected, onScreen =
+				camera:WorldToViewportPoint(part.Position)
+			if not onScreen or projected.Z <= 0 then
+				continue
+			end
+			local score = (Vector2.new(projected.X, projected.Y) - center).Magnitude
+			if score <= toolsState.Radius then
+				table.insert(candidates, {
+					Score = score,
+					Part = part,
+					Model = info.Model,
+					Player = record.Player,
+				})
+			end
+		end
+		table.sort(candidates, function(a, b)
+			return a.Score < b.Score
+		end)
+		-- Bound expensive ray tests even on large servers.
+		for index = 1, math.min(8, #candidates) do
+			local candidate = candidates[index]
+			if
+				engine.Visible(camera, candidate.Model, candidate.Part.Position)
+			then
+				return candidate
+			end
+		end
+		return nil
+	end
+
+	function engine.Step(dt: number)
+		local camera = engine.Workspace.CurrentCamera
+		if
+			not camera
+			or camera.ViewportSize.X <= 0
+			or camera.ViewportSize.Y <= 0
+			or not engine.PositionValid(camera.CFrame.Position)
+		then
+			for _, record in pairs(engine.Records) do
+				engine.Hide(record)
+			end
+			if engine.Circle then
+				engine.Circle.Visible = false
+			end
+			engine.Status("Aim", "Waiting for a camera.")
+			return
+		end
+		if toolsState.Circle then
+			engine.EnsureOverlay()
+			engine.Circle.Position = UDim2.fromOffset(
+				camera.ViewportSize.X / 2,
+				camera.ViewportSize.Y / 2
+			)
+			engine.Circle.Size =
+				UDim2.fromOffset(toolsState.Radius * 2, toolsState.Radius * 2)
+			engine.CircleStroke.Color = engine.Palette[toolsState.CircleColor]
+			engine.Circle.Visible = true
+		end
+		engine.UpdateAim(camera, dt)
+		if toolsState.Visuals then
+			engine.VisualClock += dt
+			if engine.VisualClock >= 1 / toolsState.VisualRate then
+				engine.VisualClock = 0
+				engine.UpdateVisuals(camera)
+			end
+		end
+	end
+
+	function engine.UpdateAim(camera: Camera, dt: number)
+		if not toolsState.Aim then
+			return
+		end
+		if UserInputService:GetFocusedTextBox() then
+			engine.Status("Aim", "Paused while typing.")
+			return
+		end
+		if not engine.MouseHeld and not engine.TouchInput then
+			engine.Status(
+				"Aim",
+				"Hold RMB / touch AIM. Move panels off-center."
+			)
+			return
+		end
+		if camera.CameraType == Enum.CameraType.Scriptable then
+			engine.Status("Aim", "Paused for a scripted camera.")
+			return
+		end
+		local character = player.Character
+		local humanoid = if character
+			then character:FindFirstChildOfClass("Humanoid")
+			else nil
+		if not humanoid or humanoid.Health <= 0 then
+			engine.Status("Aim", "Wait for your character to spawn.")
+			return
+		end
+		local target = engine.SelectTarget(camera)
+		if not target then
+			engine.Status("Aim", "No visible player inside the circle.")
+			return
+		end
+		local alpha = if toolsState.Strength >= 100
+			then 1
+			else 1 - math.exp(
+				-(2 + toolsState.Strength * 0.7) * math.min(dt, 0.1)
+			)
+		local desired =
+			CFrame.lookAt(camera.CFrame.Position, target.Part.Position)
+		camera.CFrame = camera.CFrame:Lerp(desired, alpha)
+		engine.Status(
+			"Aim",
+			"Tracking "
+				.. target.Player.DisplayName
+				.. " / "
+				.. toolsState.Strength
+				.. "%"
+		)
+	end
+
+	function engine.Schedule()
+		local needed = toolsState.Visuals or toolsState.Aim or toolsState.Circle
+		if needed and not engine.Bound then
+			RunService:BindToRenderStep(
+				engine.BindName,
+				Enum.RenderPriority.Camera.Value + 1,
+				engine.Step
+			)
+			engine.Bound = true
+		elseif not needed and engine.Bound then
+			RunService:UnbindFromRenderStep(engine.BindName)
+			engine.Bound = false
+		end
+		if not toolsState.Visuals then
+			engine.ClearHighlights()
+			for _, record in pairs(engine.Records) do
+				engine.Hide(record)
+			end
+			engine.Status("Visuals", "Visuals OFF / enable to draw players.")
+		end
+		if not toolsState.Chams then
+			engine.ClearHighlights()
+		end
+		if not toolsState.Circle and engine.Circle then
+			engine.Circle.Visible = false
+		end
+		if not toolsState.Aim then
+			engine.MouseHeld = false
+			engine.TouchInput = nil
+			engine.Status(
+				"Aim",
+				if toolsState.Circle
+					then "FOV preview on / move panels away from center."
+					else "Aim OFF / camera untouched."
+			)
+		end
+		if not toolsState.TouchPad then
+			engine.TouchInput = nil
+		end
+		if engine.TouchPad then
+			engine.TouchPad.Visible = toolsState.Aim
+				and toolsState.TouchPad
+				and UserInputService.TouchEnabled
+		end
+	end
+
+	function engine.DisableAll()
+		for _, key in ipairs({ "Visuals", "Aim", "Circle" }) do
+			toolsState[key] = false
+			if engine.Setters[key] then
+				engine.Setters[key](false)
+			end
+		end
+		engine.MouseHeld = false
+		engine.TouchInput = nil
+		engine.Schedule()
+	end
+
+	function engine.Window(name: string): any
+		local window = { Kind = name }
+		window.Panel = create("Frame", {
+			Name = name .. "Window",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(350, 500),
+			BackgroundColor3 = colors.Panel,
+			BorderSizePixel = 0,
+			Visible = false,
+		}, root)
+		corner(window.Panel, 16)
+		create(
+			"UIStroke",
+			{ Color = colors.Border, Thickness = 1 },
+			window.Panel
+		)
+		local handle = create("Frame", {
+			Name = name .. "DragHandle",
+			BackgroundTransparency = 1,
+			Active = true,
+			Size = UDim2.new(1, -64, 0, 64),
+		}, window.Panel)
+		drawIcon(handle, CONFIG.Accent, UDim2.fromOffset(18, 20), 26)
+		local heading =
+			label(handle, string.upper(name) .. " / LOCAL", 14, colors.Text)
+		heading.Font = Enum.Font.Code
+		heading.Position = UDim2.fromOffset(56, 20)
+		heading.Size = UDim2.new(1, -56, 0, 28)
+		local hide = create("TextButton", {
+			Name = "Hide" .. name,
+			Text = "−",
+			TextSize = 22,
+			Font = Enum.Font.Code,
+			TextColor3 = colors.Muted,
+			BackgroundTransparency = 1,
+			Position = UDim2.new(1, -56, 0, 12),
+			Size = UDim2.fromOffset(44, 44),
+		}, window.Panel)
+		connect(hide.Activated, function()
+			engine.WindowSetters[name](false)
+		end)
+		window.Body = create("ScrollingFrame", {
+			Name = name .. "Controls",
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(16, 72),
+			Size = UDim2.new(1, -32, 1, -128),
+			CanvasSize = UDim2.fromOffset(0, 0),
+			ScrollBarThickness = 3,
+			ScrollBarImageColor3 = CONFIG.Accent,
+		}, window.Panel)
+		window.Status = label(window.Panel, name .. " OFF", 10, colors.Muted)
+		window.Status.Name = name .. "Status"
+		window.Status.Position = UDim2.new(0, 16, 1, -44)
+		window.Status.Size = UDim2.new(1, -32, 0, 32)
+		window.Status.TextWrapped = true
+		window.Cursor = 0
+		engine.Windows[name] = window
+		draggable(handle, window.Panel)
+		return window
+	end
+
+	function engine.Toggle(
+		window: any,
+		key: string,
+		title: string,
+		hint: string
+	)
+		engine.Setters[key] = toggleRow(
+			title,
+			hint,
+			window.Cursor,
+			toolsState[key],
+			function(value)
+				toolsState[key] = value
+				engine.Schedule()
+			end,
+			window.Body
+		)
+		window.Cursor += 58
+	end
+
+	function engine.Button(
+		window: any,
+		name: string,
+		caption: string,
+		callback: () -> ()
+	)
+		local button = create("TextButton", {
+			Name = name,
+			Text = caption,
+			TextSize = 12,
+			Font = Enum.Font.GothamMedium,
+			TextColor3 = colors.Text,
+			BackgroundColor3 = colors.Surface,
+			BorderSizePixel = 0,
+			AutoButtonColor = false,
+			Position = UDim2.fromOffset(0, window.Cursor),
+			Size = UDim2.new(1, -4, 0, 44),
+		}, window.Body)
+		corner(button, 10)
+		connect(button.Activated, callback)
+		window.Cursor += 52
+		return button
+	end
+
+	function engine.Number(
+		window: any,
+		key: string,
+		title: string,
+		minimum: number,
+		maximum: number,
+		step: number
+	)
+		local heading = label(window.Body, title, 11, colors.Muted)
+		heading.Position = UDim2.fromOffset(0, window.Cursor)
+		heading.Size = UDim2.new(1, -4, 0, 22)
+		local box = create("TextBox", {
+			Name = "Value" .. key,
+			Text = tostring(toolsState[key]),
+			ClearTextOnFocus = false,
+			MultiLine = false,
+			Font = Enum.Font.Code,
+			TextSize = 14,
+			TextColor3 = colors.Text,
+			BackgroundColor3 = colors.Surface,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(0, window.Cursor + 24),
+			Size = UDim2.new(1, -116, 0, 44),
+		}, window.Body)
+		corner(box, 9)
+		engine.NumberRefresh = engine.NumberRefresh or {}
+		engine.NumberRefresh[key] = function()
+			box.Text = tostring(toolsState[key])
+		end
+		connect(box.FocusLost, function()
+			local value = tonumber(box.Text)
+			if
+				not value
+				or value ~= value
+				or value % 1 ~= 0
+				or value < minimum
+				or value > maximum
+			then
+				engine.Status(
+					window.Kind,
+					string.format(
+						"Enter a whole number from %d to %d.",
+						minimum,
+						maximum
+					)
+				)
+			else
+				toolsState[key] = value
+				engine.Schedule()
+			end
+			engine.NumberRefresh[key]()
+		end)
+		for _, direction in ipairs({ -1, 1 }) do
+			local change = direction
+			local button = create("TextButton", {
+				Name = (if change < 0 then "Decrease" else "Cycle") .. key,
+				Text = if change < 0 then "−" else "+",
+				TextSize = 20,
+				Font = Enum.Font.Code,
+				TextColor3 = colors.Text,
+				BackgroundColor3 = colors.Surface,
+				AutoButtonColor = false,
+				BorderSizePixel = 0,
+				Position = UDim2.new(
+					1,
+					if change < 0 then -104 else -48,
+					0,
+					window.Cursor + 24
+				),
+				Size = UDim2.fromOffset(44, 44),
+			}, window.Body)
+			corner(button, 9)
+			connect(button.Activated, function()
+				toolsState[key] = math.clamp(
+					toolsState[key] + change * step,
+					minimum,
+					maximum
+				)
+				engine.NumberRefresh[key]()
+			end)
+		end
+		window.Cursor += 80
+	end
+
+	function engine.Color(window: any, key: string, title: string)
+		local names = { "Violet", "Mint", "Cyan", "Red", "White" }
+		local button: TextButton? = nil
+		button = engine.Button(
+			window,
+			"Cycle" .. key,
+			title .. ": " .. toolsState[key],
+			function()
+				local current = table.find(names, toolsState[key]) or 1
+				toolsState[key] = names[current % #names + 1]
+				if button then
+					button.Text = title .. ": " .. toolsState[key]
+					button.TextColor3 = engine.Palette[toolsState[key]]
+				end
+			end
+		)
+	end
+
+	function engine.BuildVisuals()
+		if engine.Windows.Visuals then
+			return
+		end
+		local window = engine.Window("Visuals")
+		engine.Button(
+			window,
+			"VisualsDisableAll",
+			"Disable visuals, aim, and circle",
+			engine.DisableAll
+		)
+		engine.Toggle(
+			window,
+			"Visuals",
+			"Enable visuals",
+			"Off by default / nearest 32 on-screen players"
+		)
+		engine.Toggle(
+			window,
+			"Chams",
+			"Player chams",
+			"Local highlights / at most 24 active"
+		)
+		engine.Toggle(
+			window,
+			"Boxes",
+			"Player boxes",
+			"Projected character bounding boxes"
+		)
+		engine.Toggle(
+			window,
+			"Lines",
+			"Tracer lines",
+			"Bottom-center to player root"
+		)
+		engine.Toggle(
+			window,
+			"Names",
+			"Player names",
+			"Display names above the box"
+		)
+		engine.Toggle(window, "Health", "Health bars", "Living characters only")
+		engine.Toggle(
+			window,
+			"Distance",
+			"Player distance",
+			"Camera distance in studs"
+		)
+		engine.Toggle(
+			window,
+			"ThroughWalls",
+			"Through walls",
+			"Off: require a clear line of sight"
+		)
+		engine.Toggle(
+			window,
+			"VisualTeamCheck",
+			"Visual team filter",
+			"Skip non-neutral teammates"
+		)
+		engine.Number(
+			window,
+			"VisualDistance",
+			"Visual range (studs)",
+			250,
+			3000,
+			250
+		)
+		engine.Number(window, "VisualRate", "Overlay rate (Hz)", 15, 60, 15)
+		engine.Color(window, "VisualColor", "Overlay color")
+		window.Body.CanvasSize = UDim2.fromOffset(0, window.Cursor)
+		if studioBridge.RegisterUI then
+			studioBridge.RegisterUI()
+		end
+	end
+
+	function engine.BuildAim()
+		if engine.Windows.Aim then
+			return
+		end
+		local window = engine.Window("Aim")
+		engine.Button(
+			window,
+			"AimDisableAll",
+			"Disable visuals, aim, and circle",
+			engine.DisableAll
+		)
+		engine.Toggle(
+			window,
+			"Aim",
+			"Enable aim assist",
+			"Hold right mouse or the mobile AIM button"
+		)
+		engine.Toggle(
+			window,
+			"Circle",
+			"Show FOV circle",
+			"Pixels around the center of the viewport"
+		)
+		engine.Number(window, "Strength", "Aim strength", 1, 100, 1)
+		engine.Number(window, "Radius", "FOV radius (px)", 50, 400, 25)
+		engine.Number(
+			window,
+			"AimDistance",
+			"Aim range (studs)",
+			250,
+			3000,
+			250
+		)
+		engine.Toggle(
+			window,
+			"AimTeamCheck",
+			"Aim team filter",
+			"Skip non-neutral teammates"
+		)
+		engine.Toggle(
+			window,
+			"TouchPad",
+			"Mobile aim pad",
+			"Separate draggable touch-hold control"
+		)
+		local part: TextButton? = nil
+		part = engine.Button(
+			window,
+			"CycleAimPart",
+			"Target part: " .. toolsState.AimPart,
+			function()
+				toolsState.AimPart = if toolsState.AimPart == "Head"
+					then "Root"
+					else "Head"
+				if part then
+					part.Text = "Target part: " .. toolsState.AimPart
+				end
+			end
+		)
+		engine.Color(window, "CircleColor", "FOV circle color")
+		engine.Button(
+			window,
+			"AimStrength100",
+			"Set strength to 100 (snap)",
+			function()
+				toolsState.Strength = 100
+				engine.NumberRefresh.Strength()
+			end
+		)
+		window.Body.CanvasSize = UDim2.fromOffset(0, window.Cursor)
+		engine.TouchPad = create("Frame", {
+			Name = "MobileAimPad",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromOffset(116, 104),
+			BackgroundColor3 = colors.Panel,
+			BorderSizePixel = 0,
+			Visible = false,
+		}, root)
+		corner(engine.TouchPad, 14)
+		local handle = create("Frame", {
+			Name = "AimPadDragHandle",
+			BackgroundTransparency = 1,
+			Active = true,
+			Size = UDim2.new(1, 0, 0, 44),
+		}, engine.TouchPad)
+		local caption = label(handle, "DRAG / AIM", 9, colors.Muted)
+		caption.Size = UDim2.fromScale(1, 1)
+		caption.TextXAlignment = Enum.TextXAlignment.Center
+		local hold = create("TextButton", {
+			Name = "HoldMobileAim",
+			Text = "HOLD AIM",
+			TextSize = 12,
+			Font = Enum.Font.GothamBold,
+			TextColor3 = colors.Panel,
+			BackgroundColor3 = CONFIG.Accent,
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, -16, 0, 48),
+			Position = UDim2.fromOffset(8, 48),
+		}, engine.TouchPad)
+		corner(hold, 10)
+		connect(hold.InputBegan, function(input: InputObject)
+			if
+				toolsState.Aim
+				and (
+					input.UserInputType == Enum.UserInputType.Touch
+					or input.UserInputType
+						== Enum.UserInputType.MouseButton1
+				)
+			then
+				engine.TouchInput = input
+			end
+		end)
+		draggable(handle, engine.TouchPad)
+		if studioBridge.RegisterUI then
+			studioBridge.RegisterUI()
+		end
+	end
+
+	engine.WindowSetters = {}
+	engine.WindowSetters.Visuals = toggleRow(
+		"Visuals window",
+		"Chams / boxes / tracer lines",
+		232,
+		false,
+		function(show)
+			if show then
+				engine.BuildVisuals()
+			end
+			if engine.Windows.Visuals then
+				engine.Windows.Visuals.Panel.Visible = show
+			end
+			layout()
+		end
+	)
+	engine.WindowSetters.Aim = toggleRow(
+		"Aim window",
+		"FOV / strength / touch hold",
+		290,
+		false,
+		function(show)
+			if show then
+				engine.BuildAim()
+			end
+			if engine.Windows.Aim then
+				engine.Windows.Aim.Panel.Visible = show
+			end
+			layout()
+		end
+	)
+	tools.CanvasSize = UDim2.fromOffset(0, 348)
+	local previousLayout = layoutExtras
+	layoutExtras = function()
+		if previousLayout then
+			previousLayout()
+		end
+		local viewport = root.AbsoluteSize
+		if viewport.X <= 0 or viewport.Y <= 0 then
+			return
+		end
+		for _, window in pairs(engine.Windows) do
+			local size = Vector2.new(
+				math.min(350, viewport.X - 24),
+				math.min(500, viewport.Y - 24)
+			)
+			window.Panel.Size = UDim2.fromOffset(size.X, size.Y)
+			local center =
+				clampCenter(extraCenters[window.Panel] or viewport / 2, size)
+			extraCenters[window.Panel] = center
+			window.Panel.Position = UDim2.fromOffset(center.X, center.Y)
+		end
+		if engine.TouchPad then
+			local center = clampCenter(
+				extraCenters[engine.TouchPad]
+					or Vector2.new(viewport.X - 72, viewport.Y - 110),
+				Vector2.new(116, 104)
+			)
+			extraCenters[engine.TouchPad] = center
+			engine.TouchPad.Position = UDim2.fromOffset(center.X, center.Y)
+		end
+		engine.Schedule()
+	end
+	for _, other in ipairs(Players:GetPlayers()) do
+		if other ~= player then
+			engine.Records[other] = { Player = other }
+		end
+	end
+	connect(Players.PlayerAdded, function(other: Player)
+		if other ~= player then
+			engine.Records[other] = { Player = other }
+		end
+	end)
+	connect(Players.PlayerRemoving, engine.Remove)
+	connect(
+		UserInputService.InputBegan,
+		function(input: InputObject, processed: boolean)
+			if processed or UserInputService:GetFocusedTextBox() then
+				return
+			end
+			if input.KeyCode == Enum.KeyCode.End then
+				engine.DisableAll()
+				return
+			end
+			if
+				input.UserInputType == Enum.UserInputType.MouseButton2
+				and toolsState.Aim
+			then
+				for _, object in
+					ipairs(
+						playerGui:GetGuiObjectsAtPosition(
+							input.Position.X,
+							input.Position.Y
+						)
+					)
+				do
+					if object:IsDescendantOf(gui) then
+						return
+					end
+				end
+				engine.MouseHeld = true
+			end
+		end
+	)
+	connect(UserInputService.InputEnded, function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.MouseButton2 then
+			engine.MouseHeld = false
+		end
+		if input == engine.TouchInput then
+			engine.TouchInput = nil
+		end
+	end)
+	connect(UserInputService.WindowFocusReleased, function()
+		engine.MouseHeld = false
+		engine.TouchInput = nil
+	end)
+	playerToolsBridge.HideWindows = function()
+		engine.DisableAll()
+		engine.WindowSetters.Visuals(false)
+		engine.WindowSetters.Aim(false)
+	end
+	playerToolsBridge.Style = function(values: { [string]: any })
+		for _, window in pairs(engine.Windows) do
+			window.Panel.BackgroundTransparency = 1 - values.PanelOpacity / 100
+		end
+		if engine.TouchPad then
+			engine.TouchPad.BackgroundTransparency = 1
+				- values.PanelOpacity / 100
+		end
+	end
+	playerToolsBridge.Destroy = function()
+		if engine.Bound then
+			RunService:UnbindFromRenderStep(engine.BindName)
+		end
+		for other in pairs(engine.Records) do
+			engine.Remove(other)
+		end
+		engine.ClearHighlights()
+		if engine.HighlightFolder then
+			engine.HighlightFolder:Destroy()
+		end
+		if engine.Overlay then
+			engine.Overlay:Destroy()
+		end
+		engine.MouseHeld = false
+		engine.TouchInput = nil
 	end
 end
 
@@ -5195,6 +6397,9 @@ end)
 
 connect(gui.Destroying, function()
 	alive = false
+	if playerToolsBridge.Destroy then
+		playerToolsBridge.Destroy()
+	end
 	if studioBridge.Destroy then
 		studioBridge.Destroy()
 	end
@@ -5212,11 +6417,154 @@ connect(gui.Destroying, function()
 	table.clear(activeTweens)
 end)
 
--- AbsoluteSize can be zero until Roblox's first layout pass. In that case,
--- the size-change listener above positions the panel once safe bounds exist.
--- Never wait for a render frame in a way that leaves stale tasks on reruns.
-if panelCenter then
-	local destination = UDim2.fromOffset(panelCenter.X, panelCenter.Y)
-	card.Position = destination + UDim2.fromOffset(0, 8)
-	tween(card, { Position = destination }, 0.3)
+-- Decorative startup reveal, not simulated asset/network progress.
+do
+	if CONFIG.StartupAnimation and not CONFIG.ReducedMotion then
+		card.Visible = false
+		mini.Visible = false
+		local intro = create("Frame", {
+			Name = "StartupWhirlpool",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = colors.Panel,
+			BackgroundTransparency = 0.03,
+			BorderSizePixel = 0,
+			ZIndex = 50,
+			Active = true,
+		}, root)
+		local center = create("Frame", {
+			Name = "WhirlpoolCenter",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(44, 44),
+			BackgroundColor3 = CONFIG.Accent,
+			BorderSizePixel = 0,
+		}, intro)
+		corner(center, 1000)
+		local ring = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+		}, intro)
+		corner(ring, 1000)
+		local ringStroke = create("UIStroke", {
+			Color = CONFIG.Accent,
+			Thickness = 1,
+			Transparency = 0.6,
+		}, ring)
+		local particles = {}
+		for index = 1, 24 do
+			local particle = create("Frame", {
+				Name = "WhirlpoolParticle" .. index,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Size = UDim2.fromOffset(4 + index % 3 * 2, 12 + index % 4 * 3),
+				BackgroundColor3 = CONFIG.Accent,
+				BorderSizePixel = 0,
+			}, intro)
+			corner(particle, 4)
+			table.insert(particles, particle)
+		end
+		local wordmark = label(intro, CONFIG.Name, 27, colors.Text)
+		wordmark.Font = Enum.Font.Code
+		wordmark.AnchorPoint = Vector2.new(0.5, 0.5)
+		wordmark.Position = UDim2.new(0.5, 0, 0.5, 110)
+		wordmark.Size = UDim2.fromOffset(240, 36)
+		wordmark.TextXAlignment = Enum.TextXAlignment.Center
+		local caption = label(intro, "Opening your workspace", 11, colors.Muted)
+		caption.Name = "StartupCaption"
+		caption.AnchorPoint = Vector2.new(0.5, 0.5)
+		caption.Position = UDim2.new(0.5, 0, 0.5, 144)
+		caption.Size = UDim2.fromOffset(280, 24)
+		caption.TextXAlignment = Enum.TextXAlignment.Center
+		local skip = create("TextButton", {
+			Name = "SkipStartup",
+			Text = "Skip animation  →",
+			Font = Enum.Font.GothamMedium,
+			TextSize = 12,
+			TextColor3 = colors.Muted,
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -16),
+			Size = UDim2.fromOffset(180, 44),
+		}, intro)
+		local elapsed, rotation = 0, 0
+		local finished = false
+		local animation: RBXScriptConnection? = nil
+		local function finish()
+			if finished or not alive then
+				return
+			end
+			finished = true
+			if animation then
+				animation:Disconnect()
+			end
+			intro:Destroy()
+			card.Visible = expanded
+			mini.Visible = true
+			layout()
+		end
+		connect(skip.Activated, finish)
+		animation = connect(RunService.RenderStepped, function(dt: number)
+			if finished or not alive then
+				return
+			end
+			if root.AbsoluteSize.Y > 0 and root.AbsoluteSize.Y < 420 then
+				wordmark.Position = UDim2.new(0.5, 0, 0, 30)
+				caption.Position = UDim2.new(0.5, 0, 0, 62)
+			else
+				wordmark.Position = UDim2.new(0.5, 0, 0.5, 110)
+				caption.Position = UDim2.new(0.5, 0, 0.5, 144)
+			end
+			rotation += math.min(dt, 0.1) * 6
+			if game:IsLoaded() then
+				elapsed += dt
+				caption.Text = "Opening your workspace"
+			else
+				caption.Text = "Waiting for the game / skip is available"
+			end
+			local pull = math.clamp(elapsed / 0.95, 0, 1)
+			local burst = math.clamp((elapsed - 0.95) / 0.4, 0, 1)
+			local diameter = if elapsed < 0.95
+				then 260 * (1 - pull) + 12
+				else 12 + burst * 360
+			ring.Size = UDim2.fromOffset(diameter, diameter)
+			ringStroke.Transparency = if elapsed < 0.95
+				then 0.6
+				else 0.6 + burst * 0.4
+			local core = if elapsed < 0.95
+				then 44 * (1 - pull) + 6
+				else 6 + burst * 100
+			center.Size = UDim2.fromOffset(core, core)
+			center.BackgroundTransparency = if elapsed < 0.95
+				then pull * 0.25
+				else 0.75 + burst * 0.25
+			wordmark.TextTransparency = math.max(pull - 0.6, 0) * 2.5
+			for index, particle in ipairs(particles) do
+				local angle = index * math.pi * 2 / 24 + rotation + pull * 4
+				local radius = if elapsed < 0.95
+					then (116 + index % 3 * 18) * (1 - pull) ^ 1.7
+					else burst * (130 + index % 4 * 18)
+				particle.Position = UDim2.new(
+					0.5,
+					math.cos(angle) * radius,
+					0.5,
+					math.sin(angle) * radius
+				)
+				particle.Rotation = math.deg(angle) + 90
+				particle.BackgroundTransparency = if elapsed < 0.95
+					then 0.15 + pull * 0.15
+					else burst
+			end
+			intro.BackgroundTransparency = if elapsed < 0.95
+				then 0.03
+				else 0.03 + burst * 0.97
+			if elapsed >= 1.35 then
+				finish()
+			end
+		end)
+	elseif panelCenter then
+		local destination = UDim2.fromOffset(panelCenter.X, panelCenter.Y)
+		card.Position = destination + UDim2.fromOffset(0, 8)
+		tween(card, { Position = destination }, 0.3)
+	end
 end

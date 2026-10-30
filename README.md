@@ -6,7 +6,7 @@ A standalone, mobile-friendly Roblox client workspace: layered charcoal surfaces
 
 ### External runtime / Delta
 
-Copy the **entire contents** of [`Nullx11.client.luau`](Nullx11.client.luau) into your runtime's script editor and execute it while joined to an experience. Tap **Load** to open the tools.
+Copy the **entire contents** of [`Nullx11.client.luau`](Nullx11.client.luau) into your runtime's script editor and execute it while joined to an experience. The opening whirlpool contracts, bursts outward, and reveals the launcher. Tap **Skip animation** to bypass it, then **Load** to open the tools.
 
 The client has no dependency on an executor's `script` global or custom GUI-parenting APIs. It uses `Players.LocalPlayer.PlayerGui`, normal Roblox input events, and standard character APIs. This is compatibility-oriented implementation, **not a claim of testing in Delta**. Runtime versions and individual games may behave differently. Use only where you have permission, such as your own experience.
 
@@ -22,6 +22,8 @@ No external executor or `loadstring` is needed in Studio. With Rojo, map the `.c
 
 | Control | Behavior |
 | --- | --- |
+| **Startup reveal** | A 24-particle whirlpool contracts into the center, then bursts to reveal the GUI. Skip is always available; reduced-motion defaults bypass it. |
+| **Visuals window / Aim window** | Separate draggable, scrollable settings panels under Tools. Effects are OFF until explicitly enabled. |
 | **Load** | Opens the built-in tools after the game is ready. Also initializes an optional Studio `App` module. |
 | **Open Design Studio** | From Style, open the lazy-built appearance editor with six categories and 46 preferences. |
 | **Resize grip ↘** | After Load, drag the dashboard’s bottom-right grip. Lock windows disables resizing. |
@@ -44,7 +46,7 @@ No external executor or `loadstring` is needed in Studio. With Rojo, map the `.c
 | **Small / Default / Large** | Set interface scale to 85%, 100%, or 110%, limited by available screen space. |
 | **Session** | Show active session time, your local player name, and bookmark count. |
 | **Recenter all windows** | Recover/reset positions without deleting bookmarks or changing preferences. |
-| **Hide floating utilities** | Hide teleport, FPS, and coordinate panels and synchronize their toggles. |
+| **Hide floating utilities** | Hide teleport, FPS, coordinate, Visuals, and Aim panels; disable player visuals, camera assist, and the FOV circle; synchronize toggles. |
 | **Clear all bookmarks** | Tap twice within three seconds to confirm deletion. |
 | **Dock / Right Shift** | Toggle the dashboard. The dock is always visible until the GUI is closed; dragging it does not activate it. Right Shift is ignored while typing or when Roblox already processed the input. |
 | **− on main panel** | Hide the dashboard. Enabled floating tools and the dock remain visible. |
@@ -57,6 +59,40 @@ No external executor or `loadstring` is needed in Studio. With Rojo, map the `.c
 - This uses **local `Model:PivotTo` movement**. It does not grant server permissions, change other players, switch servers, or bypass server validation. A game can reject or reset the movement. The message “local movement” means the local call completed, **not** that a server accepted it.
 - Saved spots are not checked for hazards or obstacles. Use safe destinations.
 - If this is a feature in your published experience, authorize and validate teleports on the server. Do not trust client-supplied positions for authoritative gameplay.
+
+## Player Visuals and Aim
+
+Open **Load → Tools → Visuals window** or **Aim window**. These are independent, lazy-built windows with draggable headers, hide buttons, scrollable controls, and responsive sizes up to 350 × 500. Opening a window does **not** enable its effects. The windows reuse their controls when reopened, and inherit applicable Design Studio styling even if created after Studio.
+
+### Visuals
+
+- Master enable; independently switch **player chams, bounding boxes, bottom-center tracer lines, display names, health bars, and camera distance**.
+- Team filtering and line-of-sight filtering start enabled. **Through walls** is an explicit visual-only option, not the default.
+- Choose Violet, Mint, Cyan, Red, or White; range **250–3,000 studs** (default 1,000); overlay refresh **15–60 Hz** (default 30). Numeric fields accept bounded whole numbers, with −/+ controls.
+- Works with other `Players` whose live character has a Humanoid and HumanoidRootPart. It does not identify NPCs, custom actor systems, or server-only objects.
+- At most **32 players are drawn simultaneously**, prioritized by camera distance. Up to **24 pooled Highlight instances** are reused; disabling chams or visuals frees those Highlight slots. The experience's own renderer limits can still affect visibility. Per-player 2D widgets are created when needed, reused, and destroyed when that player leaves.
+- Occlusion checks are capped at **48 rays per visual refresh**. On crowded, heavily occluded servers this can omit farther visible players rather than perform unbounded raycasts.
+
+### Aim / centered FOV
+
+- Enable **Show FOV circle** independently of camera assist. It stays centered on the current camera viewport, including after camera replacement/orientation changes. Radius **50–400 pixels** (default 140), with its own five-color selector; this does not change the camera's FieldOfView property.
+- Enable aim, then **hold right mouse** on desktop, or **HOLD AIM** on the touch pad. Release stops tracking. Drag the pad using its separate header; mobile-pad visibility is configurable.
+- **Strength accepts every whole number from 1 to 100**, by typing or −/+. Default 50 uses time-based smoothing; **100 snaps the local camera directly to the selected target**. A dedicated strength-100 button is included.
+- Choose Head or Root, team filtering, and a **250–3,000-stud** range. It picks the closest eligible target to the viewport center within the radius. Aim always requires line of sight, including when visual through-walls mode is enabled; at most eight candidate raycasts run per frame.
+- Typing, processed/own-window mouse presses, scripted cameras, and a missing/dead local avatar prevent tracking. Losing window focus clears the held input. Move or minimize panels to uncover the center circle before aiming.
+- This is **local camera steering only**: no auto-fire, weapon remotes, projectile redirection, hit registration changes, or server bypass. Games with custom rigs, cameras, or weapon aim rules may behave differently; “universal” is not a guarantee of compatibility with every experience.
+
+### Disable / cleanup / persistence
+
+Press **End** while not typing, or use **Disable visuals, aim, and circle** at the top of either window. This disables all three effects, removes Highlights, hides overlays, clears held input, and unbinds their camera-step callback. Hiding an individual settings window does not disable its effects. **Session → Hide floating utilities** also disables player tools and hides their settings. Closing the main GUI destroys the independent overlay screen, Highlight pool, and listeners. Re-execution replaces the previous instance.
+
+Player-tool options are **session-only**, separate from Design Studio's appearance profiles/JSON. They do not auto-enable or load previous targets on execution.
+
+## Startup animation
+
+The decorative reveal uses 24 precreated particles, approximately **0.95 seconds of inward spiral** followed by a **0.4-second outward burst**. If `game:IsLoaded()` is false, it honestly says it is waiting; no fake percentage or asset progress is shown. Skip remains available while waiting. Completing, skipping, rerunning, or closing disconnects the temporary animation callback. Short landscape screens move labels away from the bottom skip button.
+
+Set `CONFIG.StartupAnimation = false` to skip the decoration, or `CONFIG.ReducedMotion = true` to bypass it and disable other motion by default. The animation plays once per execution, not whenever a window is reopened. It is independent of the optional App initializer invoked by Load.
 
 ## Optional loadstring launcher
 
@@ -81,9 +117,9 @@ Remote code runs with the capabilities of your runtime. Review the source; ideal
 - Safe-area positioning, portrait/landscape resizing, touch/mouse dragging, edge clamping, and 44-pixel header controls before short-screen scaling.
 - Normal Roblox gamepad button selection/activation; dragging uses touch or mouse.
 - UI persists across respawns; rerunning replaces the prior GUI and disconnects its listeners.
-- The FPS meter and title share one render connection. No GUI instances are allocated each frame.
+- The FPS meter and title share one render connection and allocate no GUI instances per frame. Player effects use a separate after-camera callback only while needed, with lazily built, reusable widgets and bounded raycasts.
 - Animated pill switches include an ON/OFF text label, so state does not rely on color alone. Theme changes refresh switch accents as well.
-- No full-screen dimmer intercepts gameplay outside the windows.
+- After the skippable startup reveal, no full-screen dimmer intercepts gameplay outside the windows.
 
 ## Customize / reduced motion
 
@@ -95,6 +131,7 @@ local CONFIG = {
     Subtitle = "A quieter way to get started.",
     Accent = Color3.fromRGB(167, 146, 255),
     ReducedMotion = false,
+    StartupAnimation = true,
 }
 ```
 
@@ -166,14 +203,14 @@ npm run format:check
 npm test
 ```
 
-The checks compile both Luau files and exercise deterministic API mocks for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
+The checks compile both Luau files and exercise deterministic API mocks for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Player-tool tests cover separate/reused windows, team/visibility/death filters, bounding boxes/chams/tracers, editable numeric limits, FOV placement/color, smoothing versus strength-100 snap, hold/release and input guards, touch-pad input, camera replacement/loss, respawns, crowded-server ray/instance caps, emergency off, and teardown. Startup tests cover contraction/burst/reveal, actual readiness waiting, skip, short landscape positioning, reduced motion, rerun, and closing during animation. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
 
-These mocks do not emulate Roblox physics, rendering, real touch input, or Delta. Test in Studio's **Device Emulator**, your own game, and a real device. In particular, verify short-landscape layouts, drag-vs-tap behavior on the restore icon, respawns, closing while initialization yields, and whether your game's server accepts the intended movement.
+These mocks do not emulate Roblox physics, rendering, real touch input, or Delta. Test in Studio's **Device Emulator**, your own game, and a real device. In particular, verify the startup effect, chams and box alignment, FOV centering, camera/game compatibility, real touch hold/release, short-landscape layouts, drag-vs-tap behavior on the restore icon, respawns, closing while initialization yields, and whether your game's server accepts the intended movement.
 
 ## Small next-step ideas
 
-Keep extras opt-in: a compact changelog or real asset preloading for your own experience. Avoid cluttering the loader with unrelated gameplay controls.
+Keep extras opt-in: a compact changelog or real asset preloading for your own experience. Avoid adding duplicate controls or unrelated padding to meet a line count.
 
 ## Code size
 
-The standalone main script is **5,222 lines**, including the inline Design Studio, its declarative setting/preset catalogs, help UI, and consistent 80-column formatting. This meets the requested roughly 5,000-line main-script target with UI customization features rather than duplicate handlers or empty-line padding. No third-party GUI framework is bundled. Development-only formatter and test dependencies are not required by the executor.
+The standalone main script is **6,570 lines**, including the inline Design Studio, separate Visuals/Aim tools, startup reveal, and consistent 80-column formatting. **The requested 20,000-line target is not reached**: the implementation adds functional features rather than duplicate handlers or filler. No third-party GUI framework is bundled. Development-only formatter and test dependencies are not required by the executor.

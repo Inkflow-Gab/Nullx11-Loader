@@ -109,6 +109,8 @@ local os = {
 }
 local objects = {}
 local events = {
+	PlayerAdded = true,
+	PlayerRemoving = true,
 	Focused = true,
 	FocusLost = true,
 	RenderStepped = true,
@@ -148,6 +150,31 @@ function methods:IsA(name)
 	return self.ClassName == name
 		or (name == "BasePart" and self.ClassName == "Part")
 		or (name == "GuiObject" and guiClasses[self.ClassName] == true)
+end
+function methods:GetPlayers()
+	return self.PlayerList or { self.LocalPlayer }
+end
+function methods:GetGuiObjectsAtPosition()
+	return self.GuiHits or {}
+end
+function methods:IsDescendantOf(ancestor)
+	local current = self.Parent
+	while current do
+		if current == ancestor then
+			return true
+		end
+		current = current.Parent
+	end
+	return false
+end
+function methods:BindToRenderStep(name, priority, callback)
+	self.RenderBindings = self.RenderBindings or {}
+	self.RenderBindings[name] = callback
+end
+function methods:UnbindFromRenderStep(name)
+	if self.RenderBindings then
+		self.RenderBindings[name] = nil
+	end
 end
 function methods:GetChildren()
 	local children = {}
@@ -207,6 +234,7 @@ function methods:Destroy()
 			o:Destroy()
 		end
 	end
+	self.Parent = nil
 end
 local Instance = {
 	new = function(class)
@@ -291,9 +319,13 @@ local httpService = {
 		return assert(jsonDocuments[value], "Invalid JSON in mock codec")
 	end,
 }
+local playersService = Instance.new("Players")
+playersService.LocalPlayer = player
+local workspaceService = Instance.new("Workspace")
 local services = {
+	Workspace = workspaceService,
 	HttpService = httpService,
-	Players = { LocalPlayer = player },
+	Players = playersService,
 	TweenService = tweenService,
 	UserInputService = inputService,
 	RunService = runService,
@@ -338,4 +370,7 @@ end
 local function advance(dt)
 	clock += dt
 	runService.RenderStepped:Fire(dt)
+	for _, callback in pairs(runService.RenderBindings or {}) do
+		callback(dt)
+	end
 end
