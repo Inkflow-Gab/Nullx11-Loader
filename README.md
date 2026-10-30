@@ -100,6 +100,12 @@ The decorative reveal uses **48 precreated particles, three rotating elliptical 
 
 Set `CONFIG.StartupAnimation = false` to skip the decoration, or `CONFIG.ReducedMotion = true` to bypass it and disable other motion by default. The animation plays once per execution, not whenever a window is reopened. It is independent of the optional App initializer invoked by Load.
 
+## Game-script integration work in progress
+
+Scripts now opens through an ordinary **Open Scripts library** button with an original folder asset, not an ON/OFF switch. Reviewed entries can specify `GamePlaceId` and `Author` to open a separate game detail window: wrong-place prompt, explicit Teleport, explicit Execute, and an opt-in execute-on-arrival checkbox. Direct execution is place-gated; the queued payload loads **only the selected game file**, never the main loader. Queue capabilities/failures and potentially stale runtime queues are reported rather than simulated. See the [game-entry schema and caveats](scripts/README.md#game-specific-launch-windows).
+
+**The Rosu Mania, Huss Valley, and +1 Loot to Forge ports are not complete.** The two non-GitHub source hosts are inaccessible here, and Huss Valley declares no repository license while crediting its original authors. No third-party GUI/code has been copied or its authorship replaced. The executable manifest remains empty until reviewed implementations can be published. See [integration status and required inputs](scripts/INTEGRATION-STATUS.md).
+
 ## Scripts library / future scripts
 
 **Load → Tools → Scripts window** reads [`scripts/manifest.json`](scripts/manifest.json) only when you press **Refresh from GitHub**. The repository currently publishes an **empty** list—there are no pretend working entries. It supports plain-text search, optional place-ID filtering, and source-path display.
@@ -237,4 +243,4 @@ Keep extras opt-in: a compact changelog or real asset preloading for your own ex
 
 ## Code size
 
-The standalone main script is **7,503 lines**, including the inline Design Studio, separate Visuals/Aim/Scripts windows, portal transport, gravity-well reveal, and consistent 80-column formatting. **The requested 20,000-line target is not reached**: the implementation adds functional features rather than duplicate handlers or filler. No third-party GUI framework is bundled. Development-only formatter and test dependencies are not required by the executor.
+The standalone main script is **7,815 lines**, including the inline Design Studio, separate Visuals/Aim/Scripts windows, portal transport, gravity-well reveal, and consistent 80-column formatting. **The requested 20,000-line target is not reached**: the implementation adds functional features rather than duplicate handlers or filler. No third-party GUI framework is bundled. Development-only formatter and test dependencies are not required by the executor.

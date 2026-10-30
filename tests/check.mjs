@@ -50,6 +50,14 @@ try {
     'polish-smoke', true,
   );
   console.log(...await polishChecks());
+  const gameChecks = state.loadstring(
+    read('tests/roblox-mock.luau') + '\nlocal loadstring, queue_on_teleport\nlocal function runLoader()\n' + logicSource
+      + '\nend\n' + read('tests/game-launcher.luau'),
+    'game-launcher-smoke', true,
+  );
+  const gameResults = await gameChecks();
+  state.loadstring(gameResults[1], 'generated-game-teleport-payload', true);
+  console.log(gameResults[0]);
   const introChecks = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + source
       + '\nend\nlocal function runReducedLoader()\n'

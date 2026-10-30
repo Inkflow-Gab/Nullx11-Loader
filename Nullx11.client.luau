@@ -6502,7 +6502,12 @@ do
 			"EnterAimView",
 			"Play view / fold panels into dock",
 			function()
-				for _, name in ipairs({ "Aim", "Visuals", "Scripts" }) do
+				for _, name in ipairs({
+					"Aim",
+					"Visuals",
+					"Scripts",
+					"GameScript",
+				}) do
 					engine.WindowSetters[name](false)
 				end
 				setExpanded(false)
@@ -6651,6 +6656,9 @@ do
 		{ Entries = {}, Loaded = false, Busy = false, Rows = {}, Confirm = nil }
 	catalog.RowConnections = {}
 	function catalog.Message(message: string, failed: boolean?)
+		if catalog.GameWindow and catalog.GameWindow.Panel.Visible then
+			engine.Status("GameScript", message)
+		end
 		engine.Status("Scripts", message)
 		if catalog.Window then
 			catalog.Window.Status.TextColor3 = if failed
@@ -6698,6 +6706,21 @@ do
 					and #entry.Description <= 240,
 				"Invalid description"
 			)
+			if entry.GamePlaceId ~= nil then
+				assert(
+					type(entry.GamePlaceId) == "number"
+						and entry.GamePlaceId > 0
+						and entry.GamePlaceId <= 9007199254740991
+						and entry.GamePlaceId % 1 == 0,
+					"Invalid game place ID"
+				)
+			end
+			if entry.Author ~= nil then
+				assert(
+					type(entry.Author) == "string" and #entry.Author <= 160,
+					"Invalid source credit"
+				)
+			end
 			local file = entry.File
 			assert(
 				type(file) == "string"
@@ -6737,13 +6760,256 @@ do
 				Name = entry.Name,
 				Description = entry.Description,
 				File = file,
+				GamePlaceId = entry.GamePlaceId,
+				Author = entry.Author,
 				PlaceIds = places,
 			})
 		end
 		return clean
 	end
+	function catalog.QueueFunction(): any
+		if type(queue_on_teleport) == "function" then
+			return queue_on_teleport
+		end
+		if type(queueonteleport) == "function" then
+			return queueonteleport
+		end
+		if
+			type(syn) == "table"
+			and type(syn.queue_on_teleport) == "function"
+		then
+			return syn.queue_on_teleport
+		end
+		return nil
+	end
+	function catalog.GameMessage(message: string)
+		engine.Status("GameScript", message)
+		engine.Status("Scripts", message)
+	end
+	function catalog.TeleportSelected()
+		local entry = catalog.Selected
+		if not entry or not entry.GamePlaceId or catalog.Teleporting then
+			return
+		end
+		if game.PlaceId == entry.GamePlaceId then
+			catalog.GameMessage(
+				"Already in the target game. Use Execute game script."
+			)
+			return
+		end
+		if
+			not catalog.ExecuteOnArrival
+			and catalog.Queued
+			and catalog.Queued[entry.Id]
+		then
+			catalog.GameMessage(
+				"Earlier code may remain queued. Clear your runtime queue before requesting teleport-only."
+			)
+			return
+		end
+		local queued = false
+		if catalog.ExecuteOnArrival then
+			local enqueue = catalog.QueueFunction()
+			if not enqueue then
+				catalog.GameMessage(
+					"This runtime cannot queue a game script. Turn off execute-on-arrival to teleport only."
+				)
+				return
+			end
+			if type(loadstring) ~= "function" then
+				catalog.GameMessage(
+					"Client loadstring unavailable; automatic execution cannot be queued."
+				)
+				return
+			end
+			catalog.Queued = catalog.Queued or {}
+			if not catalog.Queued[entry.Id] then
+				-- Only this game file is queued. Never the main loader or another game.
+				local payload = string.format(
+					[[local ok,reason=pcall(function()
+if not game:IsLoaded() then game.Loaded:Wait() end
+if game.PlaceId~=%d then warn("[Nullx11] Queued game script skipped: wrong place") return end
+local run,compileError=loadstring(game:HttpGet(%q,true),%q)
+assert(run,compileError or "Game script compilation failed")
+run()
+end)
+if not ok then warn("[Nullx11 game script] "..tostring(reason)) end]],
+					entry.GamePlaceId,
+					CONFIG.ScriptBaseURL .. entry.File,
+					"Nullx11Game/" .. entry.File
+				)
+				local ok, reason = pcall(enqueue, payload)
+				if not ok then
+					catalog.GameMessage(
+						"Queue failed; no teleport requested: "
+							.. string.sub(tostring(reason), 1, 90)
+					)
+					return
+				end
+				catalog.Queued[entry.Id] = true
+			end
+			queued = true
+		end
+		local ok, reason = pcall(function()
+			local service = game:GetService("TeleportService")
+			if not catalog.TeleportFailure then
+				catalog.TeleportFailure = connect(
+					service.TeleportInitFailed,
+					function(who, result, message, placeId)
+						if
+							not alive
+							or who ~= player
+							or placeId ~= catalog.TeleportTarget
+						then
+							return
+						end
+						catalog.Teleporting = false
+						catalog.GameMessage(
+							"Teleport failed: "
+								.. string.sub(tostring(message), 1, 65)
+								.. (
+									if catalog.QueuePending
+										then " / queued code may remain until next teleport."
+										else ""
+								)
+						)
+					end
+				)
+			end
+			catalog.TeleportTarget = entry.GamePlaceId
+			catalog.QueuePending = queued
+			catalog.Teleporting = true
+			service:Teleport(entry.GamePlaceId, player)
+		end)
+		if not ok then
+			catalog.Teleporting = false
+			catalog.GameMessage(
+				"Teleport failed: "
+					.. string.sub(tostring(reason), 1, 70)
+					.. (if queued then " / queued code may remain." else "")
+			)
+		else
+			catalog.GameMessage(
+				if queued
+					then "Teleport requested / only the selected game script is queued."
+					else "Teleport requested / no code queued. Execute manually after joining."
+			)
+		end
+	end
+	function catalog.OpenGame(entry: any)
+		if catalog.Busy then
+			return
+		end
+		if catalog.Teleporting then
+			catalog.GameMessage("A teleport is already pending.")
+			return
+		end
+		catalog.Selected = entry
+		catalog.ExecuteOnArrival = false
+		catalog.Confirm = nil
+		if not engine.Windows.GameScript then
+			local window = engine.Window("GameScript")
+			catalog.GameWindow = window
+			local function detail(
+				name: string,
+				height: number,
+				size: number,
+				color: Color3
+			)
+				local text = label(window.Body, "", size, color)
+				text.Name = name
+				text.Position = UDim2.fromOffset(4, window.Cursor)
+				text.Size = UDim2.new(1, -12, 0, height)
+				text.TextWrapped = true
+				window.Cursor += height + 12
+				return text
+			end
+			catalog.GameTitle = detail("GameScriptTitle", 52, 21, colors.Text)
+			catalog.GameDetails =
+				detail("GameScriptDetails", 100, 14, colors.Muted)
+			catalog.GameCredit =
+				detail("GameScriptCredit", 50, 14, colors.Muted)
+			catalog.Arrival = engine.Button(
+				window,
+				"GameExecuteOnArrival",
+				"Execute game script after joining: OFF",
+				function()
+					if not catalog.QueueFunction() then
+						catalog.GameMessage(
+							"Queue-on-teleport unavailable. Teleport only, then execute manually."
+						)
+						return
+					end
+					catalog.ExecuteOnArrival = not catalog.ExecuteOnArrival
+					catalog.Arrival.Text = "Execute game script after joining: "
+						.. (if catalog.ExecuteOnArrival then "ON" else "OFF")
+					catalog.GameMessage(
+						"Only the selected game file is queued. A failed teleport may leave it queued; this UI cannot cancel it."
+					)
+				end
+			)
+			engine.Button(
+				window,
+				"GameTeleport",
+				"Teleport to game",
+				catalog.TeleportSelected
+			)
+			catalog.ExecuteButton = engine.Button(
+				window,
+				"GameExecute",
+				"Execute game script",
+				function()
+					local selected = catalog.Selected
+					if not selected then
+						return
+					end
+					if game.PlaceId ~= selected.GamePlaceId then
+						catalog.GameMessage(
+							"Wrong game. Teleport to the target before executing."
+						)
+						return
+					end
+					catalog.Run(selected, catalog.ExecuteButton)
+				end
+			)
+			window.Body.CanvasSize = UDim2.fromOffset(0, window.Cursor)
+			if studioBridge.RegisterUI then
+				studioBridge.RegisterUI()
+			end
+		end
+		catalog.GameTitle.Text = entry.Name
+		catalog.GameDetails.Text = entry.Description
+			.. "\n\n"
+			.. (if game.PlaceId == entry.GamePlaceId
+				then "Target game detected. Execution still requires confirmation."
+				else "You are not in this game. Would you like to teleport?")
+			.. "\nTarget place: "
+			.. tostring(entry.GamePlaceId)
+		catalog.GameCredit.Text = "Source credits: "
+			.. (
+				entry.Author
+				or "See the reviewed script source; original attribution must be retained."
+			)
+		catalog.Arrival.Text = "Execute game script after joining: OFF"
+		catalog.ExecuteButton.Text = "Execute game script"
+		catalog.GameMessage(
+			"Teleport and Execute are separate actions. Automatic execution is opt-in."
+		)
+		layout()
+		portal.Play(catalog.GameWindow.Panel, true)
+	end
+	engine.WindowSetters.GameScript = function(show: boolean)
+		if catalog.GameWindow then
+			layout()
+			portal.Play(catalog.GameWindow.Panel, show)
+		end
+	end
 	function catalog.Run(entry: any, button: TextButton)
 		if catalog.Busy then
+			return
+		end
+		if entry.GamePlaceId and game.PlaceId ~= entry.GamePlaceId then
+			catalog.OpenGame(entry)
 			return
 		end
 		if
@@ -6751,7 +7017,8 @@ do
 			or catalog.Confirm.Id ~= entry.Id
 			or os.clock() > catalog.Confirm.Deadline
 		then
-			catalog.Confirm = { Id = entry.Id, Deadline = os.clock() + 5 }
+			local confirmation = { Id = entry.Id, Deadline = os.clock() + 5 }
+			catalog.Confirm = confirmation
 			button.Text = "Confirm run / " .. entry.Name
 			catalog.Message(
 				"Runs remote code from scripts/"
@@ -6759,8 +7026,16 @@ do
 					.. ". Tap again within 5s only if trusted."
 			)
 			task.delay(5, function()
-				if alive and button.Parent then
-					button.Text = "Run / " .. entry.Name
+				if
+					alive
+					and button.Parent
+					and catalog.Confirm == confirmation
+					and os.clock() >= confirmation.Deadline
+				then
+					catalog.Confirm = nil
+					button.Text = if entry.GamePlaceId
+						then "Execute game script"
+						else "Run / " .. entry.Name
 				end
 			end)
 			return
@@ -6799,7 +7074,9 @@ do
 			if not alive or not button.Parent then
 				return
 			end
-			button.Text = "Run / " .. entry.Name
+			button.Text = if entry.GamePlaceId
+				then "Execute game script"
+				else "Run / " .. entry.Name
 			if ok then
 				catalog.Message(
 					"Client call returned: "
@@ -6836,7 +7113,8 @@ do
 		local cursor = 116
 		local count = 0
 		for _, entry in ipairs(catalog.Entries) do
-			local matchesPlace = #entry.PlaceIds == 0
+			local matchesPlace = entry.GamePlaceId ~= nil
+				or #entry.PlaceIds == 0
 			for _, id in ipairs(entry.PlaceIds) do
 				if id == game.PlaceId then
 					matchesPlace = true
@@ -6883,7 +7161,9 @@ do
 			path.TextTruncate = Enum.TextTruncate.AtEnd
 			local run = create("TextButton", {
 				Name = "RunScript_" .. entry.Id,
-				Text = "Run / " .. entry.Name,
+				Text = if entry.GamePlaceId
+					then "Open game window"
+					else "Run / " .. entry.Name,
 				TextSize = 15,
 				Font = Enum.Font.GothamMedium,
 				TextColor3 = colors.Panel,
@@ -6896,7 +7176,11 @@ do
 			table.insert(
 				catalog.RowConnections,
 				run.Activated:Connect(function()
-					catalog.Run(entry, run)
+					if entry.GamePlaceId then
+						catalog.OpenGame(entry)
+					else
+						catalog.Run(entry, run)
+					end
 				end)
 			)
 			cursor += 166
@@ -7001,21 +7285,48 @@ do
 			"No network request yet. Refresh to read the GitHub library."
 		)
 	end
-	engine.WindowSetters.Scripts = toggleRow(
-		"Scripts window",
-		"GitHub library / reviewed scripts",
-		348,
-		false,
-		function(show)
-			if show then
-				engine.BuildScripts()
-			end
-			layout()
-			if engine.Windows.Scripts then
-				portal.Play(engine.Windows.Scripts.Panel, show)
-			end
+	-- Navigation is an action, not an ON/OFF feature switch.
+	engine.WindowSetters.Scripts = function(show: boolean)
+		if show then
+			engine.BuildScripts()
 		end
-	)
+		layout()
+		if engine.Windows.Scripts then
+			portal.Play(engine.Windows.Scripts.Panel, show)
+		end
+	end
+	local scriptsButton = create("TextButton", {
+		Name = "Scripts window",
+		Text = "Open Scripts library",
+		TextSize = 16,
+		Font = Enum.Font.GothamMedium,
+		TextColor3 = colors.Text,
+		BackgroundColor3 = colors.Surface,
+		BorderSizePixel = 0,
+		AutoButtonColor = false,
+		Position = UDim2.fromOffset(0, 348),
+		Size = UDim2.new(1, 0, 0, 50),
+	}, tools)
+	corner(scriptsButton, 10)
+	-- Original folder mark built from UI primitives; no emoji or copied asset.
+	local folder = create("Frame", {
+		Name = "ScriptsFolderAsset",
+		BackgroundColor3 = CONFIG.Accent,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(14, 20),
+		Size = UDim2.fromOffset(22, 16),
+	}, scriptsButton)
+	corner(folder, 3)
+	create("Frame", {
+		Name = "FolderTab",
+		BackgroundColor3 = CONFIG.Accent,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(1, -5),
+		Size = UDim2.fromOffset(10, 7),
+	}, folder)
+	connect(scriptsButton.Activated, function()
+		engine.WindowSetters.Scripts(true)
+	end)
 
 	tools.CanvasSize = UDim2.fromOffset(0, 406)
 	local previousLayout = layoutExtras
@@ -7112,6 +7423,7 @@ do
 		engine.WindowSetters.Visuals(false)
 		engine.WindowSetters.Aim(false)
 		engine.WindowSetters.Scripts(false)
+		engine.WindowSetters.GameScript(false)
 	end
 	playerToolsBridge.Style = function(values: { [string]: any })
 		for _, window in pairs(engine.Windows) do
