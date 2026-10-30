@@ -10,12 +10,12 @@ assert(
 local initial = find("WhirlpoolCenter").Size.X
 advance(0.4)
 assert(find("WhirlpoolCenter").Size.X < initial, "whirlpool contracts")
-advance(0.7)
+advance(1.1)
 assert(
 	not intro.Destroyed and intro.BackgroundTransparency > 0.03,
 	"burst/reveal phase"
 )
-advance(0.4)
+advance(0.7)
 assert(
 	intro.Destroyed and find("Panel").Visible and find("RestoreNullx11").Visible,
 	"burst reveals GUI"

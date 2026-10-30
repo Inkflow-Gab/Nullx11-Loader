@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node tests/check.mjs",
-    "format": "stylua Nullx11.client.luau bootstrap.luau tests",
-    "format:check": "stylua --check Nullx11.client.luau bootstrap.luau tests"
+    "format": "stylua Nullx11.client.luau bootstrap.luau tests diagnostics",
+    "format:check": "stylua --check Nullx11.client.luau bootstrap.luau tests diagnostics"
   },
   "devDependencies": {
     "@johnnymorganz/stylua-bin": "2.6.0",

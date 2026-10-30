@@ -339,6 +339,9 @@ local game = {
 	end,
 }
 local task = {
+	spawn = function(fn)
+		fn()
+	end,
 	delay = function(t, fn)
 		fn()
 	end,

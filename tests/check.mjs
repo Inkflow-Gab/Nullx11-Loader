@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { LuauState } from 'luau-web';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -10,6 +11,19 @@ try {
   state.loadstring(read('bootstrap.luau'), 'bootstrap.luau', true);
   console.log('PASS: client and bootstrap Luau compilation');
   console.log(`Main client: ${source.trimEnd().split('\n').length} lines`);
+  state.loadstring(read('diagnostics/RobloxRuntimeCheck.client.luau'), 'native-runtime-diagnostic', true);
+  const manifest = JSON.parse(read('scripts/manifest.json'));
+  assert.equal(manifest.Version, 1);
+  assert.ok(Array.isArray(manifest.Scripts) && manifest.Scripts.length <= 64);
+  const ids = new Set();
+  for (const entry of manifest.Scripts) {
+    assert.ok(typeof entry.Id === 'string' && entry.Id.length > 0 && !ids.has(entry.Id));
+    ids.add(entry.Id);
+    assert.ok(typeof entry.File === 'string' && /^[\w/.-]+\.luau$/.test(entry.File)
+      && !entry.File.startsWith('/') && !entry.File.includes('..'));
+    state.loadstring(read(`scripts/${entry.File}`), `library/${entry.File}`, true);
+  }
+  console.log('PASS: repository manifest JSON and published-script compilation; native Roblox diagnostic compiles (not executed here)');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),
@@ -29,6 +43,13 @@ try {
     'player-tools-smoke', true,
   );
   console.log(...await playerChecks());
+  const polishChecks = state.loadstring(
+    read('tests/roblox-mock.luau') + '\n' + read('tests/player-tools-mock.luau')
+      + '\nlocal loadstring\nlocal function runLoader()\n' + logicSource
+      + '\nend\n' + read('tests/polish.luau'),
+    'polish-smoke', true,
+  );
+  console.log(...await polishChecks());
   const introChecks = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + source
       + '\nend\nlocal function runReducedLoader()\n'

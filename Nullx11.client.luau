@@ -13,6 +13,7 @@ local CONFIG = {
 	Accent = Color3.fromRGB(167, 146, 255),
 	ReducedMotion = false,
 	StartupAnimation = true,
+	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/",
 }
 
 -- External runtimes may not provide the LocalScript instance.
@@ -26,11 +27,11 @@ if previous then
 end
 
 local colors = {
-	Panel = Color3.fromRGB(20, 21, 27),
-	Surface = Color3.fromRGB(29, 30, 39),
-	Border = Color3.fromRGB(54, 55, 68),
+	Panel = Color3.fromRGB(12, 16, 28),
+	Surface = Color3.fromRGB(23, 29, 46),
+	Border = Color3.fromRGB(60, 75, 104),
 	Text = Color3.fromRGB(242, 241, 249),
-	Muted = Color3.fromRGB(151, 151, 170),
+	Muted = Color3.fromRGB(178, 190, 211),
 	Error = Color3.fromRGB(255, 151, 160),
 	Success = Color3.fromRGB(143, 221, 182),
 }
@@ -77,6 +78,9 @@ local function create(
 	properties: { [string]: any },
 	parent: Instance?
 ): any
+	if properties.TextSize then
+		properties.TextSize = math.max(14, properties.TextSize)
+	end
 	local object = Instance.new(className)
 	for key, value in pairs(properties) do
 		(object :: any)[key] = value
@@ -92,7 +96,8 @@ end
 local function tween(
 	object: Instance,
 	properties: { [string]: any },
-	duration: number?
+	duration: number?,
+	easing: Enum.EasingStyle?
 )
 	if not alive then
 		return
@@ -115,7 +120,7 @@ local function tween(
 			if CONFIG.ReducedMotion
 				then 0
 				else (duration or 0.18) * appearance.Duration,
-			appearance.Easing,
+			easing or appearance.Easing,
 			Enum.EasingDirection.Out
 		),
 		properties
@@ -239,7 +244,7 @@ local function drawIcon(
 	return icon
 end
 drawIcon(mark, colors.Panel, UDim2.fromOffset(3, 3), 24)
-local title = label(header, CONFIG.Name, 19, colors.Text)
+local title = label(header, CONFIG.Name, 21, colors.Text)
 title.Name = "Title"
 title.Font = Enum.Font.Code
 title.Position = UDim2.fromOffset(65, 26)
@@ -361,11 +366,13 @@ create(
 	{ Color = ColorSequence.new(colors.Surface, colors.Panel), Rotation = 110 },
 	mini
 )
-drawIcon(mini, CONFIG.Accent, UDim2.fromOffset(15, 12), 30)
+drawIcon(mini, Color3.fromRGB(150, 238, 226), UDim2.fromOffset(15, 12), 30)
 local dockCaption = label(mini, "11 /", 8, colors.Muted)
+dockCaption.Name = "DockCaption"
+dockCaption.TextSize = 14
 dockCaption.Font = Enum.Font.Code
 dockCaption.Position = UDim2.fromOffset(0, 43)
-dockCaption.Size = UDim2.new(1, 0, 0, 12)
+dockCaption.Size = UDim2.new(1, 0, 0, 16)
 dockCaption.TextXAlignment = Enum.TextXAlignment.Center
 local dockDot = create("Frame", {
 	Name = "DockStatus",
@@ -376,6 +383,160 @@ local dockDot = create("Frame", {
 }, mini)
 corner(dockDot, 4)
 create("UIStroke", { Color = CONFIG.Accent, Transparency = 0.45 }, mini)
+
+-- Real TweenService window transport. One cancellable token per window.
+local portal: { [string]: any } = { Jobs = {} }
+do
+	local halo = create("Frame", {
+		Name = "DockPortalHalo",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(54, 54),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+	}, mini)
+	corner(halo, 100)
+	local haloStroke = create("UIStroke", {
+		Color = Color3.fromRGB(115, 235, 224),
+		Thickness = 1.5,
+		Transparency = 0.65,
+	}, halo)
+	local rim = create("Frame", {
+		Name = "DockCrystalRim",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.77, 0.77),
+		BackgroundTransparency = 1,
+		Rotation = 45,
+		BorderSizePixel = 0,
+	}, mini)
+	corner(rim, 12)
+	create(
+		"UIStroke",
+		{ Color = CONFIG.Accent, Transparency = 0.65, Thickness = 1 },
+		rim
+	)
+	for index = 1, 4 do
+		local tick = create("Frame", {
+			Name = "DockRune" .. index,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(
+				if index % 2 == 0 then 0.87 else 0.13,
+				if index <= 2 then 0.17 else 0.83
+			),
+			Size = UDim2.fromOffset(3, 3),
+			Rotation = 45,
+			BackgroundColor3 = Color3.fromRGB(115, 235, 224),
+			BorderSizePixel = 0,
+		}, mini)
+		corner(tick, 1)
+	end
+	function portal.CancelTweens(target: GuiObject)
+		for _, object in ipairs({
+			target,
+			target:FindFirstChildOfClass("UIScale"),
+		}) do
+			for property, animation in pairs(activeTweens[object] or {}) do
+				if
+					property == "Position"
+					or property == "Rotation"
+					or property == "Scale"
+				then
+					animation:Cancel()
+				end
+			end
+		end
+	end
+	function portal.Play(target: GuiObject, show: boolean, done: (() -> ())?)
+		local previousJob = portal.Jobs[target]
+		if not previousJob and target.Visible == show then
+			if done then
+				done()
+			end
+			return
+		end
+		local scale = target:FindFirstChildOfClass("UIScale")
+			or create("UIScale", { Name = "PortalScale", Scale = 1 }, target)
+		local pose = if previousJob
+			then previousJob.Pose
+			else {
+				Position = target.Position,
+				Scale = scale.Scale,
+				Rotation = target.Rotation or 0,
+			}
+		local job = { Pose = pose, Show = show, Done = done }
+		portal.Jobs[target] = job
+		local function finish()
+			if not alive or portal.Jobs[target] ~= job then
+				return
+			end
+			portal.Jobs[target] = nil
+			portal.CancelTweens(target)
+			target.Visible = show
+			target.Position = pose.Position
+			target.Rotation = pose.Rotation
+			scale.Scale = pose.Scale
+			if done then
+				done()
+			end
+		end
+		if CONFIG.ReducedMotion then
+			finish()
+			return
+		end
+		target.Visible = true
+		if show and not previousJob then
+			target.Position = mini.Position
+			target.Rotation = -16
+			scale.Scale = pose.Scale * 0.08
+		end
+		local duration = 0.42
+		tween(
+			target,
+			{
+				Position = if show then pose.Position else mini.Position,
+				Rotation = if show then pose.Rotation else 18,
+			},
+			duration,
+			if show then Enum.EasingStyle.Back else Enum.EasingStyle.Quint
+		)
+		tween(
+			scale,
+			{ Scale = pose.Scale * (if show then 1 else 0.06) },
+			duration,
+			if show then Enum.EasingStyle.Back else Enum.EasingStyle.Quint
+		)
+		halo.Size =
+			UDim2.fromOffset(if show then 42 else 92, if show then 42 else 92)
+		haloStroke.Transparency = 0.12
+		tween(halo, {
+			Size = UDim2.fromOffset(
+				if show then 92 else 42,
+				if show then 92 else 42
+			),
+		}, duration)
+		tween(haloStroke, { Transparency = 0.9 }, duration)
+		mini.Rotation = if show then -5 else 5
+		tween(mini, { Rotation = 0 }, duration)
+		task.delay(duration * appearance.Duration, finish)
+	end
+	function portal.Settle()
+		for target, job in pairs(portal.Jobs) do
+			portal.Jobs[target] = nil
+			portal.CancelTweens(target)
+			target.Visible = job.Show
+			target.Position = job.Pose.Position
+			target.Rotation = job.Pose.Rotation
+			local scale = target:FindFirstChildOfClass("UIScale")
+			if scale then
+				scale.Scale = job.Pose.Scale
+			end
+			if job.Done then
+				job.Done()
+			end
+		end
+	end
+end
 
 local expanded = true
 local transitioning = false
@@ -421,7 +582,7 @@ local function layout()
 	end
 	for _, target in ipairs({ card, mini }) do
 		local animations = activeTweens[target]
-		if animations and animations.Position then
+		if animations and animations.Position and not portal.Jobs[target] then
 			animations.Position:Cancel()
 		end
 	end
@@ -433,7 +594,9 @@ local function layout()
 		else 360
 	local scale =
 		math.min(interfaceScale, math.max(0.1, (viewport.Y - 24) / height))
-	responsiveScale.Scale = scale
+	if not portal.Jobs[card] then
+		responsiveScale.Scale = scale
+	end
 	local width =
 		math.min(appearance.Width, math.max(1, (viewport.X - 24) / scale))
 	card.Size = UDim2.fromOffset(width, height)
@@ -449,7 +612,9 @@ local function layout()
 			),
 		mini.AbsoluteSize
 	)
-	card.Position = UDim2.fromOffset(panelCenter.X, panelCenter.Y)
+	if not portal.Jobs[card] then
+		card.Position = UDim2.fromOffset(panelCenter.X, panelCenter.Y)
+	end
 	mini.Position = UDim2.fromOffset(miniCenter.X, miniCenter.Y)
 	if snapDockToEdge then
 		snapDock(false)
@@ -458,7 +623,12 @@ local function layout()
 		layoutExtras()
 	end
 end
-connect(root:GetPropertyChangedSignal("AbsoluteSize"), layout)
+connect(root:GetPropertyChangedSignal("AbsoluteSize"), function()
+	portal.Settle()
+	if alive then
+		layout()
+	end
+end)
 layout()
 
 -- One input path for touch and mouse; no per-frame polling or mouse-only dragging.
@@ -473,7 +643,12 @@ local drag: {
 local suppressRestoreUntil = 0
 local function draggable(handle: GuiObject, target: GuiObject)
 	connect(handle.InputBegan, function(input: InputObject)
-		if drag or transitioning or (windowsPinned and target ~= mini) then
+		if
+			drag
+			or portal.Jobs[target]
+			or transitioning
+			or (windowsPinned and target ~= mini)
+		then
 			return
 		end
 		if
@@ -551,28 +726,20 @@ connect(UserInputService.WindowFocusReleased, function()
 end)
 
 local function setExpanded(value: boolean)
-	if transitioning or value == expanded then
+	if value == expanded then
 		return
 	end
 	transitioning = true
 	drag = nil
 	expanded = value
-	-- A short, subtle settle animation; panel position survives minimizing.
-	card.Visible = value
 	mini.Visible = true
 	dockDot.BackgroundColor3 = if value then colors.Success else CONFIG.Accent
 	layout()
-	if value then
-		local destination = card.Position
-		card.Position = destination + UDim2.fromOffset(0, 8)
-		tween(card, { Position = destination }, 0.24)
-	else
-		tween(mini, { BackgroundColor3 = colors.Surface }, 0.15)
-	end
-	task.delay(if CONFIG.ReducedMotion then 0 else 0.25, function()
+	portal.Play(card, value, function()
 		transitioning = false
 	end)
 end
+
 connect(minimize.Activated, function()
 	setExpanded(false)
 end)
@@ -582,7 +749,30 @@ connect(mini.Activated, function()
 	end
 end)
 connect(close.Activated, function()
-	gui:Destroy()
+	if portal.Closing then
+		return
+	end
+	portal.Closing = true
+	if playerToolsBridge.Stop then
+		playerToolsBridge.Stop()
+	end
+	if card.Visible then
+		for _, window in ipairs(root:GetChildren()) do
+			if
+				window ~= card
+				and window ~= mini
+				and window:IsA("GuiObject")
+				and window.Visible
+			then
+				portal.Play(window, false)
+			end
+		end
+	end
+	portal.Play(card, false, function()
+		if alive then
+			gui:Destroy()
+		end
+	end)
 end)
 connect(mini.MouseButton1Down, function()
 	tween(mini, {
@@ -633,18 +823,18 @@ local function toggleRow(
 		Text = "",
 		AutoButtonColor = false,
 		Position = UDim2.fromOffset(0, y),
-		Size = UDim2.new(1, 0, 0, 50),
+		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundColor3 = colors.Surface,
 		BorderSizePixel = 0,
 	}, parent or tools)
 	corner(row, 10)
-	local heading = label(row, name, 13, colors.Text)
+	local heading = label(row, name, 16, colors.Text)
 	heading.Position = UDim2.fromOffset(12, 6)
 	heading.Size = UDim2.new(1, -104, 0, 20)
 	heading.Font = Enum.Font.GothamMedium
 	local description = label(row, hint, 10, colors.Muted)
-	description.Position = UDim2.fromOffset(12, 27)
-	description.Size = UDim2.new(1, -104, 0, 16)
+	description.Position = UDim2.fromOffset(12, 30)
+	description.Size = UDim2.new(1, -104, 0, 22)
 	description.TextTruncate = Enum.TextTruncate.AtEnd
 	local indicator = label(row, "", 9, CONFIG.Accent)
 	indicator.Name = "ToggleState"
@@ -996,6 +1186,9 @@ connect(goPosition.Activated, function()
 		-- Local character movement, not a server permission or anticheat bypass.
 		character:PivotTo(destination)
 		local part = character:FindFirstChild("HumanoidRootPart")
+			or character.PrimaryPart
+			or character:FindFirstChild("UpperTorso")
+			or character:FindFirstChild("Torso")
 		if part and part:IsA("BasePart") then
 			part.AssemblyLinearVelocity = Vector3.zero
 			part.AssemblyAngularVelocity = Vector3.zero
@@ -1131,6 +1324,7 @@ for _, tint in ipairs({
 }) do
 	local ghost = label(header, CONFIG.Name, 19, tint)
 	ghost.Name = "GlitchLayer"
+	ghost.TextSize = title.TextSize
 	ghost.Font = Enum.Font.Code
 	ghost.Position = title.Position
 	ghost.Size = title.Size
@@ -1150,8 +1344,8 @@ setTeleportEnabled = toggleRow(
 	0,
 	false,
 	function(enabled)
-		teleportPanel.Visible = enabled
 		layout()
+		portal.Play(teleportPanel, enabled)
 	end
 )
 local setFPSEnabled = toggleRow(
@@ -1161,7 +1355,7 @@ local setFPSEnabled = toggleRow(
 	false,
 	function(enabled)
 		fpsEnabled = enabled
-		fpsPanel.Visible = enabled
+
 		fpsFrames, fpsElapsed = 0, 0
 		fpsText.Text = "— FPS"
 		table.clear(fpsHistory)
@@ -1169,6 +1363,7 @@ local setFPSEnabled = toggleRow(
 			bar.Visible = false
 		end
 		layout()
+		portal.Play(fpsPanel, enabled)
 	end
 )
 local setGlitchEnabled = toggleRow(
@@ -1192,8 +1387,8 @@ local setHUDEnabled = toggleRow(
 	false,
 	function(enabled)
 		hudEnabled = enabled
-		coordinatePanel.Visible = enabled
 		layout()
+		portal.Play(coordinatePanel, enabled)
 	end
 )
 -- One render connection; telemetry is sampled twice a second, not every frame.
@@ -1332,7 +1527,7 @@ do
 			ScrollBarImageColor3 = CONFIG.Accent,
 		}, card)
 	end
-	local stylePage = page("StylePage", 464)
+	local stylePage = page("StylePage", 650)
 	local sessionPage = page("SessionPage", 370)
 	local pages = { tools, stylePage, sessionPage }
 	local tabButtons: { TextButton } = {}
@@ -1561,6 +1756,40 @@ do
 			end
 		end
 	)
+	section(stylePage, "03 / DISPLAY TYPE", 464)
+	for index, name in ipairs({ "Gotham", "Pixel", "Medieval" }) do
+		local fontName = name
+		action(
+			stylePage,
+			"QuickFont_" .. name,
+			if name == "Gotham" then "Modern" else name,
+			UDim2.new((index - 1) / 3, 0, 0, 492),
+			UDim2.new(1 / 3, -6, 0, 44),
+			function()
+				if studioBridge.Font then
+					studioBridge.Font(fontName)
+				end
+			end
+		)
+	end
+
+	section(stylePage, "04 / SIGNATURE LOOKS", 554)
+	for index, name in ipairs({ "Pixel", "Citadel" }) do
+		local look = name
+		action(
+			stylePage,
+			"QuickLook_" .. look,
+			if look == "Pixel" then "Aurora / Pixel" else "Citadel / Gothic",
+			UDim2.new((index - 1) / 2, 0, 0, 582),
+			UDim2.new(0.5, -6, 0, 48),
+			function()
+				if studioBridge.Look then
+					studioBridge.Look(look)
+				end
+			end
+		)
+	end
+
 	section(sessionPage, "LOCAL SESSION", 0)
 	local identity =
 		label(sessionPage, "@" .. (player.Name or "Player"), 16, colors.Text)
@@ -1995,6 +2224,8 @@ do
 				"SourceSans",
 				"Arial",
 				"Code",
+				"Pixel",
+				"Medieval",
 			},
 		},
 		{
@@ -2465,6 +2696,34 @@ do
 				Glitch = false,
 			},
 		},
+		{
+			Name = "Pixel",
+			Description = "Aurora cyan, crisp pixel headings, readable modern body.",
+			Values = {
+				Theme = "Cyan",
+				CustomAccent = false,
+				Font = "Pixel",
+				HighContrast = true,
+				CornerScale = 0.6,
+				BorderWeight = 1.25,
+				TextScale = 1.1,
+				Gradients = true,
+			},
+		},
+		{
+			Name = "Citadel",
+			Description = "Amber-lit gothic headings over obsidian surfaces.",
+			Values = {
+				Theme = "Amber",
+				CustomAccent = false,
+				Font = "Medieval",
+				HighContrast = true,
+				CornerScale = 0.7,
+				BorderWeight = 1.25,
+				TextScale = 1.1,
+				Gradients = true,
+			},
+		},
 	}
 
 	studio.ByKey = {}
@@ -2487,6 +2746,8 @@ do
 		SourceSans = Enum.Font.SourceSans,
 		Arial = Enum.Font.Arial,
 		Code = Enum.Font.Code,
+		Pixel = Enum.Font.Arcade,
+		Medieval = Enum.Font.GrenzeGotisch,
 	}
 	studio.Easings = {
 		Quint = Enum.EasingStyle.Quint,
@@ -2679,7 +2940,7 @@ do
 		local old = colors.Muted
 		local target = if brighter
 			then Color3.fromRGB(195, 197, 214)
-			else Color3.fromRGB(151, 151, 170)
+			else Color3.fromRGB(178, 190, 211)
 		if studio.SameColor(old, target) then
 			return
 		end
@@ -2723,8 +2984,14 @@ do
 			end
 			if baseline.TextSize then
 				object.TextSize =
-					math.clamp(baseline.TextSize * values.TextScale, 8, 34)
-				if values.PreserveMono and baseline.Font == Enum.Font.Code then
+					math.clamp(baseline.TextSize * values.TextScale, 14, 40)
+				if values.Font == "Pixel" or values.Font == "Medieval" then
+					object.Font = if baseline.TextSize >= 18
+						then studio.Fonts[values.Font]
+						else Enum.Font.Gotham
+				elseif
+					values.PreserveMono and baseline.Font == Enum.Font.Code
+				then
 					object.Font = Enum.Font.Code
 				elseif
 					values.Font == "Gotham"
@@ -3543,7 +3810,7 @@ do
 			UDim2.new(1, -58, 0, 12),
 			UDim2.fromOffset(44, 44),
 			function()
-				studio.Window.Visible = false
+				portal.Play(studio.Window, false)
 			end
 		)
 		local navigation = create("ScrollingFrame", {
@@ -4834,7 +5101,7 @@ do
 					return
 				end
 				if input.KeyCode == Enum.KeyCode.Escape then
-					studio.Window.Visible = false
+					portal.Play(studio.Window, false)
 					return
 				end
 				local control = UserInputService:IsKeyDown(
@@ -5050,14 +5317,38 @@ do
 		studio.Build()
 		studio.ReadRuntime()
 		studio.Render(studio.Settings)
-		studio.Window.Visible = true
 		studio.Relayout()
+		portal.Play(studio.Window, true)
 		studio.Select(
 			if studio.Settings.RestorePage then studio.ActivePage else "Color"
 		)
 		studio.Message("Design Studio ready. Changes stay local to this run.")
 	end
 
+	studioBridge.Look = function(name: string)
+		for _, preset in ipairs(studio.Presets) do
+			if preset.Name == name then
+				studio.Build()
+				studio.Apply(preset.Values, name .. " signature look applied.")
+				return
+			end
+		end
+	end
+	studioBridge.Font = function(name: string)
+		if studio.Fonts[name] then
+			studio.Build()
+			studio.Apply(
+				{ Font = name },
+				name .. " type style applied. Body text stays readable."
+			)
+		end
+	end
+	studioBridge.ForgetUI = function(target: Instance)
+		studio.StyleCache[target] = nil
+		for _, object in ipairs(target:GetDescendants()) do
+			studio.StyleCache[object] = nil
+		end
+	end
 	studioBridge.RegisterUI = function()
 		if studio.Built and alive then
 			studio.CaptureStyles()
@@ -5104,6 +5395,8 @@ do
 		VisualColor = "Violet",
 		VisualRate = 30,
 		Aim = false,
+		Activation = "Auto",
+		ScriptedCamera = false,
 		Circle = false,
 		Radius = 140,
 		Strength = 50,
@@ -5277,6 +5570,9 @@ do
 		end
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		local part = character:FindFirstChild("HumanoidRootPart")
+			or character.PrimaryPart
+			or character:FindFirstChild("UpperTorso")
+			or character:FindFirstChild("Torso")
 		if
 			not humanoid
 			or humanoid.Health <= 0
@@ -5530,10 +5826,15 @@ do
 	function engine.SelectTarget(camera: Camera): any
 		local center = camera.ViewportSize / 2
 		local candidates = {}
+		local scan =
+			{ Players = 0, Filtered = 0, Range = 0, FOV = 0, Blocked = 0 }
+		engine.LastScan = scan
 		for _, record in pairs(engine.Records) do
+			scan.Players += 1
 			local info =
 				engine.Character(record.Player, toolsState.AimTeamCheck)
 			if not info then
+				scan.Filtered += 1
 				continue
 			end
 			local part = if toolsState.AimPart == "Head"
@@ -5547,14 +5848,19 @@ do
 			end
 			local distance = (part.Position - camera.CFrame.Position).Magnitude
 			if distance < 0.01 or distance > toolsState.AimDistance then
+				scan.Range += 1
 				continue
 			end
 			local projected, onScreen =
 				camera:WorldToViewportPoint(part.Position)
 			if not onScreen or projected.Z <= 0 then
+				scan.FOV += 1
 				continue
 			end
 			local score = (Vector2.new(projected.X, projected.Y) - center).Magnitude
+			if score > toolsState.Radius then
+				scan.FOV += 1
+			end
 			if score <= toolsState.Radius then
 				table.insert(candidates, {
 					Score = score,
@@ -5575,6 +5881,7 @@ do
 			then
 				return candidate
 			end
+			scan.Blocked += 1
 		end
 		return nil
 	end
@@ -5625,15 +5932,25 @@ do
 			engine.Status("Aim", "Paused while typing.")
 			return
 		end
-		if not engine.MouseHeld and not engine.TouchInput then
+		if
+			toolsState.Activation == "Hold"
+			and not engine.MouseHeld
+			and not engine.TouchInput
+		then
 			engine.Status(
 				"Aim",
 				"Hold RMB / touch AIM. Move panels off-center."
 			)
 			return
 		end
-		if camera.CameraType == Enum.CameraType.Scriptable then
-			engine.Status("Aim", "Paused for a scripted camera.")
+		if
+			camera.CameraType == Enum.CameraType.Scriptable
+			and not toolsState.ScriptedCamera
+		then
+			engine.Status(
+				"Aim",
+				"Scripted camera / enable camera override if intended."
+			)
 			return
 		end
 		local character = player.Character
@@ -5642,6 +5959,9 @@ do
 			else nil
 		local rootPart = if character
 			then character:FindFirstChild("HumanoidRootPart")
+				or character.PrimaryPart
+				or character:FindFirstChild("UpperTorso")
+				or character:FindFirstChild("Torso")
 			else nil
 		if
 			not character
@@ -5657,7 +5977,17 @@ do
 		end
 		local target = engine.SelectTarget(camera)
 		if not target then
-			engine.Status("Aim", "No visible player inside the circle.")
+			local scan = engine.LastScan or {}
+			engine.Status(
+				"Aim",
+				string.format(
+					"No target / %d players / %d team or rig / %d FOV / %d blocked",
+					scan.Players or 0,
+					scan.Filtered or 0,
+					scan.FOV or 0,
+					scan.Blocked or 0
+				)
+			)
 			return
 		end
 		local alpha = if toolsState.Strength >= 100
@@ -5678,19 +6008,51 @@ do
 		)
 	end
 
+	function engine.SafeStep(dt: number)
+		local ok, reason = pcall(engine.Step, dt)
+		if not ok then
+			engine.DisableAll()
+			engine.Status(
+				"Aim",
+				"Runtime error / " .. string.sub(tostring(reason), 1, 110)
+			)
+			engine.Status("Visuals", "Runtime error / see console.")
+			warn("[Nullx11 player tools] " .. tostring(reason))
+		end
+	end
 	function engine.Schedule()
 		local needed = toolsState.Visuals or toolsState.Aim or toolsState.Circle
 		if needed and not engine.Bound then
-			RunService:BindToRenderStep(
-				engine.BindName,
-				Enum.RenderPriority.Camera.Value + 1,
-				engine.Step
-			)
+			local ok, reason = pcall(function()
+				RunService:BindToRenderStep(
+					engine.BindName,
+					Enum.RenderPriority.Last.Value - 1,
+					engine.SafeStep
+				)
+			end)
+			if ok then
+				engine.Backend = "late camera binding"
+			else
+				engine.Fallback =
+					RunService.RenderStepped:Connect(engine.SafeStep)
+				engine.Backend = "RenderStepped fallback"
+				warn(
+					"[Nullx11] Camera binding failed; using RenderStepped: "
+						.. tostring(reason)
+				)
+			end
 			engine.Bound = true
 		elseif not needed and engine.Bound then
-			RunService:UnbindFromRenderStep(engine.BindName)
+			if engine.Fallback then
+				engine.Fallback:Disconnect()
+				engine.Fallback = nil
+			else
+				RunService:UnbindFromRenderStep(engine.BindName)
+			end
 			engine.Bound = false
+			engine.Backend = "renderer idle"
 		end
+
 		if not toolsState.Visuals then
 			engine.ClearHighlights()
 			for _, record in pairs(engine.Records) do
@@ -5718,9 +6080,13 @@ do
 			engine.TouchInput = nil
 		end
 		if engine.TouchPad then
-			engine.TouchPad.Visible = toolsState.Aim
-				and toolsState.TouchPad
-				and UserInputService.TouchEnabled
+			local hold = engine.TouchPad:FindFirstChild("HoldMobileAim")
+			if hold then
+				hold.Text = if toolsState.Activation == "Auto"
+					then "STOP AUTO"
+					else "HOLD AIM"
+			end
+			engine.TouchPad.Visible = toolsState.Aim and toolsState.TouchPad
 		end
 	end
 
@@ -5741,7 +6107,7 @@ do
 		window.Panel = create("Frame", {
 			Name = name .. "Window",
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Size = UDim2.fromOffset(350, 500),
+			Size = UDim2.fromOffset(390, 540),
 			BackgroundColor3 = colors.Panel,
 			BorderSizePixel = 0,
 			Visible = false,
@@ -5759,8 +6125,13 @@ do
 			Size = UDim2.new(1, -64, 0, 64),
 		}, window.Panel)
 		drawIcon(handle, CONFIG.Accent, UDim2.fromOffset(18, 20), 26)
-		local heading =
-			label(handle, string.upper(name) .. " / LOCAL", 14, colors.Text)
+		local heading = label(
+			handle,
+			string.upper(name)
+				.. (if name == "Scripts" then " / LIBRARY" else " / LOCAL"),
+			18,
+			colors.Text
+		)
 		heading.Font = Enum.Font.Code
 		heading.Position = UDim2.fromOffset(56, 20)
 		heading.Size = UDim2.new(1, -56, 0, 28)
@@ -5811,6 +6182,9 @@ do
 			toolsState[key],
 			function(value)
 				toolsState[key] = value
+				if key == "Aim" and value and engine.Setters.Circle then
+					engine.Setters.Circle(true)
+				end
 				engine.Schedule()
 			end,
 			window.Body
@@ -5944,6 +6318,66 @@ do
 		)
 	end
 
+	function engine.RuntimeReport()
+		local camera = engine.Workspace.CurrentCamera
+		local char = player.Character
+		local humanoid = if char
+			then char:FindFirstChildOfClass("Humanoid")
+			else nil
+		local rootPart = if char
+			then char:FindFirstChild("HumanoidRootPart")
+				or char.PrimaryPart
+				or char:FindFirstChild("UpperTorso")
+				or char:FindFirstChild("Torso")
+			else nil
+		local ready = char
+			and char.Parent
+			and humanoid
+			and humanoid.Health > 0
+			and rootPart
+			and rootPart:IsA("BasePart")
+		local others = math.max(0, #Players:GetPlayers() - 1)
+		local message = string.format(
+			"LIVE / %d other players / local avatar %s / camera %s / %s / %s mode",
+			others,
+			if ready then "ready" else "not ready",
+			if camera then tostring(camera.CameraType) else "missing",
+			engine.Backend or "renderer idle",
+			toolsState.Activation
+		)
+		if others == 0 then
+			message ..= ". Other players are required; NPCs are not targets."
+		end
+		for _, name in ipairs({ "Aim", "Visuals" }) do
+			local window = engine.Windows[name]
+			if window and window.Diagnostics then
+				window.Diagnostics.Text = message
+			end
+		end
+		engine.Status("Aim", message)
+		engine.Status("Visuals", message)
+		warn("[Nullx11 live runtime report] " .. message)
+	end
+	function engine.Diagnostics(window: any, id: string)
+		engine.Button(
+			window,
+			id,
+			"Check live Roblox state",
+			engine.RuntimeReport
+		)
+		window.Diagnostics = label(
+			window.Body,
+			"Live checks use the current Roblox services, not simulated targets. Tap Check to inspect avatar, camera, player count, and renderer.",
+			14,
+			colors.Muted
+		)
+		window.Diagnostics.Name = window.Kind .. "RuntimeDetails"
+		window.Diagnostics.Position = UDim2.fromOffset(4, window.Cursor)
+		window.Diagnostics.Size = UDim2.new(1, -12, 0, 132)
+		window.Diagnostics.TextWrapped = true
+		window.Cursor += 144
+	end
+
 	function engine.BuildVisuals()
 		if engine.Windows.Visuals then
 			return
@@ -6014,6 +6448,7 @@ do
 		)
 		engine.Number(window, "VisualRate", "Overlay rate (Hz)", 15, 60, 15)
 		engine.Color(window, "VisualColor", "Overlay color")
+		engine.Diagnostics(window, "CheckVisualsRuntime")
 		window.Body.CanvasSize = UDim2.fromOffset(0, window.Cursor)
 		if studioBridge.RegisterUI then
 			studioBridge.RegisterUI()
@@ -6035,13 +6470,49 @@ do
 			window,
 			"Aim",
 			"Enable aim assist",
-			"Hold right mouse or the mobile AIM button"
+			"Auto tracks immediately / Hold mode is optional"
 		)
 		engine.Toggle(
 			window,
 			"Circle",
 			"Show FOV circle",
 			"Pixels around the center of the viewport"
+		)
+		local activation: TextButton? = nil
+		activation = engine.Button(
+			window,
+			"CycleAimActivation",
+			"Activation: Auto / enabled = tracking",
+			function()
+				toolsState.Activation = if toolsState.Activation == "Auto"
+					then "Hold"
+					else "Auto"
+				engine.MouseHeld = false
+				engine.TouchInput = nil
+				if activation then
+					activation.Text = if toolsState.Activation == "Auto"
+						then "Activation: Auto / enabled = tracking"
+						else "Activation: Hold RMB / AIM pad"
+				end
+				engine.Schedule()
+			end
+		)
+		engine.Button(
+			window,
+			"EnterAimView",
+			"Play view / fold panels into dock",
+			function()
+				for _, name in ipairs({ "Aim", "Visuals", "Scripts" }) do
+					engine.WindowSetters[name](false)
+				end
+				setExpanded(false)
+			end
+		)
+		engine.Toggle(
+			window,
+			"ScriptedCamera",
+			"Scripted camera override",
+			"Optional / can conflict with game cutscenes"
 		)
 		engine.Number(window, "Strength", "Aim strength", 1, 100, 1)
 		engine.Number(window, "Radius", "FOV radius (px)", 50, 400, 25)
@@ -6089,6 +6560,7 @@ do
 				engine.NumberRefresh.Strength()
 			end
 		)
+		engine.Diagnostics(window, "CheckAimRuntime")
 		window.Body.CanvasSize = UDim2.fromOffset(0, window.Cursor)
 		engine.TouchPad = create("Frame", {
 			Name = "MobileAimPad",
@@ -6132,6 +6604,11 @@ do
 				engine.TouchInput = input
 			end
 		end)
+		connect(hold.Activated, function()
+			if toolsState.Activation == "Auto" and engine.Setters.Aim then
+				engine.Setters.Aim(false)
+			end
+		end)
 		draggable(handle, engine.TouchPad)
 		if studioBridge.RegisterUI then
 			studioBridge.RegisterUI()
@@ -6148,10 +6625,10 @@ do
 			if show then
 				engine.BuildVisuals()
 			end
-			if engine.Windows.Visuals then
-				engine.Windows.Visuals.Panel.Visible = show
-			end
 			layout()
+			if engine.Windows.Visuals then
+				portal.Play(engine.Windows.Visuals.Panel, show)
+			end
 		end
 	)
 	engine.WindowSetters.Aim = toggleRow(
@@ -6163,13 +6640,384 @@ do
 			if show then
 				engine.BuildAim()
 			end
-			if engine.Windows.Aim then
-				engine.Windows.Aim.Panel.Visible = show
-			end
 			layout()
+			if engine.Windows.Aim then
+				portal.Play(engine.Windows.Aim.Panel, show)
+			end
 		end
 	)
-	tools.CanvasSize = UDim2.fromOffset(0, 348)
+	-- The library is empty until real repository files are explicitly published.
+	local catalog: { [string]: any } =
+		{ Entries = {}, Loaded = false, Busy = false, Rows = {}, Confirm = nil }
+	catalog.RowConnections = {}
+	function catalog.Message(message: string, failed: boolean?)
+		engine.Status("Scripts", message)
+		if catalog.Window then
+			catalog.Window.Status.TextColor3 = if failed
+				then colors.Error
+				else colors.Muted
+		end
+	end
+	function catalog.Validate(document: any): { any }
+		assert(
+			type(document) == "table" and document.Version == 1,
+			"Unsupported manifest version"
+		)
+		local entries = document.Scripts
+		assert(
+			type(entries) == "table" and #entries <= 64,
+			"Manifest needs at most 64 scripts"
+		)
+		for key in pairs(entries) do
+			assert(
+				type(key) == "number"
+					and key % 1 == 0
+					and key >= 1
+					and key <= #entries,
+				"Scripts must be an array"
+			)
+		end
+		local clean, seen = {}, {}
+		for _, entry in ipairs(entries) do
+			assert(type(entry) == "table", "Invalid script entry")
+			assert(
+				type(entry.Id) == "string"
+					and #entry.Id > 0
+					and #entry.Id <= 48
+					and not seen[entry.Id],
+				"Script IDs must be unique"
+			)
+			assert(
+				type(entry.Name) == "string"
+					and #entry.Name > 0
+					and #entry.Name <= 80,
+				"Invalid script name"
+			)
+			assert(
+				type(entry.Description) == "string"
+					and #entry.Description <= 240,
+				"Invalid description"
+			)
+			local file = entry.File
+			assert(
+				type(file) == "string"
+					and #file <= 160
+					and string.match(file, "^[%w_/%-%.]+%.luau$")
+					and string.sub(file, 1, 1) ~= "/"
+					and not string.find(file, "..", 1, true),
+				"Use a relative .luau path inside scripts/"
+			)
+			local places = {}
+			if entry.PlaceIds ~= nil then
+				assert(
+					type(entry.PlaceIds) == "table" and #entry.PlaceIds <= 100,
+					"Invalid PlaceIds array"
+				)
+				for key, id in pairs(entry.PlaceIds) do
+					assert(
+						type(key) == "number"
+							and key % 1 == 0
+							and key >= 1
+							and key <= #entry.PlaceIds,
+						"Invalid PlaceIds array"
+					)
+					assert(
+						type(id) == "number"
+							and id > 0
+							and id < math.huge
+							and id % 1 == 0,
+						"Invalid place ID"
+					)
+					table.insert(places, id)
+				end
+			end
+			seen[entry.Id] = true
+			table.insert(clean, {
+				Id = entry.Id,
+				Name = entry.Name,
+				Description = entry.Description,
+				File = file,
+				PlaceIds = places,
+			})
+		end
+		return clean
+	end
+	function catalog.Run(entry: any, button: TextButton)
+		if catalog.Busy then
+			return
+		end
+		if
+			not catalog.Confirm
+			or catalog.Confirm.Id ~= entry.Id
+			or os.clock() > catalog.Confirm.Deadline
+		then
+			catalog.Confirm = { Id = entry.Id, Deadline = os.clock() + 5 }
+			button.Text = "Confirm run / " .. entry.Name
+			catalog.Message(
+				"Runs remote code from scripts/"
+					.. entry.File
+					.. ". Tap again within 5s only if trusted."
+			)
+			task.delay(5, function()
+				if alive and button.Parent then
+					button.Text = "Run / " .. entry.Name
+				end
+			end)
+			return
+		end
+		catalog.Confirm = nil
+		catalog.Busy = true
+		button.Text = "Downloading…"
+		catalog.Message("Fetching scripts/" .. entry.File)
+		task.spawn(function()
+			local ok, reason = pcall(function()
+				assert(
+					type(loadstring) == "function",
+					"Client loadstring unavailable; run reviewed scripts as Studio LocalScripts instead"
+				)
+				local source =
+					game:HttpGet(CONFIG.ScriptBaseURL .. entry.File, true)
+				assert(
+					type(source) == "string"
+						and #source > 0
+						and #source <= 524288,
+					"Script is empty or exceeds 512 KiB"
+				)
+				if not alive then
+					return
+				end
+				local execute, compileError =
+					loadstring(source, "Nullx11Library/" .. entry.File)
+				assert(execute, compileError or "Script compilation failed")
+				if not alive then
+					return
+				end
+				button.Text = "Running…"
+				execute()
+			end)
+			catalog.Busy = false
+			if not alive or not button.Parent then
+				return
+			end
+			button.Text = "Run / " .. entry.Name
+			if ok then
+				catalog.Message(
+					"Client call returned: "
+						.. entry.Name
+						.. ". External scripts manage their own cleanup."
+				)
+			else
+				catalog.Message(
+					"Run failed: " .. string.sub(tostring(reason), 1, 105),
+					true
+				)
+				warn("[Nullx11 Scripts] " .. tostring(reason))
+			end
+		end)
+	end
+	function catalog.Render()
+		if not catalog.Window then
+			return
+		end
+		for _, connection in ipairs(catalog.RowConnections) do
+			connection:Disconnect()
+		end
+		table.clear(catalog.RowConnections)
+		for _, row in ipairs(catalog.Rows) do
+			if studioBridge.ForgetUI then
+				studioBridge.ForgetUI(row)
+			end
+			row:Destroy()
+		end
+		table.clear(catalog.Rows)
+		catalog.Confirm = nil
+		local window = catalog.Window
+		local query = string.lower(catalog.Search.Text)
+		local cursor = 116
+		local count = 0
+		for _, entry in ipairs(catalog.Entries) do
+			local matchesPlace = #entry.PlaceIds == 0
+			for _, id in ipairs(entry.PlaceIds) do
+				if id == game.PlaceId then
+					matchesPlace = true
+					break
+				end
+			end
+			if
+				not matchesPlace
+				or not string.find(
+					string.lower(
+						entry.Name
+							.. " "
+							.. entry.Description
+							.. " "
+							.. entry.File
+					),
+					query,
+					1,
+					true
+				)
+			then
+				continue
+			end
+			local row = create("Frame", {
+				Name = "ScriptEntry_" .. entry.Id,
+				BackgroundColor3 = colors.Surface,
+				BorderSizePixel = 0,
+				Position = UDim2.fromOffset(0, cursor),
+				Size = UDim2.new(1, -4, 0, 156),
+			}, window.Body)
+			corner(row, 12)
+			table.insert(catalog.Rows, row)
+			local heading = label(row, entry.Name, 18, colors.Text)
+			heading.Position = UDim2.fromOffset(12, 8)
+			heading.Size = UDim2.new(1, -24, 0, 24)
+			heading.TextTruncate = Enum.TextTruncate.AtEnd
+			local description = label(row, entry.Description, 14, colors.Muted)
+			description.Position = UDim2.fromOffset(12, 36)
+			description.Size = UDim2.new(1, -24, 0, 40)
+			description.TextWrapped = true
+			local path = label(row, "scripts/" .. entry.File, 14, CONFIG.Accent)
+			path.Position = UDim2.fromOffset(12, 78)
+			path.Size = UDim2.new(1, -24, 0, 22)
+			path.TextTruncate = Enum.TextTruncate.AtEnd
+			local run = create("TextButton", {
+				Name = "RunScript_" .. entry.Id,
+				Text = "Run / " .. entry.Name,
+				TextSize = 15,
+				Font = Enum.Font.GothamMedium,
+				TextColor3 = colors.Panel,
+				BackgroundColor3 = CONFIG.Accent,
+				BorderSizePixel = 0,
+				Position = UDim2.fromOffset(10, 104),
+				Size = UDim2.new(1, -20, 0, 44),
+			}, row)
+			corner(run, 9)
+			table.insert(
+				catalog.RowConnections,
+				run.Activated:Connect(function()
+					catalog.Run(entry, run)
+				end)
+			)
+			cursor += 166
+			count += 1
+		end
+		if count == 0 then
+			local empty = label(
+				window.Body,
+				if not catalog.Loaded
+					then "Library not loaded. Refresh to read the GitHub scripts/ manifest."
+					elseif
+						#catalog.Entries == 0
+					then "No scripts published yet.\nAdd reviewed .luau files and manifest entries to the GitHub scripts/ folder, then Refresh."
+					else "No scripts match this search / place.",
+				15,
+				colors.Muted
+			)
+			empty.Name = "ScriptsEmptyState"
+			empty.Position = UDim2.fromOffset(8, cursor)
+			empty.Size = UDim2.new(1, -20, 0, 118)
+			empty.TextWrapped = true
+			table.insert(catalog.Rows, empty)
+			cursor += 126
+		end
+		window.Body.CanvasSize = UDim2.fromOffset(0, cursor)
+		if studioBridge.RegisterUI then
+			studioBridge.RegisterUI()
+		end
+	end
+	function catalog.Refresh()
+		if catalog.Busy then
+			return
+		end
+		catalog.Busy = true
+		catalog.Message("Fetching the GitHub manifest…")
+		task.spawn(function()
+			local ok, result = pcall(function()
+				local source =
+					game:HttpGet(CONFIG.ScriptBaseURL .. "manifest.json", true)
+				assert(
+					type(source) == "string" and #source <= 131072,
+					"Manifest exceeds 128 KiB"
+				)
+				return catalog.Validate(
+					game:GetService("HttpService"):JSONDecode(source)
+				)
+			end)
+			catalog.Busy = false
+			if not alive then
+				return
+			end
+			if ok then
+				catalog.Entries = result
+				catalog.Loaded = true
+				catalog.Render()
+				catalog.Message(
+					string.format(
+						"GitHub manifest loaded / %d published scripts.",
+						#result
+					)
+				)
+			else
+				catalog.Message(
+					"Refresh failed: " .. string.sub(tostring(result), 1, 100),
+					true
+				)
+				warn("[Nullx11 Scripts] " .. tostring(result))
+			end
+		end)
+	end
+	function engine.BuildScripts()
+		if engine.Windows.Scripts then
+			return
+		end
+		local window = engine.Window("Scripts")
+		catalog.Window = window
+		engine.Button(
+			window,
+			"RefreshScripts",
+			"Refresh from GitHub",
+			catalog.Refresh
+		)
+		catalog.Search = create("TextBox", {
+			Name = "ScriptsSearch",
+			Text = "",
+			PlaceholderText = "Search published scripts…",
+			ClearTextOnFocus = false,
+			MultiLine = false,
+			Font = Enum.Font.Gotham,
+			TextSize = 16,
+			TextColor3 = colors.Text,
+			PlaceholderColor3 = colors.Muted,
+			BackgroundColor3 = colors.Surface,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(0, 58),
+			Size = UDim2.new(1, -4, 0, 44),
+		}, window.Body)
+		corner(catalog.Search, 10)
+		connect(catalog.Search:GetPropertyChangedSignal("Text"), catalog.Render)
+		catalog.Render()
+		catalog.Message(
+			"No network request yet. Refresh to read the GitHub library."
+		)
+	end
+	engine.WindowSetters.Scripts = toggleRow(
+		"Scripts window",
+		"GitHub library / reviewed scripts",
+		348,
+		false,
+		function(show)
+			if show then
+				engine.BuildScripts()
+			end
+			layout()
+			if engine.Windows.Scripts then
+				portal.Play(engine.Windows.Scripts.Panel, show)
+			end
+		end
+	)
+
+	tools.CanvasSize = UDim2.fromOffset(0, 406)
 	local previousLayout = layoutExtras
 	layoutExtras = function()
 		if previousLayout then
@@ -6181,14 +7029,16 @@ do
 		end
 		for _, window in pairs(engine.Windows) do
 			local size = Vector2.new(
-				math.min(350, viewport.X - 24),
-				math.min(500, viewport.Y - 24)
+				math.min(390, viewport.X - 24),
+				math.min(540, viewport.Y - 24)
 			)
 			window.Panel.Size = UDim2.fromOffset(size.X, size.Y)
 			local center =
 				clampCenter(extraCenters[window.Panel] or viewport / 2, size)
 			extraCenters[window.Panel] = center
-			window.Panel.Position = UDim2.fromOffset(center.X, center.Y)
+			if not portal.Jobs[window.Panel] then
+				window.Panel.Position = UDim2.fromOffset(center.X, center.Y)
+			end
 		end
 		if engine.TouchPad then
 			local center = clampCenter(
@@ -6226,19 +7076,20 @@ do
 				input.UserInputType == Enum.UserInputType.MouseButton2
 				and toolsState.Aim
 			then
-				for _, object in
-					ipairs(
-						playerGui:GetGuiObjectsAtPosition(
-							input.Position.X,
-							input.Position.Y
-						)
+				local ok, hits = pcall(function()
+					return playerGui:GetGuiObjectsAtPosition(
+						input.Position.X,
+						input.Position.Y
 					)
-				do
-					-- The full-screen transparent safe-area root is not an input surface.
-					if object ~= root and object:IsDescendantOf(gui) then
-						return
+				end)
+				if ok then
+					for _, object in ipairs(hits) do
+						if object ~= root and object:IsDescendantOf(gui) then
+							return
+						end
 					end
 				end
+
 				engine.MouseHeld = true
 			end
 		end
@@ -6255,10 +7106,12 @@ do
 		engine.MouseHeld = false
 		engine.TouchInput = nil
 	end)
+	playerToolsBridge.Stop = engine.DisableAll
 	playerToolsBridge.HideWindows = function()
 		engine.DisableAll()
 		engine.WindowSetters.Visuals(false)
 		engine.WindowSetters.Aim(false)
+		engine.WindowSetters.Scripts(false)
 	end
 	playerToolsBridge.Style = function(values: { [string]: any })
 		for _, window in pairs(engine.Windows) do
@@ -6270,7 +7123,14 @@ do
 		end
 	end
 	playerToolsBridge.Destroy = function()
-		if engine.Bound then
+		for _, connection in ipairs(catalog.RowConnections) do
+			connection:Disconnect()
+		end
+		table.clear(catalog.RowConnections)
+		if engine.Fallback then
+			engine.Fallback:Disconnect()
+			engine.Fallback = nil
+		elseif engine.Bound then
 			RunService:UnbindFromRenderStep(engine.BindName)
 		end
 		for other in pairs(engine.Records) do
@@ -6409,6 +7269,7 @@ end)
 
 connect(gui.Destroying, function()
 	alive = false
+	table.clear(portal.Jobs)
 	if playerToolsBridge.Destroy then
 		playerToolsBridge.Destroy()
 	end
@@ -6429,7 +7290,7 @@ connect(gui.Destroying, function()
 	table.clear(activeTweens)
 end)
 
--- Decorative startup reveal, not simulated asset/network progress.
+-- Native-UI gravity well: concentric lenses, orbital dust, implosion, shockwave.
 do
 	if CONFIG.StartupAnimation and not CONFIG.ReducedMotion then
 		card.Visible = false
@@ -6437,72 +7298,114 @@ do
 		local intro = create("Frame", {
 			Name = "StartupWhirlpool",
 			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = colors.Panel,
+			BackgroundColor3 = Color3.fromRGB(8, 12, 24),
 			BackgroundTransparency = 0.03,
 			BorderSizePixel = 0,
 			ZIndex = 50,
 			Active = true,
+			ClipsDescendants = true,
 		}, root)
+		create("UIGradient", {
+			Color = ColorSequence.new(
+				Color3.fromRGB(14, 18, 38),
+				Color3.fromRGB(7, 19, 28)
+			),
+			Rotation = 38,
+		}, intro)
+		local lenses = {}
+		for index = 1, 3 do
+			local lens = create("Frame", {
+				Name = "GravityLens" .. index,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Rotation = -24 + index * 17,
+			}, intro)
+			corner(lens, 1000)
+			local outline = create("UIStroke", {
+				Color = if index == 2
+					then Color3.fromRGB(120, 238, 226)
+					else CONFIG.Accent,
+				Thickness = if index == 2 then 2 else 1,
+				Transparency = 0.4 + index * 0.1,
+			}, lens)
+			table.insert(lenses, { Frame = lens, Stroke = outline })
+		end
+		local particles = {}
+		for index = 1, 48 do
+			local particle = create("Frame", {
+				Name = "WhirlpoolParticle" .. index,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Size = UDim2.fromOffset(2 + index % 3, 8 + index % 5 * 3),
+				BackgroundColor3 = if index % 3 == 0
+					then Color3.fromRGB(128, 240, 228)
+					elseif index % 7 == 0 then Color3.fromRGB(
+						255,
+						218,
+						157
+					)
+					else CONFIG.Accent,
+				BorderSizePixel = 0,
+			}, intro)
+			corner(particle, 3)
+			table.insert(particles, particle)
+		end
 		local center = create("Frame", {
 			Name = "WhirlpoolCenter",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(44, 44),
-			BackgroundColor3 = CONFIG.Accent,
+			Size = UDim2.fromOffset(80, 80),
+			BackgroundColor3 = colors.Panel,
 			BorderSizePixel = 0,
+			ZIndex = 3,
 		}, intro)
-		corner(center, 1000)
-		local ring = create("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-		}, intro)
-		corner(ring, 1000)
-		local ringStroke = create("UIStroke", {
-			Color = CONFIG.Accent,
-			Thickness = 1,
-			Transparency = 0.6,
-		}, ring)
-		local particles = {}
-		for index = 1, 24 do
-			local particle = create("Frame", {
-				Name = "WhirlpoolParticle" .. index,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Size = UDim2.fromOffset(4 + index % 3 * 2, 12 + index % 4 * 3),
-				BackgroundColor3 = CONFIG.Accent,
-				BorderSizePixel = 0,
-			}, intro)
-			corner(particle, 4)
-			table.insert(particles, particle)
-		end
-		local wordmark = label(intro, CONFIG.Name, 27, colors.Text)
-		wordmark.Font = Enum.Font.Code
+		corner(center, 24)
+		local coreStroke = create(
+			"UIStroke",
+			{ Color = CONFIG.Accent, Thickness = 2, Transparency = 0.1 },
+			center
+		)
+		local insignia = drawIcon(
+			center,
+			Color3.fromRGB(164, 244, 233),
+			UDim2.fromScale(0.2, 0.2),
+			48
+		)
+		insignia.Size = UDim2.fromScale(0.6, 0.6)
+		local wordmark = label(intro, "NULLX11", 27, colors.Text)
+		wordmark.Name = "StartupWordmark"
+		wordmark.Font = Enum.Font.Arcade
+		wordmark.ZIndex = 5
 		wordmark.AnchorPoint = Vector2.new(0.5, 0.5)
-		wordmark.Position = UDim2.new(0.5, 0, 0.5, 110)
-		wordmark.Size = UDim2.fromOffset(240, 36)
+		wordmark.Size = UDim2.fromOffset(320, 40)
 		wordmark.TextXAlignment = Enum.TextXAlignment.Center
-		local caption = label(intro, "Opening your workspace", 11, colors.Muted)
+		local caption =
+			label(intro, "GRAVITY CORE / OPENING WORKSPACE", 14, colors.Muted)
 		caption.Name = "StartupCaption"
+		caption.ZIndex = 5
 		caption.AnchorPoint = Vector2.new(0.5, 0.5)
-		caption.Position = UDim2.new(0.5, 0, 0.5, 144)
-		caption.Size = UDim2.fromOffset(280, 24)
+		caption.Size = UDim2.new(1, -32, 0, 30)
 		caption.TextXAlignment = Enum.TextXAlignment.Center
 		local skip = create("TextButton", {
 			Name = "SkipStartup",
 			Text = "Skip animation  →",
 			Font = Enum.Font.GothamMedium,
-			TextSize = 12,
-			TextColor3 = colors.Muted,
-			BackgroundTransparency = 1,
+			TextSize = 16,
+			TextColor3 = colors.Text,
+			BackgroundColor3 = colors.Surface,
+			BackgroundTransparency = 0.15,
+			BorderSizePixel = 0,
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -16),
-			Size = UDim2.fromOffset(180, 44),
+			Position = UDim2.new(0.5, 0, 1, -18),
+			Size = UDim2.fromOffset(190, 46),
+			ZIndex = 6,
 		}, intro)
+		corner(skip, 13)
 		local elapsed, rotation = 0, 0
 		local finished = false
 		local animation: RBXScriptConnection? = nil
-		local function finish()
+		local function finish(immediate: boolean?)
 			if finished or not alive then
 				return
 			end
@@ -6511,72 +7414,90 @@ do
 				animation:Disconnect()
 			end
 			intro:Destroy()
-			card.Visible = expanded
 			mini.Visible = true
 			layout()
+			if immediate then
+				card.Visible = expanded
+			elseif expanded then
+				portal.Play(card, true)
+			end
 		end
-		connect(skip.Activated, finish)
+		connect(skip.Activated, function()
+			finish(true)
+		end)
 		animation = connect(RunService.RenderStepped, function(dt: number)
 			if finished or not alive then
 				return
 			end
-			if root.AbsoluteSize.Y > 0 and root.AbsoluteSize.Y < 420 then
-				wordmark.Position = UDim2.new(0.5, 0, 0, 30)
-				caption.Position = UDim2.new(0.5, 0, 0, 62)
-			else
-				wordmark.Position = UDim2.new(0.5, 0, 0.5, 110)
-				caption.Position = UDim2.new(0.5, 0, 0.5, 144)
-			end
-			rotation += math.min(dt, 0.1) * 6
+			local viewport = root.AbsoluteSize
+			local short = viewport.Y > 0 and viewport.Y < 420
+			wordmark.Position = if short
+				then UDim2.new(0.5, 0, 0, 30)
+				else UDim2.new(0.5, 0, 0.5, 126)
+			caption.Position = if short
+				then UDim2.new(0.5, 0, 0, 62)
+				else UDim2.new(0.5, 0, 0.5, 166)
+			rotation += math.min(dt, 0.1) * 3.2
 			if game:IsLoaded() then
 				elapsed += dt
-				caption.Text = "Opening your workspace"
+				caption.Text = "GRAVITY CORE / OPENING WORKSPACE"
 			else
-				caption.Text = "Waiting for the game / skip is available"
+				caption.Text = "Waiting for the game / Skip is available"
 			end
-			local pull = math.clamp(elapsed / 0.95, 0, 1)
-			local burst = math.clamp((elapsed - 0.95) / 0.4, 0, 1)
-			local diameter = if elapsed < 0.95
-				then 260 * (1 - pull) + 12
-				else 12 + burst * 360
-			ring.Size = UDim2.fromOffset(diameter, diameter)
-			ringStroke.Transparency = if elapsed < 0.95
-				then 0.6
-				else 0.6 + burst * 0.4
-			local core = if elapsed < 0.95
-				then 44 * (1 - pull) + 6
-				else 6 + burst * 100
+			local pull = math.clamp(elapsed / 1.25, 0, 1)
+			local burst = math.clamp((elapsed - 1.25) / 0.7, 0, 1)
+			local collapsing = elapsed < 1.25
+			local baseRadius =
+				math.clamp(math.min(viewport.X, viewport.Y) * 0.48, 90, 220)
+			for index, lens in ipairs(lenses) do
+				local diameter = if collapsing
+					then (baseRadius * 2 + index * 26) * (1 - pull ^ 2) + 10
+					else 10 + burst * (baseRadius * 3 + index * 80)
+				lens.Frame.Size =
+					UDim2.fromOffset(diameter, diameter * (0.42 + index * 0.12))
+				lens.Frame.Rotation = -24
+					+ index * 17
+					+ math.deg(rotation)
+						* 0.1
+						* (if index % 2 == 0 then -1 else 1)
+				lens.Stroke.Transparency = if collapsing
+					then 0.35 + index * 0.12
+					else math.clamp(0.25 + burst * 0.75, 0, 1)
+			end
+			local core = if collapsing
+				then 80 * (1 - pull) ^ 0.7 + 5
+				else 5 + burst * 100
 			center.Size = UDim2.fromOffset(core, core)
-			center.BackgroundTransparency = if elapsed < 0.95
-				then pull * 0.25
-				else 0.75 + burst * 0.25
-			wordmark.TextTransparency = math.max(pull - 0.6, 0) * 2.5
+			center.Rotation = if collapsing
+				then -pull * 100
+				else -100 + burst * 145
+			center.BackgroundTransparency = if collapsing then 0.05 else burst
+			coreStroke.Transparency = if collapsing then 0.1 else burst
+			wordmark.TextTransparency = math.clamp((pull - 0.65) / 0.35, 0, 1)
 			for index, particle in ipairs(particles) do
-				local angle = index * math.pi * 2 / 24 + rotation + pull * 4
-				local radius = if elapsed < 0.95
-					then (116 + index % 3 * 18) * (1 - pull) ^ 1.7
-					else burst * (130 + index % 4 * 18)
+				local angle = index * 2.399963
+					+ rotation * (0.75 + index % 3 * 0.2)
+					+ pull * 8
+				local radius = if collapsing
+					then (baseRadius + index % 5 * 12) * (1 - pull) ^ 1.6
+					else burst * (baseRadius * 1.4 + index % 5 * 28)
 				particle.Position = UDim2.new(
 					0.5,
 					math.cos(angle) * radius,
 					0.5,
-					math.sin(angle) * radius
+					math.sin(angle) * radius * 0.65
 				)
 				particle.Rotation = math.deg(angle) + 90
-				particle.BackgroundTransparency = if elapsed < 0.95
-					then 0.15 + pull * 0.15
+				particle.BackgroundTransparency = if collapsing
+					then 0.15 + pull * 0.2
 					else burst
 			end
-			intro.BackgroundTransparency = if elapsed < 0.95
+			intro.BackgroundTransparency = if collapsing
 				then 0.03
 				else 0.03 + burst * 0.97
-			if elapsed >= 1.35 then
+			if elapsed >= 1.95 then
 				finish()
 			end
 		end)
-	elseif panelCenter then
-		local destination = UDim2.fromOffset(panelCenter.X, panelCenter.Y)
-		card.Position = destination + UDim2.fromOffset(0, 8)
-		tween(card, { Position = destination }, 0.3)
 	end
 end

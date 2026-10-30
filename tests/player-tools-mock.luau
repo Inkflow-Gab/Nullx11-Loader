@@ -54,7 +54,7 @@ local RaycastParams = {
 		return {}
 	end,
 }
-Enum.RenderPriority = { Camera = { Value = 200 } }
+Enum.RenderPriority = { Camera = { Value = 200 }, Last = { Value = 2000 } }
 local camera = Instance.new("Camera")
 camera.CFrame = transform(Vector3.zero)
 camera.ViewportSize = Vector2.new(800, 600)

@@ -113,6 +113,7 @@ find("CycleCircleColor").Activated:Fire()
 advance(0.02)
 local ink = circle:FindFirstChildOfClass("UIStroke").Color
 assert(math.abs(ink.G - 222 / 255) < 0.001, "independent FOV color")
+find("CycleAimActivation").Activated:Fire()
 find("Enable aim assist").Activated:Fire()
 assert(find("MobileAimPad").Visible, "touch aim control")
 advance(0.02)
