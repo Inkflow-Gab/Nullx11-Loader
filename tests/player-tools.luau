@@ -124,6 +124,7 @@ local mouse = {
 inputService.InputBegan:Fire(mouse, true)
 advance(0.02)
 assert(not camera.CFrame.AimPoint, "processed input ignored")
+playerGui.GuiHits = { root }
 inputService.InputBegan:Fire(mouse, false)
 advance(0.02)
 assert(not camera.CFrame.AimPoint, "wall blocks aim regardless of visuals")
@@ -166,11 +167,11 @@ inputService.InputEnded:Fire(mouse)
 local stopped = camera.CFrame
 advance(0.02)
 assert(camera.CFrame == stopped, "release stops camera changes")
-playerGui.GuiHits = { find("Panel") }
+playerGui.GuiHits = { root, find("Panel") }
 inputService.InputBegan:Fire(mouse, false)
 advance(0.02)
 assert(camera.CFrame == stopped, "clicking own UI cannot begin tracking")
-playerGui.GuiHits = {}
+playerGui.GuiHits = { root }
 inputService.InputBegan:Fire(mouse, false)
 inputService.FocusedTextBox = {}
 advance(0.02)

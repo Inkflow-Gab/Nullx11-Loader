@@ -6223,7 +6223,8 @@ do
 						)
 					)
 				do
-					if object:IsDescendantOf(gui) then
+					-- The full-screen transparent safe-area root is not an input surface.
+					if object ~= root and object:IsDescendantOf(gui) then
 						return
 					end
 				end
