@@ -117,3 +117,35 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
 - Toggle native labels repeatedly, then stop/unload. Verify bounded label counts,
   no remaining render listener/overlay, no stale intro host after rerun, and profile
   real device frame time. Development tests are not native rendering/gameplay proof.
+
+## NULL / YARHM / Chaos native collection
+
+- Confirm all 14 entries retain NULL edition branding. Filter by YARHM / Chaos /
+  originals, category, text, current place/universe and Universal; refresh must not
+  leave stale callbacks or auto-execute. Wrong universe/place must stop before any
+  new game controller work; no load-anywhere prompt or game-join action.
+- Run the two Brookhaven editions together; they must have separate draggable
+  workspaces/restore icons/session scopes. Loader unload leaves both alive; each
+  game's Unload only removes its own work. Avoid conflicting movement settings.
+- Forsaken: compare actual Ingame items, survivor/killer names, generator progress;
+  test map changes/respawn and medkit priority. Check nearest unfinished generator,
+  retained four-second cooldown and server acceptance, not just dispatched text.
+  Verify Sprinting fields restore and no module require runs until explicit input.
+- MM2: test roles from current tools/events, absent characters/backpacks, gun drop,
+  trap/map changes, real Gun.Shoot/KnifeThrown argument acceptance, rejected roles,
+  missing remotes and prediction. A failure must stop/reset the relevant toggle.
+  Check coin tween stop/unload/death and no deleted coins/fake currency success.
+- FTF: verify BeastPowers/stats fallback, PC colors, pod/exit/LOCKER tags, scan caps,
+  flashlight reparenting after respawn, speed/third-person restore. Anti-PC-error
+  must remain visibly unavailable; no hidden global hook is installed.
+- Brookhaven: verify the 10 item paths, 61 effect choices, 22 coordinates, correct
+  own house/car targeting, body/hair/RP colors, avatar copy cancellation and music.
+  Check invalid/missing/removed remotes and denied gamepass requests. Dispatch is
+  not proof of success; server-owned effects may persist after stopping/unload.
+- Universal: test finite input bounds, unique-name selection, camera replacement,
+  spectate/aim, keyboard and actual mobile thumbstick flight, Rise/Descend, respawn,
+  noclip/lighting restoration and precise save/return. No global world destruction.
+- Repeated toggle changes must leave at most one job/key, 64 native markers per
+  active session, no post-off queued request and no leftover constraints/light/
+  overlay on unload. Profile frame time/memory on real devices under load; bounds
+  are not a promise of zero FPS cost. Keep this checklist unverified until tested.

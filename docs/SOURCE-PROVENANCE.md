@@ -21,7 +21,7 @@ On 2026-10-30 the user supplied the Rosu and +1 controller files and explicitly 
 | User upload `steal.partial-decoded.lua.txt` (2026-10-31) | Partial Chilli SAE recovery; complete author/license/recovery README unspecified | `src/games/StealAnEggChili.luau`, `ChiliEggPolicy.luau`; **recovered core only**, [review](CHILI-EGG-REVIEW.md) |
 | `google/fonts/ofl/kanit/` | Kanit font authors; SIL Open Font License 1.1 | `assets/fonts/`; **retain `OFL.txt`** |
 
-Input hashes are recorded in `docs/source-inputs.json`. Historical source-logo hashes are retained for provenance only; those files and their runtime references were removed at the user's request. Nullx11 now uses a static geometric prism and neutral symbols, not Mario artwork or a letter monogram. Gab is credited as the Nullx11 developer; original controller/UI authorship remains credited, not reassigned. The Steal An Egg upload does not supply a separate blanket license; this adaptation does not invent one.
+Input hashes are recorded in `docs/source-inputs.json`. Historical source-logo hashes are retained for provenance only; those files and their runtime references were removed at the user's request. Nullx11 now uses a static geometric prism and neutral symbols, not Mario artwork or a letter monogram. NULL is the current visible owner/edition brand; factual source authorship and required notices remain retained, not erased by rebranding. The Steal An Egg upload does not supply a separate blanket license; this adaptation does not invent one.
 
 ## Adaptation changes
 
@@ -55,3 +55,22 @@ The two latest uploads are adapted onto the same Nullx11/Gab controls without Vi
 ## Partial SAE/CHILI input
 
 StealAnEgg-CHILI is an independent recovered-core entry, not a rename/replacement of Henrik/xyzhenrik Steal An Egg and not a full devirtualization. The raw VM/vendor bootstrap is never executed or distributed. Read [the exact implemented/unavailable feature boundary](CHILI-EGG-REVIEW.md); publishing this adaptation does not create a new license grant.
+
+## Chaos / YARHM collection (2026-10-31)
+
+The user reports permission from both source owners to adapt/rebrand these uploads,
+and says their YARHM friend does not want optional promotional credit. This report
+is not independent verification of a copyright transfer. The native editions use
+NULL owner branding; **© Aetherion 2026** source notices and the supplied header's
+`https://mhi.im/tos` reference remain recorded. Chaos's supplied UI named
+Luscaa/venom. Raw uploads are not shipped or executed.
+
+| Input | Derived implementation | Scope |
+| --- | --- | --- |
+| `Chaos_Hub_Open_Source.txt` | `HubBrookhaven.luau`, common policy/runtime/data | Separate English Chaos Brookhaven reviewed subset; destructive/spam/external-loader routines excluded |
+| `YARHM_Hub_KEYLESS_2026.txt` | `HubUniversal`, `HubForsaken`, `HubMM2`, `HubFTF`, `HubBrookhaven`, common `Hub*` helpers | All actual game families represented, **not complete feature parity**; ads/custom loaders/final ScriptBlox ingest excluded |
+
+See [the precise feature/exclusion matrix and test boundary](HUB-COLLECTION-REVIEW.md).
+These are not independent clean-room copyright claims or a new blanket license.
+Optional runtime promotions are removed; Rosu/source restrictions and font OFL
+notices are retained. All previous game bundles remain available.

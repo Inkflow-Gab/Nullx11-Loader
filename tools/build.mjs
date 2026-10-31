@@ -16,10 +16,11 @@ const wind = read('src/ui/WindAdapter.luau');
 const session = read('src/games/Context.luau');
 const launcher = read('src/games/BundleLauncher.luau');
 const catalog = JSON.parse(read('src/games/catalog.json'));
+const hubControllers = {yarhm_universal:'HubUniversal',yarhm_forsaken:'HubForsaken',yarhm_mm2:'HubMM2',yarhm_ftf:'HubFTF',yarhm_brookhaven:'HubBrookhaven',chaos_brookhaven:'HubBrookhaven'};
 const quote = (s) => JSON.stringify(s);
 function lua(value) {
   if (typeof value === 'string') return quote(value);
-  if (typeof value === 'number') return String(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (Array.isArray(value)) return `{${value.map(lua).join(',')}}`;
   return `{${Object.entries(value).map(([k,v]) => `${k}=${lua(v)}`).join(',')}}`;
 }
@@ -53,7 +54,8 @@ let main = read('src/loader.luau')
   .replace('-- @NULLX11_WORKSPACE', read('src/ui/Workspace.luau'));
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
-  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick',eggchili:'StealAnEggChili'})[entry.Id];
+  const hub = hubControllers[entry.Id];
+  const name = hub || ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick',eggchili:'StealAnEggChili'})[entry.Id];
   if (!name) {
     // Other reviewed repository scripts can participate without being generated.
     if (!/^[\w/.-]+\.luau$/.test(entry.File) || entry.File.includes('..') || entry.File.startsWith('/')) throw new Error('Invalid external script path');
@@ -61,13 +63,15 @@ for (const entry of catalog.Scripts) {
     continue;
   }
   const controller = read(`src/games/${name}.luau`);
+  const scopeName = hub ? entry.Id : name;
   const source = `${banner}-- ${entry.Name}. See docs/SOURCE-PROVENANCE.md for authorship and restrictions.
 ${factory}
 ${module('makeAdapter', adapter)}
 ${module('makeSession', session)}
 ${entry.Id === 'egg' ? module('makeWindAdapter', wind) : ''}
 ${entry.Id === 'stealabrainrot' ? module('makeOwnedRuntime', ownedRuntime) + '\n' + module('makeChilliAdapter', chilli) : ''}
-${entry.Id === 'ttk' ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
+${hub ? module('hubPolicy', read('src/games/HubPolicy.luau')) + '\n' + module('makeHubCore', read('src/games/HubCore.luau')) + (name === 'HubBrookhaven' ? '\n' + module('hubData', read('src/games/HubBrookhavenData.luau')) : '') : ''}
+${entry.Id === 'ttk' || hub ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
 ${entry.Id === 'money' ? module('makeMoneyData', 'return function()\n'+read('src/games/MoneyData.luau')+'\nend') : ''}
 ${entry.Id === 'eggchili' ? module('chiliPolicy', read('src/games/ChiliEggPolicy.luau')) : ''}
 ${module('wrongPlace', launcher)}
@@ -77,8 +81,9 @@ end
 if not game:IsLoaded() then game.Loaded:Wait() end
 local entry=${lua(entry)}
 local environment=type(getgenv)=="function" and getgenv() or _G
-local library=createNullx11UI({Id=${quote(name)},ReducedMotion=environment.Nullx11ReducedMotion==true})
-${entry.Id === 'eggchili' ? `local function compatible()
+local library=createNullx11UI({Id=${quote(scopeName)},ReducedMotion=environment.Nullx11ReducedMotion==true})
+${hub ? `local function compatible() return hubPolicy.Compatible(entry.Id,game.PlaceId,game.GameId) end
+if not compatible() then` : entry.Id === 'eggchili' ? `local function compatible()
 local storage=game:GetService("ReplicatedStorage")
 for _,path in ipairs({"Client.EggState","Shared.Save","Data.Assets"}) do
 local node=storage
@@ -128,17 +133,18 @@ wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/
 return
 end
 local context=makeSession(entry.Id,library)
-context.Adapter=makeAdapter(library,entry.Name,"Nullx11 "..${quote(name)})
+context.Adapter=makeAdapter(library,entry.Name,"Nullx11 "..${quote(scopeName)})
 ${entry.Id === 'egg' ? 'context.WindAdapter=makeWindAdapter(library,context.Adapter)' : ''}
 ${entry.Id === 'stealabrainrot' ? 'context.Runtime=makeOwnedRuntime(context)\ncontext.ChilliAdapter=makeChilliAdapter(library,context.Runtime)' : ''}
-${entry.Id === 'ttk' ? 'context.Patches=makePatches()' : ''}
+${entry.Id === 'ttk' || hub ? 'context.Patches=makePatches()' : ''}
+${hub ? 'context.HubPolicy=hubPolicy\ncontext.HubCore=makeHubCore\ncontext.Entry=entry' + (name === 'HubBrookhaven' ? '\ncontext.HubData=hubData' : '') : ''}
 ${entry.Id === 'money' ? 'context.MoneyData=makeMoneyData()' : ''}
 ${entry.Id === 'eggchili' ? 'context.ChiliPolicy=chiliPolicy' : ''}
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
 if not ok then
 library:Unload()
 warn("["..entry.Name.."] "..tostring(result))
-local notice=createNullx11UI({Id=${quote(name + 'Error')}})
+local notice=createNullx11UI({Id=${quote(scopeName + 'Error')}})
 makeSession(entry.Id.."Error",notice)
 notice:CreateWindow({Title="Nullx11",SubTitle=entry.Name,Intro=false,Watermark=false,OnUnlocked=function()
 local tab=notice.Window:AddTab("Runtime error","info","No replacement gameplay was started")

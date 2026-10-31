@@ -8820,7 +8820,7 @@ local function createNullx11UI(scope)
 		end
 		local self = setmetatable({
 			Title = options.Title or "Nullx11",
-			SubTitle = options.SubTitle or "Developed by Gab",
+			SubTitle = options.SubTitle or "Developed by NULL",
 			Desired = size,
 			Size = size,
 			Tabs = {},
@@ -13132,13 +13132,35 @@ local function createNullx11UI(scope)
 		function model.Category(entry)
 			return entry.Category or "Community"
 		end
-		function model.Badge(entry, place)
+		function model.Badge(entry, place, universe)
+			if entry.Universal then
+				return "UNIVERSAL / NATIVE"
+			end
+			if entry.GameUniverseId then
+				return entry.GameUniverseId == universe and "UNIVERSE MATCH"
+					or "OTHER UNIVERSE"
+			end
 			if not entry.GamePlaceId then
 				return "MODULE CHECK ON LAUNCH"
 			end
 			return entry.GamePlaceId == place and "PLACE MATCH" or "OTHER PLACE"
 		end
-		function model.Match(entry, query, category, onlyPlace, place)
+		function model.Match(
+			entry,
+			query,
+			category,
+			onlyPlace,
+			place,
+			universe,
+			collection
+		)
+			if
+				collection
+				and collection ~= "All collections"
+				and (entry.Collection or "Nullx11 originals") ~= collection
+			then
+				return false
+			end
 			if
 				category
 				and category ~= "All games"
@@ -13148,7 +13170,14 @@ local function createNullx11UI(scope)
 			end
 			if
 				onlyPlace
-				and (not entry.GamePlaceId or entry.GamePlaceId ~= place)
+				and not (
+					entry.Universal
+					or (entry.GamePlaceId and entry.GamePlaceId == place)
+					or (
+						entry.GameUniverseId
+						and entry.GameUniverseId == universe
+					)
+				)
 			then
 				return false
 			end
@@ -13156,6 +13185,7 @@ local function createNullx11UI(scope)
 				entry.Name or "",
 				entry.Description or "",
 				entry.Author or "",
+				entry.Collection or "",
 				entry.File or "",
 				model.Category(entry),
 			}, " "))
@@ -13197,6 +13227,7 @@ local function createNullx11UI(scope)
 			Query = "",
 			GlobalQuery = "",
 			Category = "All games",
+			Collection = "All collections",
 			OnlyPlace = false,
 			Cards = {},
 			Matches = {},
@@ -13265,7 +13296,9 @@ local function createNullx11UI(scope)
 						self.Query .. " " .. self.GlobalQuery,
 						self.Category,
 						self.OnlyPlace,
-						game.PlaceId
+						game.PlaceId,
+						game.GameId,
+						self.Collection
 					)
 					card.Frame.Visible = show
 					if show then
@@ -13276,7 +13309,7 @@ local function createNullx11UI(scope)
 			empty.Visible = #self.Matches == 0
 			summary:SetText(
 				string.format(
-					"%d of %d games / Nullx11 by Gab",
+					"%d of %d games / Nullx11 by NULL",
 					#self.Matches,
 					total
 				)
@@ -13337,7 +13370,7 @@ local function createNullx11UI(scope)
 					local badge = copy(
 						frame,
 						"Compatibility",
-						model.Badge(entry, game.PlaceId),
+						model.Badge(entry, game.PlaceId, game.GameId),
 						177,
 						18,
 						12,
@@ -13381,7 +13414,7 @@ local function createNullx11UI(scope)
 				card.Title.Text = entry.Name
 				card.Description.Text = entry.Description
 				card.Genre.Text = model.Category(entry):upper()
-				card.Badge.Text = model.Badge(entry, game.PlaceId)
+				card.Badge.Text = model.Badge(entry, game.PlaceId, game.GameId)
 			end
 			local removed = {}
 			for id, card in pairs(self.Cards) do
@@ -13426,8 +13459,23 @@ local function createNullx11UI(scope)
 				browser:Filter()
 			end,
 		})
+		controls:AddDropdown("ScriptLibraryCollection", {
+			Text = "Source collection",
+			Values = {
+				"All collections",
+				"Nullx11 originals",
+				"YARHM",
+				"Chaos",
+			},
+			Default = "All collections",
+			NoSave = true,
+			Callback = function(value)
+				browser.Collection = value
+				browser:Filter()
+			end,
+		})
 		controls:AddToggle("ScriptLibraryPlace", {
-			Text = "Known place matches only",
+			Text = "Known compatible game or Universal",
 			Default = false,
 			NoSave = true,
 			Callback = function(value)
@@ -13449,8 +13497,8 @@ local function createNullx11UI(scope)
 			Content = "Executed game windows survive loader unload. Stop features or unload each game's own workspace to clean up its jobs, overlays and owned changes.",
 		})
 		help:AddParagraph({
-			Title = "Source credits",
-			Content = "Gab develops Nullx11's interface and integration. Original controller authors and source restrictions remain visible in each game's details and repository provenance.",
+			Title = "NULL ownership and source notices",
+			Content = "Owner: NULL. Native Nullx11 editions use one shared interface. Required source notices and restrictions are retained in the repository; optional promotional credits are not shown here.",
 		})
 		tab.ApplyLibraryFilter = function(query)
 			browser.GlobalQuery = query or ""
@@ -14118,7 +14166,7 @@ local RunService = game:GetService("RunService")
 
 local CONFIG = {
 	Name = "Nullx11",
-	Subtitle = "Developed by Gab.",
+	Subtitle = "Developed by NULL.",
 	Accent = Color3.fromRGB(167, 146, 255),
 	ReducedMotion = false,
 	StartupAnimation = true,
@@ -20814,6 +20862,27 @@ do
 					"Invalid game place ID"
 				)
 			end
+			if entry.GameUniverseId ~= nil then
+				assert(
+					type(entry.GameUniverseId) == "number"
+						and entry.GameUniverseId > 0
+						and entry.GameUniverseId <= 9007199254740991
+						and entry.GameUniverseId % 1 == 0,
+					"Invalid game universe ID"
+				)
+			end
+			assert(
+				entry.Universal == nil or type(entry.Universal) == "boolean",
+				"Invalid universal flag"
+			)
+			assert(
+				entry.Collection == nil
+					or (
+						type(entry.Collection) == "string"
+						and #entry.Collection <= 40
+					),
+				"Invalid collection"
+			)
 			if entry.Author ~= nil then
 				assert(
 					type(entry.Author) == "string" and #entry.Author <= 160,
@@ -20876,6 +20945,9 @@ do
 				Description = entry.Description,
 				File = file,
 				GamePlaceId = entry.GamePlaceId,
+				GameUniverseId = entry.GameUniverseId,
+				Universal = entry.Universal,
+				Collection = entry.Collection,
 				Author = entry.Author,
 				PlaceIds = places,
 			})
@@ -20892,7 +20964,7 @@ do
 					Description = "Note tracking, configurable hit/hold timing, input release and gameplay rescan. Autoplay starts off.",
 					File = "Nullx11-Rosu.luau",
 					GamePlaceId = 9051087354,
-					Author = "Developed by Gab; Nullx11 adaptation; original Yvetzal / Wyrizon / Infernum. Not for resale.",
+					Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 					Category = "Rhythm",
 					Icon = "rhythm",
 				},
@@ -20902,7 +20974,7 @@ do
 					Description = "Runner routing, catcher assistance, progression tools and live status. Automation starts off; configurable per feature.",
 					File = "Nullx11-Huss.luau",
 					GamePlaceId = 107535308163741,
-					Author = "Developed by Gab; Nullx11 adaptation; original Wyrizon and Yvetzal Team.",
+					Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 					Category = "Adventure",
 					Icon = "target",
 				},
@@ -20912,7 +20984,7 @@ do
 					Description = "Forge, gear, pets, stages, tower, rewards and session tools on the full shared +1 UI. Bounded workers; automation starts off.",
 					File = "Nullx11-Forge.luau",
 					GamePlaceId = 118805555015549,
-					Author = "Developed by Gab; Nullx11 adaptation; original xDTaraZ controller and UI.",
+					Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 					Category = "Simulator",
 					Icon = "anvil",
 				},
@@ -20921,7 +20993,7 @@ do
 					Name = "Nullx11 - Steal An Egg",
 					Description = "Egg farming, inventory, event, navigation and character tools from the supplied source. All jobs start off. Game-module compatibility is checked before startup.",
 					File = "Nullx11-StealAnEgg.luau",
-					Author = "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained.",
+					Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 					Category = "Simulator",
 					Icon = "egg",
 				},
@@ -20930,7 +21002,7 @@ do
 					Name = "stealabrainrot",
 					Description = "Supplied Chilli controller adapted to Nullx11 controls: stealer, helper, player, ESP and server tools. Automation starts off; required game modules are checked first.",
 					File = "Nullx11-StealABrainrot.luau",
-					Author = "Developed by Gab; adapted from user-supplied recovered Chilli source; original attribution retained.",
+					Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 					Category = "Adventure",
 					Icon = "brain",
 				},
@@ -20939,7 +21011,7 @@ do
 					Name = "TTK Testing",
 					Description = "Merc hitbox visuals, centered aim, guarded weapon controls and explicit discovery. Features start off; Drawing overlays require executor support.",
 					File = "Nullx11-TTKTesting.luau",
-					Author = "Developed by Gab; adapted from user-supplied TTK source (original author unspecified).",
+					Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 					Category = "Shooter",
 					Icon = "target",
 				},
@@ -20948,7 +21020,7 @@ do
 					Name = "+1 Money per Click",
 					Description = "Worlds 1–4 smart Rebirth/Cash routing, money, evolution and 16 egg choices. Default-off jobs, exclusive movement modes and bounded requests.",
 					File = "Nullx11-MoneyPerClick.luau",
-					Author = "Developed by Gab; original smart-farming source by VoidScripts / VoidScriptsDK.",
+					Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 					Category = "Simulator",
 					Icon = "coin",
 				},
@@ -20957,9 +21029,75 @@ do
 					Name = "StealAnEgg-CHILI",
 					Description = "Recovered core from partial Chilli SAE source: nearby carry, opt-in saved-point return, egg labels and basic progression. Default off. VM-dependent features remain unavailable.",
 					File = "Nullx11-StealAnEgg-CHILI.luau",
-					Author = "Developed by Gab; recovered-core adaptation of user-supplied Chilli SAE source; original authorship retained.",
+					Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 					Category = "Simulator",
 					Icon = "egg",
+				},
+				{
+					Id = "yarhm_universal",
+					Name = "Universal / YARHM",
+					File = "Nullx11-Universal-YARHM.luau",
+					Category = "Universal",
+					Icon = "plane",
+					Description = "Native movement, flight, target camera, player ESP, reversible lighting and saved navigation. No vendor scripts or global fling routines.",
+					Author = "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+					Collection = "YARHM",
+					Universal = true,
+				},
+				{
+					Id = "yarhm_forsaken",
+					Name = "Forsaken / YARHM",
+					File = "Nullx11-Forsaken.luau",
+					Category = "Survival",
+					Icon = "target",
+					Description = "Player/item/generator ESP, nearest generator request with cooldown, reversible sprint speed and stamina settings. Features start off.",
+					Author = "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+					Collection = "YARHM",
+					GameUniverseId = 6331902150,
+				},
+				{
+					Id = "yarhm_mm2",
+					Name = "Murder Mystery 2 / YARHM",
+					File = "Nullx11-MM2.luau",
+					Category = "Mystery",
+					Icon = "target",
+					Description = "Role, gun and trap ESP; reviewed sheriff/knife tools; dropped-gun and map navigation; bounded nearby-coin route. No external AI or mass fling.",
+					Author = "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+					Collection = "YARHM",
+					GameUniverseId = 66654135,
+				},
+				{
+					Id = "yarhm_ftf",
+					Name = "Flee the Facility / YARHM",
+					File = "Nullx11-FleeTheFacility.luau",
+					Category = "Survival",
+					Icon = "eye",
+					Description = "Player, computer, pod, exit and tagged-locker ESP; owned flashlight, walk-speed lock and third-person camera. No global anti-error hook.",
+					Author = "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+					Collection = "YARHM",
+					GameUniverseId = 372226183,
+				},
+				{
+					Id = "yarhm_brookhaven",
+					Name = "Brookhaven / YARHM",
+					File = "Nullx11-Brookhaven-YARHM.luau",
+					Category = "Roleplay",
+					Icon = "home",
+					Description = "English Brookhaven avatar, item/effect, own-house, own-vehicle and location tools. Paced requests, reversible local edits; no destructive routines.",
+					Author = "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+					Collection = "YARHM",
+					GamePlaceId = 4924922222,
+				},
+				{
+					Id = "chaos_brookhaven",
+					Name = "Brookhaven / Chaos",
+					File = "Nullx11-Brookhaven-Chaos.luau",
+					Category = "Roleplay",
+					Icon = "home",
+					Description = "English native Chaos edition: Brookhaven locations, local movement, avatar/body/hair colors, items, own-house and own-vehicle tools. Reviewed subset.",
+					Author = "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+					Collection = "Chaos",
+					GamePlaceId = 4924922222,
 				},
 			},
 		})
@@ -21027,14 +21165,21 @@ do
 		catalog.GameDetails.Text = entry.Description
 			.. "\n\n"
 			.. (
-				if not entry.GamePlaceId
+				if entry.Universal
+					then "Universal tools. Confirm execution below."
+					elseif entry.GameUniverseId then (if game.GameId
+							== entry.GameUniverseId
+						then "Target game universe detected. Confirm execution below."
+						else "Unsupported game universe. Join the game manually to use this script.")
+					elseif
+						not entry.GamePlaceId
 					then "Game modules are checked before startup."
 					elseif
 						game.PlaceId == entry.GamePlaceId
 					then "Target game detected. Confirm execution below."
 					else "Unsupported place. Join the game manually to use this script."
 			)
-		catalog.GameCredit.Text = "Source credits: "
+		catalog.GameCredit.Text = "Edition / notices: "
 			.. (
 				entry.Author
 				or "See the reviewed script source; original attribution must be retained."
@@ -21054,6 +21199,13 @@ do
 	end
 	function catalog.Run(entry: any, button: TextButton)
 		if catalog.Busy then
+			return
+		end
+		if entry.GameUniverseId and game.GameId ~= entry.GameUniverseId then
+			catalog.Message(
+				"Unsupported game universe. Join the game manually; no code was downloaded.",
+				true
+			)
 			return
 		end
 		if entry.GamePlaceId and game.PlaceId ~= entry.GamePlaceId then
@@ -21275,8 +21427,9 @@ do
 				(entry.Category or "Community"):upper()
 					.. " / "
 					.. (
-						entry.GamePlaceId
-							and (entry.GamePlaceId == game.PlaceId and "PLACE MATCH" or "OTHER PLACE")
+						entry.Universal and "UNIVERSAL / NATIVE"
+						or (entry.GameUniverseId and (entry.GameUniverseId == game.GameId and "UNIVERSE MATCH" or "OTHER UNIVERSE"))
+						or entry.GamePlaceId and (entry.GamePlaceId == game.PlaceId and "PLACE MATCH" or "OTHER PLACE")
 						or "MODULE CHECK ON LAUNCH"
 					),
 				12,
@@ -21293,6 +21446,8 @@ do
 						or entry.Id == "egg"
 						or entry.Id == "stealabrainrot"
 						or entry.Id == "eggchili"
+						or entry.GameUniverseId
+						or entry.Universal
 					then "View details & launch"
 					else "Run / " .. entry.Name,
 				TextSize = 15,
@@ -21314,6 +21469,8 @@ do
 						or entry.Id == "egg"
 						or entry.Id == "stealabrainrot"
 						or entry.Id == "eggchili"
+						or entry.GameUniverseId
+						or entry.Universal
 					then
 						catalog.OpenGame(entry)
 					else
@@ -21814,7 +21971,7 @@ do
 				local welcomeGroup =
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
-					Title = "Nullx11 / Developed by Gab",
+					Title = "Nullx11 / Developed by NULL",
 					Content = "One Nullx11 interface, native player tools and eight independent game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
@@ -21983,7 +22140,7 @@ do
 			end
 			library:CreateWindow({
 				Title = "Nullx11",
-				SubTitle = "Developed by Gab",
+				SubTitle = "Developed by NULL",
 				Theme = "Nullx11",
 				MenuKey = appearance.ToggleKey,
 				ConfigFolder = "Nullx11 Workspace",

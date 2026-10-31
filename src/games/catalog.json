@@ -7,7 +7,7 @@
       "Description": "Note tracking, configurable hit/hold timing, input release and gameplay rescan. Autoplay starts off.",
       "File": "Nullx11-Rosu.luau",
       "GamePlaceId": 9051087354,
-      "Author": "Developed by Gab; Nullx11 adaptation; original Yvetzal / Wyrizon / Infernum. Not for resale.",
+      "Author": "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
       "Category": "Rhythm",
       "Icon": "rhythm"
     },
@@ -17,7 +17,7 @@
       "Description": "Runner routing, catcher assistance, progression tools and live status. Automation starts off; configurable per feature.",
       "File": "Nullx11-Huss.luau",
       "GamePlaceId": 107535308163741,
-      "Author": "Developed by Gab; Nullx11 adaptation; original Wyrizon and Yvetzal Team.",
+      "Author": "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
       "Category": "Adventure",
       "Icon": "target"
     },
@@ -27,7 +27,7 @@
       "Description": "Forge, gear, pets, stages, tower, rewards and session tools on the full shared +1 UI. Bounded workers; automation starts off.",
       "File": "Nullx11-Forge.luau",
       "GamePlaceId": 118805555015549,
-      "Author": "Developed by Gab; Nullx11 adaptation; original xDTaraZ controller and UI.",
+      "Author": "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
       "Category": "Simulator",
       "Icon": "anvil"
     },
@@ -36,7 +36,7 @@
       "Name": "Nullx11 - Steal An Egg",
       "Description": "Egg farming, inventory, event, navigation and character tools from the supplied source. All jobs start off. Game-module compatibility is checked before startup.",
       "File": "Nullx11-StealAnEgg.luau",
-      "Author": "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained.",
+      "Author": "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
       "Category": "Simulator",
       "Icon": "egg"
     },
@@ -45,7 +45,7 @@
       "Name": "stealabrainrot",
       "Description": "Supplied Chilli controller adapted to Nullx11 controls: stealer, helper, player, ESP and server tools. Automation starts off; required game modules are checked first.",
       "File": "Nullx11-StealABrainrot.luau",
-      "Author": "Developed by Gab; adapted from user-supplied recovered Chilli source; original attribution retained.",
+      "Author": "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
       "Category": "Adventure",
       "Icon": "brain"
     },
@@ -54,7 +54,7 @@
       "Name": "TTK Testing",
       "Description": "Merc hitbox visuals, centered aim, guarded weapon controls and explicit discovery. Features start off; Drawing overlays require executor support.",
       "File": "Nullx11-TTKTesting.luau",
-      "Author": "Developed by Gab; adapted from user-supplied TTK source (original author unspecified).",
+      "Author": "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
       "Category": "Shooter",
       "Icon": "target"
     },
@@ -63,7 +63,7 @@
       "Name": "+1 Money per Click",
       "Description": "Worlds 1\u20134 smart Rebirth/Cash routing, money, evolution and 16 egg choices. Default-off jobs, exclusive movement modes and bounded requests.",
       "File": "Nullx11-MoneyPerClick.luau",
-      "Author": "Developed by Gab; original smart-farming source by VoidScripts / VoidScriptsDK.",
+      "Author": "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
       "Category": "Simulator",
       "Icon": "coin"
     },
@@ -72,9 +72,75 @@
       "Name": "StealAnEgg-CHILI",
       "Description": "Recovered core from partial Chilli SAE source: nearby carry, opt-in saved-point return, egg labels and basic progression. Default off. VM-dependent features remain unavailable.",
       "File": "Nullx11-StealAnEgg-CHILI.luau",
-      "Author": "Developed by Gab; recovered-core adaptation of user-supplied Chilli SAE source; original authorship retained.",
+      "Author": "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
       "Category": "Simulator",
       "Icon": "egg"
+    },
+    {
+      "Id": "yarhm_universal",
+      "Name": "Universal / YARHM",
+      "File": "Nullx11-Universal-YARHM.luau",
+      "Category": "Universal",
+      "Icon": "plane",
+      "Description": "Native movement, flight, target camera, player ESP, reversible lighting and saved navigation. No vendor scripts or global fling routines.",
+      "Author": "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+      "Collection": "YARHM",
+      "Universal": true
+    },
+    {
+      "Id": "yarhm_forsaken",
+      "Name": "Forsaken / YARHM",
+      "File": "Nullx11-Forsaken.luau",
+      "Category": "Survival",
+      "Icon": "target",
+      "Description": "Player/item/generator ESP, nearest generator request with cooldown, reversible sprint speed and stamina settings. Features start off.",
+      "Author": "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+      "Collection": "YARHM",
+      "GameUniverseId": 6331902150
+    },
+    {
+      "Id": "yarhm_mm2",
+      "Name": "Murder Mystery 2 / YARHM",
+      "File": "Nullx11-MM2.luau",
+      "Category": "Mystery",
+      "Icon": "target",
+      "Description": "Role, gun and trap ESP; reviewed sheriff/knife tools; dropped-gun and map navigation; bounded nearby-coin route. No external AI or mass fling.",
+      "Author": "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+      "Collection": "YARHM",
+      "GameUniverseId": 66654135
+    },
+    {
+      "Id": "yarhm_ftf",
+      "Name": "Flee the Facility / YARHM",
+      "File": "Nullx11-FleeTheFacility.luau",
+      "Category": "Survival",
+      "Icon": "eye",
+      "Description": "Player, computer, pod, exit and tagged-locker ESP; owned flashlight, walk-speed lock and third-person camera. No global anti-error hook.",
+      "Author": "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+      "Collection": "YARHM",
+      "GameUniverseId": 372226183
+    },
+    {
+      "Id": "yarhm_brookhaven",
+      "Name": "Brookhaven / YARHM",
+      "File": "Nullx11-Brookhaven-YARHM.luau",
+      "Category": "Roleplay",
+      "Icon": "home",
+      "Description": "English Brookhaven avatar, item/effect, own-house, own-vehicle and location tools. Paced requests, reversible local edits; no destructive routines.",
+      "Author": "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+      "Collection": "YARHM",
+      "GamePlaceId": 4924922222
+    },
+    {
+      "Id": "chaos_brookhaven",
+      "Name": "Brookhaven / Chaos",
+      "File": "Nullx11-Brookhaven-Chaos.luau",
+      "Category": "Roleplay",
+      "Icon": "home",
+      "Description": "English native Chaos edition: Brookhaven locations, local movement, avatar/body/hair colors, items, own-house and own-vehicle tools. Reviewed subset.",
+      "Author": "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
+      "Collection": "Chaos",
+      "GamePlaceId": 4924922222
     }
   ]
 }

@@ -102,6 +102,34 @@ assert(
 	ran == 1,
 	"second execute tap invokes selected game code in correct place"
 )
+-- Universe metadata is retained through the actual validator and blocks fetches
+-- even when the source has no root-place ID.
+manifest.Scripts = {
+	{
+		Id = "universe",
+		Name = "Universe test",
+		Description = "Fixture",
+		File = "universe.luau",
+		GameUniverseId = 6331902150,
+	},
+}
+find("RefreshScripts").Activated:Fire()
+find("RunScript_universe").Activated:Fire()
+assert(
+	string.find(
+		find("GameScriptDetails").Text,
+		"Unsupported game universe",
+		1,
+		true
+	)
+)
+local universeBefore = #requests
+find("GameExecute").Activated:Fire()
+find("GameExecute").Activated:Fire()
+assert(
+	#requests == universeBefore and ran == 1,
+	"wrong universe blocks before code fetch"
+)
 -- A successful refresh invalidates the previously selected/confirmed game.
 manifest.Scripts = {}
 find("RefreshScripts").Activated:Fire()

@@ -1,6 +1,6 @@
 # Game integrations
 
-Seven previous sources have been adapted and bundled; the eighth entry is a separately implemented **partial recovered core**, not a full VM port. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
+Fourteen editions are bundled: the eight prior editions (including a **partial recovered core**, not a full VM port), all five actual YARHM tool/game families, and a separate English Chaos Brookhaven reviewed subset. Game coverage is complete for YARHM; feature parity is not. NULL is the current visible owner brand. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
 
 | Nullx11 workspace | Exact target place | Published file | Implementation status |
 | --- | --- | --- | --- |
@@ -23,7 +23,7 @@ Each game bundle contains this same shared library plus **only its selected game
 
 ## Launch / consent
 
-- Eight game entries are available immediately; Refresh is optional.
+- Fourteen game/tool entries are available immediately; Refresh is optional.
 - Scripts/launch windows are opening actions, never ON/OFF navigation. Opening them runs no game code.
 - Wrong-place execution is blocked for the three known targets. Steal An Egg uses structural core-module detection and full required-module validation, not a fabricated place ID.
 - Launcher teleport questions, destination teleports and arrival queues have been removed. Standalone incompatibility UI offers only a notice and Close.
@@ -41,3 +41,20 @@ Use [the game validation checklist](../diagnostics/GAME-PORTS.md) on an authoriz
 ## Latest additions and library
 
 See [TTK/Money review](../docs/TTK-MONEY-REVIEW.md) for preserved source data, removed telemetry hook, Instant ADS boundary, request limits and native test checklist. The main Scripts page now has responsive reusable game cards, category/place filters and game/feature/creator search; the separate browser has larger branded cards and clearer launch/compatibility labels.
+
+## Chaos / YARHM additions
+
+| Edition | Compatibility | Published file | Reviewed feature scope |
+| --- | --- | --- | --- |
+| Universal / YARHM | Explicit universal execution | `Nullx11-Universal-YARHM.luau` | Local movement/flight, selected camera/aim, ESP/lighting, saved navigation |
+| Forsaken / YARHM | Universe `6331902150` | `Nullx11-Forsaken.luau` | Player/item/generator ESP, cooldown-controlled generator request, reversible sprint/stamina |
+| Murder Mystery 2 / YARHM | Universe `66654135` | `Nullx11-MM2.luau` | Roles/gun/traps, supplied sheriff/knife paths, coin route and navigation |
+| Flee the Facility / YARHM | Universe `372226183` | `Nullx11-FleeTheFacility.luau` | Players/PC/pod/exit/tagged-locker ESP, flashlight, camera and speed |
+| Brookhaven / YARHM | Place `4924922222` | `Nullx11-Brookhaven-YARHM.luau` | Avatar, items/effects, own house/car, 22 locations, local movement |
+| Brookhaven / Chaos | Place `4924922222`, separate scope | `Nullx11-Brookhaven-Chaos.luau` | English Brookhaven subset plus source body/hair RGB; not full Chaos parity |
+
+No ads, external source-loader execution or final ScriptBlox ingest. Read
+[the inclusion/exclusion matrix](../docs/HUB-COLLECTION-REVIEW.md), especially
+FTF's unavailable broken global anti-error hook and the omitted destructive/spam
+routines. Local contracts pass under doubles, not live Roblox validation.
+The library now has collection and universe/Universal-aware filters and badges.

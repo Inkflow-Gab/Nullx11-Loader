@@ -3,13 +3,35 @@ local model = {}
 function model.Category(entry)
 	return entry.Category or "Community"
 end
-function model.Badge(entry, place)
+function model.Badge(entry, place, universe)
+	if entry.Universal then
+		return "UNIVERSAL / NATIVE"
+	end
+	if entry.GameUniverseId then
+		return entry.GameUniverseId == universe and "UNIVERSE MATCH"
+			or "OTHER UNIVERSE"
+	end
 	if not entry.GamePlaceId then
 		return "MODULE CHECK ON LAUNCH"
 	end
 	return entry.GamePlaceId == place and "PLACE MATCH" or "OTHER PLACE"
 end
-function model.Match(entry, query, category, onlyPlace, place)
+function model.Match(
+	entry,
+	query,
+	category,
+	onlyPlace,
+	place,
+	universe,
+	collection
+)
+	if
+		collection
+		and collection ~= "All collections"
+		and (entry.Collection or "Nullx11 originals") ~= collection
+	then
+		return false
+	end
 	if
 		category
 		and category ~= "All games"
@@ -17,13 +39,21 @@ function model.Match(entry, query, category, onlyPlace, place)
 	then
 		return false
 	end
-	if onlyPlace and (not entry.GamePlaceId or entry.GamePlaceId ~= place) then
+	if
+		onlyPlace
+		and not (
+			entry.Universal
+			or (entry.GamePlaceId and entry.GamePlaceId == place)
+			or (entry.GameUniverseId and entry.GameUniverseId == universe)
+		)
+	then
 		return false
 	end
 	local haystack = string.lower(table.concat({
 		entry.Name or "",
 		entry.Description or "",
 		entry.Author or "",
+		entry.Collection or "",
 		entry.File or "",
 		model.Category(entry),
 	}, " "))

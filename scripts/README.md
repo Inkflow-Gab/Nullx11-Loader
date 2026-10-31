@@ -2,7 +2,9 @@
 
 This folder is connected to **Workspace → Scripts / Open Scripts library** in `Nullx11.client.luau` (also available through classic Tools).
 
-The manifest publishes the seven prior adapted Rosu, Huss Valley, +1 Loot to Forge, Steal An Egg, stealabrainrot, TTK Testing and +1 Money per Click bundles plus the separate **StealAnEgg-CHILI recovered-core edition**. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
+The manifest retains the seven prior adapted Rosu, Huss Valley, +1 Loot to Forge, Steal An Egg, stealabrainrot, TTK Testing and +1 Money per Click bundles plus the separate **StealAnEgg-CHILI recovered-core edition**. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
+
+Six additional native reviewed-feature editions bring the total to **14**: all five actual YARHM game/tool families and a separate English Chaos Brookhaven. Game coverage is complete for YARHM; feature parity is not. Use Source collection filtering and read [the precise matrix](../docs/HUB-COLLECTION-REVIEW.md). NULL is the visible owner brand for every edition; required source notices are retained.
 
 ## Add a script later
 
@@ -81,3 +83,11 @@ Each generated bundle has a separate UI identity and default **Left Control** sh
 The built-in catalog is usable without a network Refresh. Refresh replaces it atomically and invalidates stale selected-game state. Optional theme/font downloads are data, not another executable UI library. Original source and redistribution restrictions are documented in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
 
 StealAnEgg-CHILI is not a full VM recovery. See [recovery scope](../docs/CHILI-EGG-REVIEW.md) for implemented nearby carry/progression/labels and explicit unavailable features. Original Steal An Egg remains intact.
+
+- `GameUniverseId`: optional positive integer universe gate metadata; the selected
+  bundle still enforces its own target.
+- `Universal`: optional boolean for an explicitly reviewed universal entry.
+- `Collection`: optional source-family label, at most 40 bytes.
+
+Known-compatible filtering includes place/universe matches and Universal entries;
+module-gated entries without identity metadata remain unverified until launch.

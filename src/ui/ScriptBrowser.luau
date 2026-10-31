@@ -6,6 +6,7 @@ function Library:CreateScriptBrowser(tab, options)
 		Query = "",
 		GlobalQuery = "",
 		Category = "All games",
+		Collection = "All collections",
 		OnlyPlace = false,
 		Cards = {},
 		Matches = {},
@@ -70,7 +71,9 @@ function Library:CreateScriptBrowser(tab, options)
 					self.Query .. " " .. self.GlobalQuery,
 					self.Category,
 					self.OnlyPlace,
-					game.PlaceId
+					game.PlaceId,
+					game.GameId,
+					self.Collection
 				)
 				card.Frame.Visible = show
 				if show then
@@ -81,7 +84,7 @@ function Library:CreateScriptBrowser(tab, options)
 		empty.Visible = #self.Matches == 0
 		summary:SetText(
 			string.format(
-				"%d of %d games / Nullx11 by Gab",
+				"%d of %d games / Nullx11 by NULL",
 				#self.Matches,
 				total
 			)
@@ -142,7 +145,7 @@ function Library:CreateScriptBrowser(tab, options)
 				local badge = copy(
 					frame,
 					"Compatibility",
-					model.Badge(entry, game.PlaceId),
+					model.Badge(entry, game.PlaceId, game.GameId),
 					177,
 					18,
 					12,
@@ -186,7 +189,7 @@ function Library:CreateScriptBrowser(tab, options)
 			card.Title.Text = entry.Name
 			card.Description.Text = entry.Description
 			card.Genre.Text = model.Category(entry):upper()
-			card.Badge.Text = model.Badge(entry, game.PlaceId)
+			card.Badge.Text = model.Badge(entry, game.PlaceId, game.GameId)
 		end
 		local removed = {}
 		for id, card in pairs(self.Cards) do
@@ -231,8 +234,18 @@ function Library:CreateScriptBrowser(tab, options)
 			browser:Filter()
 		end,
 	})
+	controls:AddDropdown("ScriptLibraryCollection", {
+		Text = "Source collection",
+		Values = { "All collections", "Nullx11 originals", "YARHM", "Chaos" },
+		Default = "All collections",
+		NoSave = true,
+		Callback = function(value)
+			browser.Collection = value
+			browser:Filter()
+		end,
+	})
 	controls:AddToggle("ScriptLibraryPlace", {
-		Text = "Known place matches only",
+		Text = "Known compatible game or Universal",
 		Default = false,
 		NoSave = true,
 		Callback = function(value)
@@ -254,8 +267,8 @@ function Library:CreateScriptBrowser(tab, options)
 		Content = "Executed game windows survive loader unload. Stop features or unload each game's own workspace to clean up its jobs, overlays and owned changes.",
 	})
 	help:AddParagraph({
-		Title = "Source credits",
-		Content = "Gab develops Nullx11's interface and integration. Original controller authors and source restrictions remain visible in each game's details and repository provenance.",
+		Title = "NULL ownership and source notices",
+		Content = "Owner: NULL. Native Nullx11 editions use one shared interface. Required source notices and restrictions are retained in the repository; optional promotional credits are not shown here.",
 	})
 	tab.ApplyLibraryFilter = function(query)
 		browser.GlobalQuery = query or ""

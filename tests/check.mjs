@@ -43,17 +43,28 @@ try {
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 8);
-  assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549]);
+  assert.equal(manifest.Scripts.length, 14);
+  assert.ok(source.includes('Universal = true'), 'generated embedded catalog serializes boolean values as booleans, not empty tables');
+  assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549, 4924922222, 4924922222]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
-    assert.ok(bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
+    assert.ok(bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) || /^(yarhm_|chaos_)/.test(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
     assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
     assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');
     assert.ok(Buffer.byteLength(bundle, 'utf8') < 2097152, 'bundle fits reviewed source size budget');
   }
+  const hubModules = ['HubCore','HubPolicy','HubBrookhavenData','HubForsaken','HubMM2','HubFTF','HubBrookhaven','HubUniversal'];
+  for (const name of hubModules) {
+    const text = read(`src/games/${name}.luau`);
+    assert.ok(!/HttpGet|loadstring|scriptblox\.com|hookmetamethod|while true|getgenv\(/.test(text), `${name}: no vendor execution, telemetry, global hooks or immortal jobs`);
+  }
+  for (const entry of manifest.Scripts) assert.ok(entry.Author.startsWith('Owner: NULL.'), 'every edition visibly identifies NULL');
+  const hubChecks = read('tests/hub-collection-contracts.luau')
+    .replace('-- @CATALOG_VALIDATE', read('src/loader.luau').slice(read('src/loader.luau').indexOf('function catalog.Validate('), read('src/loader.luau').indexOf('-- @NULLX11_CATALOG')))
+    .replace('-- @HUB_MODULES', module('makePatches','src/games/OwnedPatches.luau') + '\n' + module('makeSession','src/games/Context.luau') + '\n' + hubModules.map(name => ['HubForsaken','HubMM2','HubFTF','HubBrookhaven','HubUniversal'].includes(name) ? `local ${name}=function(context)\n${read(`src/games/${name}.luau`)}\nend` : module(name, `src/games/${name}.luau`)).join('\n'));
+  console.log(...await state.loadstring(hubChecks, 'actual-hub-collection-contracts', true)());
   const brainrot = read('src/games/StealABrainrot.luau');
   assert.ok(!/tienkhanh1|webhooks|request_|loadstring|queue_on_teleport|queueonteleport|ChilliLibrary\/configs|Default = true|BlockTools/.test(brainrot), 'no exfiltration, upstream loader, auto-enable defaults or startup tool-block bypass');
   assert.equal((brainrot.match(/:Connect\(/g) || []).length, 200);
@@ -135,7 +146,7 @@ connect(gui.Destroying,function() State.Gui:Destroy() end)`;
   const enhancedIntro=read('tests/roblox-mock.luau')+'\nlocal function runEnhancedLoader()\n'+enhancedSource+'\nend\nlocal function runEnhancedReducedLoader()\n'+enhancedSource.replace('ReducedMotion = false','ReducedMotion = true')+'\nend\n'+read('tests/enhanced-intro.luau');
   console.log(...await state.loadstring(enhancedIntro,'enhanced-startup-contracts',true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: eight published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
+  console.log('PASS: fourteen published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),

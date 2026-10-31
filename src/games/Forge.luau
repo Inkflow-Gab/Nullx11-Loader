@@ -8453,7 +8453,7 @@ local function BuildInterface()
 
 	Library:CreateWindow({
 		Title = "Nullx11",
-		SubTitle = "Nullx11 - +1 loot to forge / Gab",
+		SubTitle = "Nullx11 - +1 loot to forge / NULL",
 		Intro = false,
 		Watermark = false,
 		MenuKey = Enum.KeyCode.LeftControl,

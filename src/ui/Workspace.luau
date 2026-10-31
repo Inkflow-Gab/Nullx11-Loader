@@ -33,7 +33,7 @@ do
 				local welcomeGroup =
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
-					Title = "Nullx11 / Developed by Gab",
+					Title = "Nullx11 / Developed by NULL",
 					Content = "One Nullx11 interface, native player tools and eight independent game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
@@ -202,7 +202,7 @@ do
 			end
 			library:CreateWindow({
 				Title = "Nullx11",
-				SubTitle = "Developed by Gab",
+				SubTitle = "Developed by NULL",
 				Theme = "Nullx11",
 				MenuKey = appearance.ToggleKey,
 				ConfigFolder = "Nullx11 Workspace",

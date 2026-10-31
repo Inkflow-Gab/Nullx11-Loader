@@ -11,7 +11,7 @@ local RunService = game:GetService("RunService")
 
 local CONFIG = {
 	Name = "Nullx11",
-	Subtitle = "Developed by Gab.",
+	Subtitle = "Developed by NULL.",
 	Accent = Color3.fromRGB(167, 146, 255),
 	ReducedMotion = false,
 	StartupAnimation = true,
@@ -6707,6 +6707,27 @@ do
 					"Invalid game place ID"
 				)
 			end
+			if entry.GameUniverseId ~= nil then
+				assert(
+					type(entry.GameUniverseId) == "number"
+						and entry.GameUniverseId > 0
+						and entry.GameUniverseId <= 9007199254740991
+						and entry.GameUniverseId % 1 == 0,
+					"Invalid game universe ID"
+				)
+			end
+			assert(
+				entry.Universal == nil or type(entry.Universal) == "boolean",
+				"Invalid universal flag"
+			)
+			assert(
+				entry.Collection == nil
+					or (
+						type(entry.Collection) == "string"
+						and #entry.Collection <= 40
+					),
+				"Invalid collection"
+			)
 			if entry.Author ~= nil then
 				assert(
 					type(entry.Author) == "string" and #entry.Author <= 160,
@@ -6769,6 +6790,9 @@ do
 				Description = entry.Description,
 				File = file,
 				GamePlaceId = entry.GamePlaceId,
+				GameUniverseId = entry.GameUniverseId,
+				Universal = entry.Universal,
+				Collection = entry.Collection,
 				Author = entry.Author,
 				PlaceIds = places,
 			})
@@ -6838,14 +6862,21 @@ do
 		catalog.GameDetails.Text = entry.Description
 			.. "\n\n"
 			.. (
-				if not entry.GamePlaceId
+				if entry.Universal
+					then "Universal tools. Confirm execution below."
+					elseif entry.GameUniverseId then (if game.GameId
+							== entry.GameUniverseId
+						then "Target game universe detected. Confirm execution below."
+						else "Unsupported game universe. Join the game manually to use this script.")
+					elseif
+						not entry.GamePlaceId
 					then "Game modules are checked before startup."
 					elseif
 						game.PlaceId == entry.GamePlaceId
 					then "Target game detected. Confirm execution below."
 					else "Unsupported place. Join the game manually to use this script."
 			)
-		catalog.GameCredit.Text = "Source credits: "
+		catalog.GameCredit.Text = "Edition / notices: "
 			.. (
 				entry.Author
 				or "See the reviewed script source; original attribution must be retained."
@@ -6865,6 +6896,13 @@ do
 	end
 	function catalog.Run(entry: any, button: TextButton)
 		if catalog.Busy then
+			return
+		end
+		if entry.GameUniverseId and game.GameId ~= entry.GameUniverseId then
+			catalog.Message(
+				"Unsupported game universe. Join the game manually; no code was downloaded.",
+				true
+			)
 			return
 		end
 		if entry.GamePlaceId and game.PlaceId ~= entry.GamePlaceId then
@@ -7086,8 +7124,9 @@ do
 				(entry.Category or "Community"):upper()
 					.. " / "
 					.. (
-						entry.GamePlaceId
-							and (entry.GamePlaceId == game.PlaceId and "PLACE MATCH" or "OTHER PLACE")
+						entry.Universal and "UNIVERSAL / NATIVE"
+						or (entry.GameUniverseId and (entry.GameUniverseId == game.GameId and "UNIVERSE MATCH" or "OTHER UNIVERSE"))
+						or entry.GamePlaceId and (entry.GamePlaceId == game.PlaceId and "PLACE MATCH" or "OTHER PLACE")
 						or "MODULE CHECK ON LAUNCH"
 					),
 				12,
@@ -7104,6 +7143,8 @@ do
 						or entry.Id == "egg"
 						or entry.Id == "stealabrainrot"
 						or entry.Id == "eggchili"
+						or entry.GameUniverseId
+						or entry.Universal
 					then "View details & launch"
 					else "Run / " .. entry.Name,
 				TextSize = 15,
@@ -7125,6 +7166,8 @@ do
 						or entry.Id == "egg"
 						or entry.Id == "stealabrainrot"
 						or entry.Id == "eggchili"
+						or entry.GameUniverseId
+						or entry.Universal
 					then
 						catalog.OpenGame(entry)
 					else

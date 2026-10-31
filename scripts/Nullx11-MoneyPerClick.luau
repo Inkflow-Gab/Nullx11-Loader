@@ -8816,7 +8816,7 @@ local function createNullx11UI(scope)
 		end
 		local self = setmetatable({
 			Title = options.Title or "Nullx11",
-			SubTitle = options.SubTitle or "Developed by Gab",
+			SubTitle = options.SubTitle or "Developed by NULL",
 			Desired = size,
 			Size = size,
 			Tabs = {},
@@ -13128,13 +13128,35 @@ local function createNullx11UI(scope)
 		function model.Category(entry)
 			return entry.Category or "Community"
 		end
-		function model.Badge(entry, place)
+		function model.Badge(entry, place, universe)
+			if entry.Universal then
+				return "UNIVERSAL / NATIVE"
+			end
+			if entry.GameUniverseId then
+				return entry.GameUniverseId == universe and "UNIVERSE MATCH"
+					or "OTHER UNIVERSE"
+			end
 			if not entry.GamePlaceId then
 				return "MODULE CHECK ON LAUNCH"
 			end
 			return entry.GamePlaceId == place and "PLACE MATCH" or "OTHER PLACE"
 		end
-		function model.Match(entry, query, category, onlyPlace, place)
+		function model.Match(
+			entry,
+			query,
+			category,
+			onlyPlace,
+			place,
+			universe,
+			collection
+		)
+			if
+				collection
+				and collection ~= "All collections"
+				and (entry.Collection or "Nullx11 originals") ~= collection
+			then
+				return false
+			end
 			if
 				category
 				and category ~= "All games"
@@ -13144,7 +13166,14 @@ local function createNullx11UI(scope)
 			end
 			if
 				onlyPlace
-				and (not entry.GamePlaceId or entry.GamePlaceId ~= place)
+				and not (
+					entry.Universal
+					or (entry.GamePlaceId and entry.GamePlaceId == place)
+					or (
+						entry.GameUniverseId
+						and entry.GameUniverseId == universe
+					)
+				)
 			then
 				return false
 			end
@@ -13152,6 +13181,7 @@ local function createNullx11UI(scope)
 				entry.Name or "",
 				entry.Description or "",
 				entry.Author or "",
+				entry.Collection or "",
 				entry.File or "",
 				model.Category(entry),
 			}, " "))
@@ -13193,6 +13223,7 @@ local function createNullx11UI(scope)
 			Query = "",
 			GlobalQuery = "",
 			Category = "All games",
+			Collection = "All collections",
 			OnlyPlace = false,
 			Cards = {},
 			Matches = {},
@@ -13261,7 +13292,9 @@ local function createNullx11UI(scope)
 						self.Query .. " " .. self.GlobalQuery,
 						self.Category,
 						self.OnlyPlace,
-						game.PlaceId
+						game.PlaceId,
+						game.GameId,
+						self.Collection
 					)
 					card.Frame.Visible = show
 					if show then
@@ -13272,7 +13305,7 @@ local function createNullx11UI(scope)
 			empty.Visible = #self.Matches == 0
 			summary:SetText(
 				string.format(
-					"%d of %d games / Nullx11 by Gab",
+					"%d of %d games / Nullx11 by NULL",
 					#self.Matches,
 					total
 				)
@@ -13333,7 +13366,7 @@ local function createNullx11UI(scope)
 					local badge = copy(
 						frame,
 						"Compatibility",
-						model.Badge(entry, game.PlaceId),
+						model.Badge(entry, game.PlaceId, game.GameId),
 						177,
 						18,
 						12,
@@ -13377,7 +13410,7 @@ local function createNullx11UI(scope)
 				card.Title.Text = entry.Name
 				card.Description.Text = entry.Description
 				card.Genre.Text = model.Category(entry):upper()
-				card.Badge.Text = model.Badge(entry, game.PlaceId)
+				card.Badge.Text = model.Badge(entry, game.PlaceId, game.GameId)
 			end
 			local removed = {}
 			for id, card in pairs(self.Cards) do
@@ -13422,8 +13455,23 @@ local function createNullx11UI(scope)
 				browser:Filter()
 			end,
 		})
+		controls:AddDropdown("ScriptLibraryCollection", {
+			Text = "Source collection",
+			Values = {
+				"All collections",
+				"Nullx11 originals",
+				"YARHM",
+				"Chaos",
+			},
+			Default = "All collections",
+			NoSave = true,
+			Callback = function(value)
+				browser.Collection = value
+				browser:Filter()
+			end,
+		})
 		controls:AddToggle("ScriptLibraryPlace", {
-			Text = "Known place matches only",
+			Text = "Known compatible game or Universal",
 			Default = false,
 			NoSave = true,
 			Callback = function(value)
@@ -13445,8 +13493,8 @@ local function createNullx11UI(scope)
 			Content = "Executed game windows survive loader unload. Stop features or unload each game's own workspace to clean up its jobs, overlays and owned changes.",
 		})
 		help:AddParagraph({
-			Title = "Source credits",
-			Content = "Gab develops Nullx11's interface and integration. Original controller authors and source restrictions remain visible in each game's details and repository provenance.",
+			Title = "NULL ownership and source notices",
+			Content = "Owner: NULL. Native Nullx11 editions use one shared interface. Required source notices and restrictions are retained in the repository; optional promotional credits are not shown here.",
 		})
 		tab.ApplyLibraryFilter = function(query)
 			browser.GlobalQuery = query or ""
@@ -14166,7 +14214,7 @@ local makeAdapter = (function()
 			local window = {}
 			local native = library:CreateWindow({
 				Title = "Nullx11",
-				SubTitle = title .. " / Gab",
+				SubTitle = title .. " / NULL",
 				ConfigFolder = folder,
 				Theme = "Nullx11",
 				MenuKey = Enum.KeyCode.LeftControl,
@@ -14662,7 +14710,7 @@ local wrongPlace = (function()
 	return function(library, entry, _url)
 		library:CreateWindow({
 			Title = "Nullx11",
-			SubTitle = entry.Name .. " / Gab",
+			SubTitle = entry.Name .. " / NULL",
 			Theme = "Nullx11",
 			Intro = false,
 			Watermark = false,
@@ -14680,7 +14728,7 @@ local wrongPlace = (function()
 				})
 				group:AddParagraph({
 					Title = "Credits",
-					Content = entry.Author or "Developed by Gab",
+					Content = entry.Author or "Developed by NULL",
 				})
 				group:AddButton({
 					Text = "Close",
@@ -14693,7 +14741,7 @@ local wrongPlace = (function()
 	end
 end)()
 local function runGame(context)
-	-- Nullx11 / Gab, adapted from VoidScripts' supplied smart-farming source.
+	-- Nullx11 / NULL, adapted from VoidScripts' supplied smart-farming source.
 	-- Two workers at most: route movement and a serialized remote dispatcher.
 	local data = context.MoneyData
 	local player = game:GetService("Players").LocalPlayer
@@ -14710,7 +14758,7 @@ local function runGame(context)
 	local lastClaim, claimUntil, claimTarget = nil, 0, nil
 	local farm = window:CreateTab({ name = "Smart farming", icon = "coin" })
 	local status = farm:CreateText({
-		name = "+1 Money per Click / Gab",
+		name = "+1 Money per Click / NULL",
 		text = "Idle. All automation starts off. Source routing covers Worlds 1–4. One route mode owns movement at a time; server acceptance is not guaranteed.",
 	})
 	local lastStatus = ""
@@ -14968,8 +15016,8 @@ local function runGame(context)
 		end,
 	})
 	farm:CreateText({
-		name = "Source credit",
-		text = "Original smart-farming controller: VoidScripts / rscripts.net/@VoidScriptsDK. Nullx11 interface, worker ownership and integration by Gab. No Rayfield download or promotional startup actions.",
+		name = "NULL / edition details",
+		text = "Owner: NULL. Native interface and owned farming workers. Source notices and restrictions: docs/SOURCE-PROVENANCE.md. No remote UI download or promotional startup actions.",
 	})
 	farm:CreateButton({
 		name = "Unload this game workspace",
@@ -14988,7 +15036,7 @@ local entry = {
 	Name = "+1 Money per Click",
 	Description = "Worlds 1–4 smart Rebirth/Cash routing, money, evolution and 16 egg choices. Default-off jobs, exclusive movement modes and bounded requests.",
 	File = "Nullx11-MoneyPerClick.luau",
-	Author = "Developed by Gab; original smart-farming source by VoidScripts / VoidScriptsDK.",
+	Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 	Category = "Simulator",
 	Icon = "coin",
 }

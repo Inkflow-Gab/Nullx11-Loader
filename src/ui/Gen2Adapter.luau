@@ -57,7 +57,7 @@ return function(library, title, folder)
 		local window = {}
 		local native = library:CreateWindow({
 			Title = "Nullx11",
-			SubTitle = title .. " / Gab",
+			SubTitle = title .. " / NULL",
 			ConfigFolder = folder,
 			Theme = "Nullx11",
 			MenuKey = Enum.KeyCode.LeftControl,

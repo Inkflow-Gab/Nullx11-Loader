@@ -1,4 +1,4 @@
--- Nullx11 / Gab adaptation of the supplied TTK source. See source review.
+-- Nullx11 / NULL adaptation of the supplied TTK source. See source review.
 local patches = context.Patches
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -718,7 +718,7 @@ end)
 local window = context.Adapter:CreateWindow({})
 local visuals = window:CreateTab({ name = "Visuals & aim", icon = "target" })
 visuals:CreateText({
-	name = "TTK Testing / Gab",
+	name = "TTK Testing / NULL",
 	text = "All master switches start off. Hold RMB to aim; touch users can explicitly enable Touch aim. Drawing overlays require executor Drawing; native Highlights do not.",
 })
 local function toggle(tab, key, name, weapon)

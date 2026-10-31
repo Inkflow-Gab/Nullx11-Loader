@@ -8346,7 +8346,7 @@ function Window.New(options)
 	end
 	local self = setmetatable({
 		Title = options.Title or "Nullx11",
-		SubTitle = options.SubTitle or "Developed by Gab",
+		SubTitle = options.SubTitle or "Developed by NULL",
 		Desired = size,
 		Size = size,
 		Tabs = {},

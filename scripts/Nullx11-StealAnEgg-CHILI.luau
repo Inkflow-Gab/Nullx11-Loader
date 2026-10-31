@@ -8816,7 +8816,7 @@ local function createNullx11UI(scope)
 		end
 		local self = setmetatable({
 			Title = options.Title or "Nullx11",
-			SubTitle = options.SubTitle or "Developed by Gab",
+			SubTitle = options.SubTitle or "Developed by NULL",
 			Desired = size,
 			Size = size,
 			Tabs = {},
@@ -13128,13 +13128,35 @@ local function createNullx11UI(scope)
 		function model.Category(entry)
 			return entry.Category or "Community"
 		end
-		function model.Badge(entry, place)
+		function model.Badge(entry, place, universe)
+			if entry.Universal then
+				return "UNIVERSAL / NATIVE"
+			end
+			if entry.GameUniverseId then
+				return entry.GameUniverseId == universe and "UNIVERSE MATCH"
+					or "OTHER UNIVERSE"
+			end
 			if not entry.GamePlaceId then
 				return "MODULE CHECK ON LAUNCH"
 			end
 			return entry.GamePlaceId == place and "PLACE MATCH" or "OTHER PLACE"
 		end
-		function model.Match(entry, query, category, onlyPlace, place)
+		function model.Match(
+			entry,
+			query,
+			category,
+			onlyPlace,
+			place,
+			universe,
+			collection
+		)
+			if
+				collection
+				and collection ~= "All collections"
+				and (entry.Collection or "Nullx11 originals") ~= collection
+			then
+				return false
+			end
 			if
 				category
 				and category ~= "All games"
@@ -13144,7 +13166,14 @@ local function createNullx11UI(scope)
 			end
 			if
 				onlyPlace
-				and (not entry.GamePlaceId or entry.GamePlaceId ~= place)
+				and not (
+					entry.Universal
+					or (entry.GamePlaceId and entry.GamePlaceId == place)
+					or (
+						entry.GameUniverseId
+						and entry.GameUniverseId == universe
+					)
+				)
 			then
 				return false
 			end
@@ -13152,6 +13181,7 @@ local function createNullx11UI(scope)
 				entry.Name or "",
 				entry.Description or "",
 				entry.Author or "",
+				entry.Collection or "",
 				entry.File or "",
 				model.Category(entry),
 			}, " "))
@@ -13193,6 +13223,7 @@ local function createNullx11UI(scope)
 			Query = "",
 			GlobalQuery = "",
 			Category = "All games",
+			Collection = "All collections",
 			OnlyPlace = false,
 			Cards = {},
 			Matches = {},
@@ -13261,7 +13292,9 @@ local function createNullx11UI(scope)
 						self.Query .. " " .. self.GlobalQuery,
 						self.Category,
 						self.OnlyPlace,
-						game.PlaceId
+						game.PlaceId,
+						game.GameId,
+						self.Collection
 					)
 					card.Frame.Visible = show
 					if show then
@@ -13272,7 +13305,7 @@ local function createNullx11UI(scope)
 			empty.Visible = #self.Matches == 0
 			summary:SetText(
 				string.format(
-					"%d of %d games / Nullx11 by Gab",
+					"%d of %d games / Nullx11 by NULL",
 					#self.Matches,
 					total
 				)
@@ -13333,7 +13366,7 @@ local function createNullx11UI(scope)
 					local badge = copy(
 						frame,
 						"Compatibility",
-						model.Badge(entry, game.PlaceId),
+						model.Badge(entry, game.PlaceId, game.GameId),
 						177,
 						18,
 						12,
@@ -13377,7 +13410,7 @@ local function createNullx11UI(scope)
 				card.Title.Text = entry.Name
 				card.Description.Text = entry.Description
 				card.Genre.Text = model.Category(entry):upper()
-				card.Badge.Text = model.Badge(entry, game.PlaceId)
+				card.Badge.Text = model.Badge(entry, game.PlaceId, game.GameId)
 			end
 			local removed = {}
 			for id, card in pairs(self.Cards) do
@@ -13422,8 +13455,23 @@ local function createNullx11UI(scope)
 				browser:Filter()
 			end,
 		})
+		controls:AddDropdown("ScriptLibraryCollection", {
+			Text = "Source collection",
+			Values = {
+				"All collections",
+				"Nullx11 originals",
+				"YARHM",
+				"Chaos",
+			},
+			Default = "All collections",
+			NoSave = true,
+			Callback = function(value)
+				browser.Collection = value
+				browser:Filter()
+			end,
+		})
 		controls:AddToggle("ScriptLibraryPlace", {
-			Text = "Known place matches only",
+			Text = "Known compatible game or Universal",
 			Default = false,
 			NoSave = true,
 			Callback = function(value)
@@ -13445,8 +13493,8 @@ local function createNullx11UI(scope)
 			Content = "Executed game windows survive loader unload. Stop features or unload each game's own workspace to clean up its jobs, overlays and owned changes.",
 		})
 		help:AddParagraph({
-			Title = "Source credits",
-			Content = "Gab develops Nullx11's interface and integration. Original controller authors and source restrictions remain visible in each game's details and repository provenance.",
+			Title = "NULL ownership and source notices",
+			Content = "Owner: NULL. Native Nullx11 editions use one shared interface. Required source notices and restrictions are retained in the repository; optional promotional credits are not shown here.",
 		})
 		tab.ApplyLibraryFilter = function(query)
 			browser.GlobalQuery = query or ""
@@ -14166,7 +14214,7 @@ local makeAdapter = (function()
 			local window = {}
 			local native = library:CreateWindow({
 				Title = "Nullx11",
-				SubTitle = title .. " / Gab",
+				SubTitle = title .. " / NULL",
 				ConfigFolder = folder,
 				Theme = "Nullx11",
 				MenuKey = Enum.KeyCode.LeftControl,
@@ -14691,7 +14739,7 @@ local wrongPlace = (function()
 	return function(library, entry, _url)
 		library:CreateWindow({
 			Title = "Nullx11",
-			SubTitle = entry.Name .. " / Gab",
+			SubTitle = entry.Name .. " / NULL",
 			Theme = "Nullx11",
 			Intro = false,
 			Watermark = false,
@@ -14709,7 +14757,7 @@ local wrongPlace = (function()
 				})
 				group:AddParagraph({
 					Title = "Credits",
-					Content = entry.Author or "Developed by Gab",
+					Content = entry.Author or "Developed by NULL",
 				})
 				group:AddButton({
 					Text = "Close",
@@ -14722,7 +14770,7 @@ local wrongPlace = (function()
 	end
 end)()
 local function runGame(context)
-	-- StealAnEgg-CHILI / Nullx11 by Gab.
+	-- StealAnEgg-CHILI / Nullx11 by NULL.
 	-- Recovered-core adaptation, NOT a full devirtualization of the uploaded VM.
 	-- Original supplied Chilli SAE source/provenance: docs/CHILI-EGG-REVIEW.md.
 	local policy = context.ChiliPolicy
@@ -15400,15 +15448,14 @@ local function runGame(context)
 			)
 		end,
 	})
-	local about =
-		window:CreateTab({ name = "Recovery & credits", icon = "info" })
+	local about = window:CreateTab({ name = "Recovery details", icon = "info" })
 	about:CreateText({
 		name = "Not recovered / intentionally unavailable",
 		text = "The remaining VM-driven event/boss chains, full steal/tween/guard routines, fuse/sell/mutation pipelines, prediction/finder/account integrations and cross-server automation are not claimed recovered. No empty feature toggles are supplied. No external Chilli API, luarmor/Venyx loader, webhook or teleport queue is executed.",
 	})
 	about:CreateText({
 		name = "Source provenance",
-		text = "User-supplied partial Chilli SAE artifact; Chilli authorship retained, complete license/recovery README not supplied. Nullx11 GUI and independently implemented recovered core by Gab. This is a separate session from the existing Henrik/xyzhenrik Steal An Egg port.",
+		text = "Owner: NULL. Independently implemented recovered-core edition; not a full VM recovery. This is separate from the existing Steal An Egg session. Required notices and source boundaries: docs/CHILI-EGG-REVIEW.md.",
 	})
 	about:CreateButton({
 		name = "Unload StealAnEgg-CHILI",
@@ -15432,7 +15479,7 @@ local entry = {
 	Name = "StealAnEgg-CHILI",
 	Description = "Recovered core from partial Chilli SAE source: nearby carry, opt-in saved-point return, egg labels and basic progression. Default off. VM-dependent features remain unavailable.",
 	File = "Nullx11-StealAnEgg-CHILI.luau",
-	Author = "Developed by Gab; recovered-core adaptation of user-supplied Chilli SAE source; original authorship retained.",
+	Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 	Category = "Simulator",
 	Icon = "egg",
 }

@@ -1,4 +1,4 @@
--- stealabrainrot / Nullx11 adaptation by Gab.
+-- stealabrainrot / Nullx11 adaptation by NULL.
 -- Source: user-supplied StealB.deobfuscated.lua.txt (recovered Chilli controller).
 -- Telemetry/config exfiltration, remote UI and original arrival loader removed.
 -- See docs/BRAINROT-REVIEW.md for incomplete-source and validation limitations.

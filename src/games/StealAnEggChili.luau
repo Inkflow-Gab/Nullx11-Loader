@@ -1,4 +1,4 @@
--- StealAnEgg-CHILI / Nullx11 by Gab.
+-- StealAnEgg-CHILI / Nullx11 by NULL.
 -- Recovered-core adaptation, NOT a full devirtualization of the uploaded VM.
 -- Original supplied Chilli SAE source/provenance: docs/CHILI-EGG-REVIEW.md.
 local policy = context.ChiliPolicy
@@ -656,14 +656,14 @@ field:CreateButton({
 		)
 	end,
 })
-local about = window:CreateTab({ name = "Recovery & credits", icon = "info" })
+local about = window:CreateTab({ name = "Recovery details", icon = "info" })
 about:CreateText({
 	name = "Not recovered / intentionally unavailable",
 	text = "The remaining VM-driven event/boss chains, full steal/tween/guard routines, fuse/sell/mutation pipelines, prediction/finder/account integrations and cross-server automation are not claimed recovered. No empty feature toggles are supplied. No external Chilli API, luarmor/Venyx loader, webhook or teleport queue is executed.",
 })
 about:CreateText({
 	name = "Source provenance",
-	text = "User-supplied partial Chilli SAE artifact; Chilli authorship retained, complete license/recovery README not supplied. Nullx11 GUI and independently implemented recovered core by Gab. This is a separate session from the existing Henrik/xyzhenrik Steal An Egg port.",
+	text = "Owner: NULL. Independently implemented recovered-core edition; not a full VM recovery. This is separate from the existing Steal An Egg session. Required notices and source boundaries: docs/CHILI-EGG-REVIEW.md.",
 })
 about:CreateButton({
 	name = "Unload StealAnEgg-CHILI",

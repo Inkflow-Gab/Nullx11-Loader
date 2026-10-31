@@ -71,6 +71,18 @@
       "sha256": "c198d8df2672e4f000c748818d6f624daadb593bf6ee3583841ab9d0d08ccdba",
       "bytes": 1740136,
       "note": "Partial static recovery with remaining VM. Never raw-executed or shipped. Only independently implemented readable core is published; full VM features unavailable. See CHILI-EGG-REVIEW.md."
+    },
+    "chaos-brookhaven-original.lua": {
+      "source": "User upload Chaos_Hub_Open_Source.txt",
+      "sha256": "0fceb54e6fa108f1ec1888c274d91f70bbcaa5997b0d4b24a67c9e0e6d064233",
+      "bytes": 382183,
+      "note": "Statically reviewed only; raw upload never executed/distributed. Native reviewed-feature collection; no full feature-parity claim. See HUB-COLLECTION-REVIEW.md."
+    },
+    "yarhm-keyless-2026-original.lua": {
+      "source": "User upload YARHM_Hub_KEYLESS_2026.txt",
+      "sha256": "982fcebaddcc35828141ce322155d91dee91704910f3b80355b892cc48cec114",
+      "bytes": 408853,
+      "note": "Statically reviewed only; raw upload never executed/distributed. Native reviewed-feature collection; no full feature-parity claim. See HUB-COLLECTION-REVIEW.md."
     }
   },
   "Updated": "2026-10-31"

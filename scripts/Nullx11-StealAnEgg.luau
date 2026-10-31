@@ -8816,7 +8816,7 @@ local function createNullx11UI(scope)
 		end
 		local self = setmetatable({
 			Title = options.Title or "Nullx11",
-			SubTitle = options.SubTitle or "Developed by Gab",
+			SubTitle = options.SubTitle or "Developed by NULL",
 			Desired = size,
 			Size = size,
 			Tabs = {},
@@ -13128,13 +13128,35 @@ local function createNullx11UI(scope)
 		function model.Category(entry)
 			return entry.Category or "Community"
 		end
-		function model.Badge(entry, place)
+		function model.Badge(entry, place, universe)
+			if entry.Universal then
+				return "UNIVERSAL / NATIVE"
+			end
+			if entry.GameUniverseId then
+				return entry.GameUniverseId == universe and "UNIVERSE MATCH"
+					or "OTHER UNIVERSE"
+			end
 			if not entry.GamePlaceId then
 				return "MODULE CHECK ON LAUNCH"
 			end
 			return entry.GamePlaceId == place and "PLACE MATCH" or "OTHER PLACE"
 		end
-		function model.Match(entry, query, category, onlyPlace, place)
+		function model.Match(
+			entry,
+			query,
+			category,
+			onlyPlace,
+			place,
+			universe,
+			collection
+		)
+			if
+				collection
+				and collection ~= "All collections"
+				and (entry.Collection or "Nullx11 originals") ~= collection
+			then
+				return false
+			end
 			if
 				category
 				and category ~= "All games"
@@ -13144,7 +13166,14 @@ local function createNullx11UI(scope)
 			end
 			if
 				onlyPlace
-				and (not entry.GamePlaceId or entry.GamePlaceId ~= place)
+				and not (
+					entry.Universal
+					or (entry.GamePlaceId and entry.GamePlaceId == place)
+					or (
+						entry.GameUniverseId
+						and entry.GameUniverseId == universe
+					)
+				)
 			then
 				return false
 			end
@@ -13152,6 +13181,7 @@ local function createNullx11UI(scope)
 				entry.Name or "",
 				entry.Description or "",
 				entry.Author or "",
+				entry.Collection or "",
 				entry.File or "",
 				model.Category(entry),
 			}, " "))
@@ -13193,6 +13223,7 @@ local function createNullx11UI(scope)
 			Query = "",
 			GlobalQuery = "",
 			Category = "All games",
+			Collection = "All collections",
 			OnlyPlace = false,
 			Cards = {},
 			Matches = {},
@@ -13261,7 +13292,9 @@ local function createNullx11UI(scope)
 						self.Query .. " " .. self.GlobalQuery,
 						self.Category,
 						self.OnlyPlace,
-						game.PlaceId
+						game.PlaceId,
+						game.GameId,
+						self.Collection
 					)
 					card.Frame.Visible = show
 					if show then
@@ -13272,7 +13305,7 @@ local function createNullx11UI(scope)
 			empty.Visible = #self.Matches == 0
 			summary:SetText(
 				string.format(
-					"%d of %d games / Nullx11 by Gab",
+					"%d of %d games / Nullx11 by NULL",
 					#self.Matches,
 					total
 				)
@@ -13333,7 +13366,7 @@ local function createNullx11UI(scope)
 					local badge = copy(
 						frame,
 						"Compatibility",
-						model.Badge(entry, game.PlaceId),
+						model.Badge(entry, game.PlaceId, game.GameId),
 						177,
 						18,
 						12,
@@ -13377,7 +13410,7 @@ local function createNullx11UI(scope)
 				card.Title.Text = entry.Name
 				card.Description.Text = entry.Description
 				card.Genre.Text = model.Category(entry):upper()
-				card.Badge.Text = model.Badge(entry, game.PlaceId)
+				card.Badge.Text = model.Badge(entry, game.PlaceId, game.GameId)
 			end
 			local removed = {}
 			for id, card in pairs(self.Cards) do
@@ -13422,8 +13455,23 @@ local function createNullx11UI(scope)
 				browser:Filter()
 			end,
 		})
+		controls:AddDropdown("ScriptLibraryCollection", {
+			Text = "Source collection",
+			Values = {
+				"All collections",
+				"Nullx11 originals",
+				"YARHM",
+				"Chaos",
+			},
+			Default = "All collections",
+			NoSave = true,
+			Callback = function(value)
+				browser.Collection = value
+				browser:Filter()
+			end,
+		})
 		controls:AddToggle("ScriptLibraryPlace", {
-			Text = "Known place matches only",
+			Text = "Known compatible game or Universal",
 			Default = false,
 			NoSave = true,
 			Callback = function(value)
@@ -13445,8 +13493,8 @@ local function createNullx11UI(scope)
 			Content = "Executed game windows survive loader unload. Stop features or unload each game's own workspace to clean up its jobs, overlays and owned changes.",
 		})
 		help:AddParagraph({
-			Title = "Source credits",
-			Content = "Gab develops Nullx11's interface and integration. Original controller authors and source restrictions remain visible in each game's details and repository provenance.",
+			Title = "NULL ownership and source notices",
+			Content = "Owner: NULL. Native Nullx11 editions use one shared interface. Required source notices and restrictions are retained in the repository; optional promotional credits are not shown here.",
 		})
 		tab.ApplyLibraryFilter = function(query)
 			browser.GlobalQuery = query or ""
@@ -14166,7 +14214,7 @@ local makeAdapter = (function()
 			local window = {}
 			local native = library:CreateWindow({
 				Title = "Nullx11",
-				SubTitle = title .. " / Gab",
+				SubTitle = title .. " / NULL",
 				ConfigFolder = folder,
 				Theme = "Nullx11",
 				MenuKey = Enum.KeyCode.LeftControl,
@@ -14569,7 +14617,7 @@ local wrongPlace = (function()
 	return function(library, entry, _url)
 		library:CreateWindow({
 			Title = "Nullx11",
-			SubTitle = entry.Name .. " / Gab",
+			SubTitle = entry.Name .. " / NULL",
 			Theme = "Nullx11",
 			Intro = false,
 			Watermark = false,
@@ -14587,7 +14635,7 @@ local wrongPlace = (function()
 				})
 				group:AddParagraph({
 					Title = "Credits",
-					Content = entry.Author or "Developed by Gab",
+					Content = entry.Author or "Developed by NULL",
 				})
 				group:AddButton({
 					Text = "Close",
@@ -14600,7 +14648,7 @@ local wrongPlace = (function()
 	end
 end)()
 local function runGame(context)
-	-- Steal An Egg controller adapted for Nullx11 by Gab.
+	-- Steal An Egg controller adapted for Nullx11 by NULL.
 	-- Original source: Henrik / xyzhenrik (Silence), user-provided Main.luau.txt.
 	-- See docs/SOURCE-PROVENANCE.md. Gameplay implementation retained, not a demo.
 	local services = {
@@ -14691,7 +14739,7 @@ local function runGame(context)
 		and services.UserInputService.MouseEnabled
 	local silence = WindUI:CreateWindow({
 		Title = "Nullx11 - Steal An Egg",
-		Author = "Developed by Gab; original Henrik / xyzhenrik",
+		Author = "Owner: NULL",
 		Icon = "solar:moon-bold",
 		IconSize = 26,
 		Theme = "Crimson",
@@ -22200,40 +22248,10 @@ local function runGame(context)
 	end
 
 	function utils.buildInfo()
+		tabs.info:Paragraph({ Title = "Owner: NULL / Nullx11 edition" })
 		tabs.info:Paragraph({
-			Title = "Developed by Gab / original source: xyzhenrik",
+			Title = "Source notices and restrictions: docs/SOURCE-PROVENANCE.md",
 		})
-		tabs.info:Paragraph({ Title = "Any issues? Create a Ticket on Discord" })
-		tabs.info:Paragraph({
-			Title = "Official Discord: discord.gg/9eFf93Kg8D",
-		})
-		tabs.info:Button({
-			Title = "Copy Invite",
-			Callback = function()
-				local success = type(setclipboard) == "function"
-					and pcall(setclipboard, "https://discord.gg/9eFf93Kg8D")
-				pcall(function()
-					services.StarterGui:SetCore("SendNotification", {
-						Title = success and "Link Copied!" or "Error!",
-						Text = success and "You can continue to Discord now."
-							or "Clipboard not Supported.",
-						Duration = 3,
-					})
-				end)
-			end,
-		})
-		tabs.info:Space()
-		tabs.info:Section({
-			Title = "Contributors:",
-			TextSize = 17,
-			Box = false,
-		})
-		tabs.info:Paragraph({ Title = "- Henrik @xyzhenrik" })
-		tabs.info:Space()
-		tabs.info:Paragraph({
-			Title = "Nullx11 adaptation; original source attribution retained",
-		})
-		tabs.info:Space()
 		tabs.info.VersionLabel = tabs.info:Section({
 			Title = "Steal An Egg [V2.0.0]",
 			TextSize = 20,
@@ -22576,7 +22594,7 @@ local entry = {
 	Name = "Nullx11 - Steal An Egg",
 	Description = "Egg farming, inventory, event, navigation and character tools from the supplied source. All jobs start off. Game-module compatibility is checked before startup.",
 	File = "Nullx11-StealAnEgg.luau",
-	Author = "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained.",
+	Author = "Owner: NULL. Nullx11 edition; source notices and restrictions retained in docs/SOURCE-PROVENANCE.md.",
 	Category = "Simulator",
 	Icon = "egg",
 }

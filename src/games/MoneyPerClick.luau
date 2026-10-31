@@ -1,4 +1,4 @@
--- Nullx11 / Gab, adapted from VoidScripts' supplied smart-farming source.
+-- Nullx11 / NULL, adapted from VoidScripts' supplied smart-farming source.
 -- Two workers at most: route movement and a serialized remote dispatcher.
 local data = context.MoneyData
 local player = game:GetService("Players").LocalPlayer
@@ -10,7 +10,7 @@ local routeRunning, remoteRunning = false, false
 local lastClaim, claimUntil, claimTarget = nil, 0, nil
 local farm = window:CreateTab({ name = "Smart farming", icon = "coin" })
 local status = farm:CreateText({
-	name = "+1 Money per Click / Gab",
+	name = "+1 Money per Click / NULL",
 	text = "Idle. All automation starts off. Source routing covers Worlds 1–4. One route mode owns movement at a time; server acceptance is not guaranteed.",
 })
 local lastStatus = ""
@@ -260,8 +260,8 @@ farm:CreateButton({
 	end,
 })
 farm:CreateText({
-	name = "Source credit",
-	text = "Original smart-farming controller: VoidScripts / rscripts.net/@VoidScriptsDK. Nullx11 interface, worker ownership and integration by Gab. No Rayfield download or promotional startup actions.",
+	name = "NULL / edition details",
+	text = "Owner: NULL. Native interface and owned farming workers. Source notices and restrictions: docs/SOURCE-PROVENANCE.md. No remote UI download or promotional startup actions.",
 })
 farm:CreateButton({
 	name = "Unload this game workspace",

@@ -10,7 +10,7 @@ return function(library, runtime)
 	function adapter:CreateWindow(_spec)
 		local native = library:CreateWindow({
 			Title = "Nullx11",
-			SubTitle = "stealabrainrot / Gab",
+			SubTitle = "stealabrainrot / NULL",
 			Theme = "Nullx11",
 			Intro = false,
 			Watermark = false,
@@ -251,7 +251,7 @@ return function(library, runtime)
 			"settings",
 			"Session / provenance / manual configuration"
 		)
-		local group = tab:AddLeftGroupbox("stealabrainrot / Gab")
+		local group = tab:AddLeftGroupbox("stealabrainrot / NULL")
 		group:AddParagraph({
 			Title = "Supplied recovered source",
 			Content = "Adapted from the supplied Chilli controller. Live game compatibility is unverified. AP/TP/Priority were absent in the source; no working replacements are claimed. Automation and overlays start OFF.",

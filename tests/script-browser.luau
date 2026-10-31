@@ -83,6 +83,7 @@ local entries = {
 		Name = "Alpha",
 		Description = "Cash routing",
 		Author = "Alice",
+		Collection = "YARHM",
 		File = "a.luau",
 		Category = "Simulator",
 		GamePlaceId = game.PlaceId,
@@ -92,6 +93,7 @@ local entries = {
 		Name = "Beta",
 		Description = "Aim controls",
 		Author = "Bob",
+		Collection = "Chaos",
 		File = "b.luau",
 		Category = "Shooter",
 	},
@@ -142,6 +144,47 @@ controls.ScriptLibraryPlace:SetValue(false)
 tab.ApplyLibraryFilter("Beta")
 assert(#browser.Matches == 1 and browser.Matches[1] == b)
 tab.ApplyLibraryFilter("")
+controls.ScriptLibraryCollection:SetValue("YARHM")
+assert(#browser.Matches == 1 and browser.Matches[1] == a)
+controls.ScriptLibraryCollection:SetValue("Chaos")
+assert(#browser.Matches == 1 and browser.Matches[1] == b)
+controls.ScriptLibraryCollection:SetValue("All collections")
+local universeEntry = { GameUniverseId = 6331902150, Collection = "YARHM" }
+assert(
+	makeScriptLibraryModel.Badge(universeEntry, game.PlaceId, 6331902150)
+		== "UNIVERSE MATCH"
+)
+assert(
+	makeScriptLibraryModel.Match(
+		universeEntry,
+		"yarhm",
+		"All games",
+		true,
+		game.PlaceId,
+		6331902150,
+		"YARHM"
+	)
+)
+assert(
+	not makeScriptLibraryModel.Match(
+		universeEntry,
+		"",
+		"All games",
+		true,
+		game.PlaceId,
+		1
+	)
+)
+assert(
+	makeScriptLibraryModel.Match(
+		{ Universal = true },
+		"",
+		"All games",
+		true,
+		game.PlaceId,
+		0
+	)
+)
 local obsolete = a.Frame:FindFirstChild("OpenScript_a")
 local updated = {
 	Id = "a",
@@ -171,4 +214,4 @@ for _, callback in ipairs(Library.Hooks) do
 	callback()
 end
 assert(next(browser.Cards) == nil)
-return "PASS: shipped Scripts browser/model: literal multi-word creator/feature search, category/place filters, responsive layout, pooled cards, refresh invalidation/current-entry launch and owned callback disposal (development API doubles only)"
+return "PASS: shipped Scripts browser/model: literal multi-word creator/feature search, category/collection/place/universe/Universal filters, responsive layout, pooled cards, refresh invalidation/current-entry launch and owned callback disposal (development API doubles only)"
