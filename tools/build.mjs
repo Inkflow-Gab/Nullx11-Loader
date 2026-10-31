@@ -55,7 +55,7 @@ let main = read('src/loader.luau')
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
   if (entry.Id === 'autoplayer') {
-    const modules = [module('makeSession',session), module('midiParser',read('src/games/MidiParser.luau')), module('midiFiles',read('src/games/MidiFiles.luau')), module('makeMidiOutput',read('src/games/MidiOutput.luau')), module('makeMidiTransport',read('src/games/MidiTransport.luau')), module('makeAutoPlayerView',read('src/ui/AutoPlayerView.luau'))].join('\n');
+    const modules = [module('makeSession',session), module('midiParser',read('src/games/MidiParser.luau')), module('midiFiles',read('src/games/MidiFiles.luau')), module('makeMidiPreferences',read('src/games/MidiPreferences.luau')), module('makeMidiOutput',read('src/games/MidiOutput.luau')), module('makeMidiTransport',read('src/games/MidiTransport.luau')), module('makeAutoPlayerView',read('src/ui/AutoPlayerView.luau'))].join('\n');
     output(`scripts/${entry.File}`, `${banner}-- Auto Player / NULL. Local MIDI data only; see docs/MIDI-REVIEW.md.
 ${modules}
 local function runGame(context)
@@ -73,6 +73,7 @@ end
 local context=makeSession("autoplayer",library)
 local environment=type(getgenv)=="function" and getgenv() or _G
 context.ReducedMotion=environment.Nullx11ReducedMotion==true
+context.MakeMidiPreferences=makeMidiPreferences
 context.MidiParser=midiParser;context.MidiFiles=midiFiles;context.MakeMidiOutput=makeMidiOutput
 context.MakeMidiTransport=makeMidiTransport;context.MakeAutoPlayerView=makeAutoPlayerView
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)

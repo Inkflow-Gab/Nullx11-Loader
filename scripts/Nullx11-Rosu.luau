@@ -8988,6 +8988,7 @@ local function createNullx11UI(scope)
 			if not delta then
 				return self.Root.Position
 			end
+			self.UserPositioned = true
 			self.Root.Position = begin + UDim2.fromOffset(delta.X, delta.Y)
 			self:ClampPosition()
 			return begin
@@ -9625,6 +9626,7 @@ local function createNullx11UI(scope)
 	end
 
 	function Window:ResizeFrom(begin, delta)
+		self.UserPositioned = true
 		if self.Minimized then
 			return
 		end
@@ -9671,7 +9673,7 @@ local function createNullx11UI(scope)
 
 	function Window:FitViewport()
 		local viewport = State.Gui.AbsoluteSize
-		if viewport.X <= 0 then
+		if viewport.X <= 0 or viewport.Y <= 0 then
 			return
 		end
 		local margin = (
@@ -9688,6 +9690,16 @@ local function createNullx11UI(scope)
 			math.floor(math.clamp(self.Desired.Y, minHeight, availH))
 		)
 		self:ApplyLayout()
+		if not self.UserPositioned then
+			self.Root.Position = UDim2.new(
+				0.5,
+				0,
+				0.5,
+				-math.floor(
+					(self.Size.Y + Config.Window.Shadow) * scaleFactor / 2
+				)
+			)
+		end
 		self:ClampPosition()
 		if Float.Clamp then
 			Float.Clamp()
@@ -10441,6 +10453,14 @@ local function createNullx11UI(scope)
 		if viewport.X <= 0 or viewport.Y <= 0 then
 			return
 		end
+		if not Float.Moved then
+			button.Position = UDim2.new(
+				0.5,
+				-(Float.Size or 48) / 2,
+				1,
+				-(Float.Size or 48) - 18
+			)
+		end
 		local pos = button.Position
 		local absX = viewport.X * pos.X.Scale + pos.X.Offset
 		local absY = viewport.Y * pos.Y.Scale + pos.Y.Offset
@@ -10460,12 +10480,7 @@ local function createNullx11UI(scope)
 			Text = "",
 			AutoButtonColor = false,
 			BackgroundTransparency = 1,
-			Position = UDim2.new(
-				0,
-				(scope and scope.Id ~= "Workspace") and 84 or 18,
-				0.45,
-				0
-			),
+			Position = UDim2.new(0.5, -size / 2, 1, -size - 18),
 			Size = UDim2.fromOffset(size, size),
 			ZIndex = Config.Layer.Float,
 			Visible = true,
@@ -10495,6 +10510,7 @@ local function createNullx11UI(scope)
 			end
 			moved = moved or delta.Magnitude > Config.DragThreshold
 			if moved then
+				Float.Moved = true
 				button.Position = begin + UDim2.fromOffset(delta.X, delta.Y)
 				Float.Clamp()
 			end

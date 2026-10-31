@@ -11,15 +11,16 @@ remote song catalog, upload service, announcement, decal or font download runs.
 2. Open Auto Player. It scans that exact folder through Delta's `listfiles` API.
    If absolute listing is rejected, it tries workspace-relative **`MIDI`** and
    explicitly reports that fallback. It does not bypass Android/executor access
-   restrictions, create folders, search the whole device or write any files.
+   restrictions, create folders, search the whole device or modify song files. One optional workspace JSON stores your setup.
 3. If neither path works, grant file access using Delta/Android's own settings,
    or enter a permitted local folder under **Settings → MIDI folder**. Return to
    **Library → Refresh**. Folder changes do not silently start a scan or play.
 4. Search, then select a song. Selection **loads but does not play**. The loading
    overlay reports real file-read/decode phases; its sweeping accent is decorative,
    not a fabricated completion percentage.
-5. Open/focus the game piano first. In Auto Player's **Settings**, enable
-   **Arm piano input**. In **Keys**, choose the **61-key screenshot profile** for
+5. Open/focus the game piano first. **Arm on launch** is now enabled by default
+   when an input API is available; **Play is still manual**. STOP INPUT disarms
+   until you re-arm or start a new session. In **Keys**, choose the **61-key screenshot profile** for
    the supplied `1…m` layout and leave the game's **CAPS off**. Test both
    **C4 / t** and **C#4 / Shift+t**: the actual game must sound both notes.
    API availability and the player's key highlights are not proof of game input.
@@ -43,7 +44,7 @@ preview, never passed off as successful game input. This is not an audio synth.
   **Advance queue** optionally plays the next after an explicitly started song.
   It stops at the end, not an endless playlist. Clear under Settings. Limit 128.
 - **Favorites:** toggle the loaded song; search **`fav:`** (optionally followed by
-  text). Favorites/queue/loop marks are **session-only**, not persisted to disk.
+  text). Favorites, queue and last-song loop marks save locally when storage is available.
 - **Transport:** Play, Pause, Stop, seek by tapping the progress bar, and accurate
   elapsed/duration display. Seeking/pause releases held notes; resume starts at
   the next onset rather than replaying already-active notes.
@@ -55,8 +56,8 @@ preview, never passed off as successful game input. This is not an audio synth.
 - **Keyboard:** source-informed 61-key mapping, MIDI 36–96 (C2–C7), or opt-in
   88-key Ctrl extension, MIDI 21–108 (A0–C8). Out-of-range octave folding can be
   disabled. Different game bindings require a different mapping; none is guessed.
-- **Visuals:** animated opening and file-loading stage, cyan/violet piano roll,
-  live key highlights/BPM, a static graphical piano dock, draggable window/dock,
+- **Visuals:** animated opening and file-loading stage, warm amber/lavender piano roll,
+  live key highlights/BPM, a static graphical piano icon in a movable mini holder, centered window,
   dedicated Library/Queue/Mixer/Keys/Settings, compact portrait/landscape layouts and
   reduced-motion option. The dock icon has no idle animation or letter monogram.
 - **F8:** play/pause (ignored while typing or when the game consumes input).
@@ -149,3 +150,28 @@ If every available backend remains silent, supply the **Roblox game link/place
 ID** and the observed white/black key test results. A screenshot is not enough to
 verify that game's input code; some mobile games do not accept injected keyboard
 input at all. No unreviewed remote calls or guessed UI-coordinate clicks are used.
+
+## Saved setup and redesigned holder
+
+The default is the supplied screenshot's 61-key layout with zero transpose. The
+updated UI uses charcoal panels, ivory text, warm accents, a distinct selected tab,
+clearer now-playing/library separation and a compact portrait player. The minimized
+holder sits bottom-center above the loader icon and provides **Open**, **Play/Pause**
+and **STOP**, without an animated icon. Drag its background to move it.
+
+Successful user changes coalesce into workspace **`Nullx11-AutoPlayer.json`**.
+Settings → **Your saved setup** reports Saved, Session only or an actual save error;
+**Save** flushes immediately. The JSON remembers folder, backend, speed, transpose,
+velocity/gate/sustain/drums, 61/88 mode, octave folding, countdown, recursive scan,
+queue advance, reduced motion, arm-on-launch preference, favorites, queue, last
+song, that song's track mutes/A–B loop and normalized window/holder positions.
+The last song is restored only if found in the scanned library, and is loaded
+without playback. Playback position, actual held keys, preview state and temporary
+emergency disarm are not resumed from disk. No source Lua or MIDI bytes are stored.
+
+**Center** brings the window to the middle and resets the mini holder. Preferences
+are bounded to 64 KiB, schema-checked and data-only; missing/corrupt/denied storage
+falls back to defaults/session controls. The app cannot grant Android permissions.
+No external upload or whole-device scan is added. **Arm on launch** may be disabled
+and saved if you prefer; unavailable input APIs remain unarmed. Automatic arming
+is readiness, not proof of game acceptance and never automatic playback.

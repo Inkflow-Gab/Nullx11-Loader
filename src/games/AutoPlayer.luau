@@ -10,6 +10,22 @@ local output = context.MakeMidiOutput(
 	Enum.KeyCode,
 	game
 )
+local okJson, json = pcall(game.GetService, game, "HttpService")
+local store = context.MakeMidiPreferences(
+	{ Read = readfile, Write = writefile, Exists = isfile },
+	okJson
+			and {
+				Encode = function(value)
+					return json:JSONEncode(value)
+				end,
+				Decode = function(text)
+					return json:JSONDecode(text)
+				end,
+			}
+		or nil
+)
+local saved = store.Load()
+context.MidiPreferences = saved
 local player = context.MakeMidiTransport(output, os.clock)
 context.MidiOutput = output
 local view = context.MakeAutoPlayerView(context)
@@ -17,6 +33,77 @@ local library, queue, favorites = {}, {}, {}
 local selected, query, pageNumber = nil, "", 1
 local root, recursive, advance, startDelay = files.AndroidRoot, true, false, 2
 local generation, operation, countdown, renderAt = 0, nil, nil, 0
+local saveSerial, autoArm, restoring, preferencesReady =
+	0, saved.AutoArm, true, false
+local function saveNow()
+	local data = {
+		Speed = player.Speed,
+		Transpose = player.Transpose,
+		Velocity = player.MinimumVelocity,
+		Gate = player.Gate,
+		Sustain = player.Sustain,
+		Drums = player.Drums,
+		Mode88 = output.Mode88,
+		Fold = output.Fold,
+		AutoArm = autoArm,
+		Recursive = recursive,
+		Advance = advance,
+		Motion = view.ReducedMotion,
+		Delay = startDelay,
+		Backend = output.Preferred,
+		Folder = root,
+		Selected = selected and selected.Path or saved.Selected,
+		Favorites = {},
+		Queue = {},
+		Muted = {},
+		Page = view.Page,
+		Loop = player.Loop,
+		LoopA = player.LoopA,
+		LoopB = player.LoopB,
+	}
+	for path, favorite in pairs(favorites) do
+		if favorite then
+			table.insert(data.Favorites, path)
+		end
+	end
+	if restoring then
+		data.Favorites = saved.Favorites
+		data.Queue = saved.Queue
+		data.Muted = saved.Muted
+	end
+	table.sort(data.Favorites)
+	for _, entry in ipairs(queue) do
+		table.insert(data.Queue, entry.Path)
+	end
+	for index, muted in pairs(player.Muted) do
+		if muted then
+			table.insert(data.Muted, index)
+		end
+	end
+	if view.Placement then
+		local positions = view.Placement()
+		data.Panel = positions.Panel
+		data.Dock = positions.Dock
+	end
+	store.Save(data)
+	if view.Alive and view.Persistence then
+		view.Persistence(store.Status)
+	end
+end
+local function requestSave()
+	if not preferencesReady then
+		return
+	end
+	saveSerial += 1
+	local serial = saveSerial
+	task.delay(0.65, function()
+		if context.Alive and saveSerial == serial then
+			saveNow()
+		end
+	end)
+end
+local load
+
 local function current(token)
 	return context.Alive and generation == token
 end
@@ -174,6 +261,28 @@ local function refresh()
 		return { Entries = entries, Info = info }
 	end, function(result)
 		library = result.Entries
+		if restoring then
+			local byPath = {}
+			for _, entry in ipairs(library) do
+				byPath[entry.Path] = entry
+			end
+			for _, path in ipairs(saved.Favorites) do
+				favorites[path] = true
+			end
+			for _, path in ipairs(saved.Queue) do
+				if byPath[path] then
+					table.insert(queue, byPath[path])
+				end
+			end
+			restoring = false
+			if saved.Selected and byPath[saved.Selected] then
+				task.defer(function()
+					if context.Alive then
+						load(byPath[saved.Selected], false)
+					end
+				end)
+			end
+		end
 		pageNumber = 1
 		rows()
 		view.Message(
@@ -186,7 +295,7 @@ local function refresh()
 		)
 	end)
 end
-local function load(entry, continueQueue)
+load = function(entry, continueQueue)
 	entry = entry.Original or entry
 	operationStart("Reading " .. entry.Name, function(token)
 		assert(type(api.Read) == "function", "Delta readfile is unavailable")
@@ -201,10 +310,26 @@ local function load(entry, continueQueue)
 		return score
 	end, function(score)
 		player.Load(score)
+		if saved.Selected == entry.Path then
+			for _, index in ipairs(saved.Muted) do
+				if score.Tracks[index] then
+					player.Muted[index] = true
+				end
+			end
+			player.LoopA = math.min(saved.LoopA, score.Duration)
+			player.LoopB = saved.LoopB and math.min(saved.LoopB, score.Duration)
+				or nil
+			player.Loop = saved.Loop
+				and player.LoopA < (player.LoopB or score.Duration)
+			view.Settings.loop(player.Loop)
+			player.Rebuild()
+			saved.Selected = nil
+		end
 		selected = entry
 		view.Score(score, entry.Name)
 		view.Tracks(score.Tracks, player.Muted)
 		rows()
+		requestSave()
 		view.Message(
 			"Loaded "
 				.. entry.Name
@@ -299,6 +424,17 @@ local function testNote(pitch)
 	render()
 end
 view.Actions = {
+	placement = function() end,
+	autoarm = function(value)
+		autoArm = value
+		view.Settings.autoarm(value)
+	end,
+	save = saveNow,
+	center = function()
+		if view.Center then
+			view.Center()
+		end
+	end,
 	reveal = render,
 	backend = function(mode)
 		pause()
@@ -402,7 +538,7 @@ view.Actions = {
 		favorites[selected.Path] = not favorites[selected.Path]
 		rows()
 		view.Message(
-			"Session favorite updated. Search fav: to show favorites. Favorites are not written to disk."
+			"Favorite updated. Search fav: to show favorites. Settings shows local save status."
 		)
 	end,
 	seek = function(ratio)
@@ -535,6 +671,15 @@ view.Actions = {
 		testNote(60)
 	end,
 }
+-- Save only successful user actions, coalesced off the playback clock.
+for name, callback in pairs(view.Actions) do
+	if name ~= "save" and name ~= "unload" and name ~= "search" then
+		view.Actions[name] = function(...)
+			callback(...)
+			requestSave()
+		end
+	end
+end
 context.Connect(input.InputBegan, function(event, processed)
 	if event.KeyCode == Enum.KeyCode.F7 then
 		panic()
@@ -615,6 +760,10 @@ context.Connect(game:GetService("RunService").Heartbeat, function()
 	end
 end)
 context.RegisterCleanup(function()
+	saveSerial += 1
+	if preferencesReady then
+		saveNow()
+	end
 	generation += 1
 	cancelCountdown()
 	if operation and operation ~= coroutine.running() then
@@ -628,6 +777,39 @@ context.RegisterCleanup(function()
 		)
 	end
 end)
+root, recursive, advance, startDelay =
+	saved.Folder, saved.Recursive, saved.Advance, saved.Delay
+player.Speed, player.Transpose, player.MinimumVelocity, player.Gate =
+	saved.Speed, saved.Transpose, saved.Velocity, saved.Gate
+player.Sustain, player.Drums = saved.Sustain, saved.Drums
+output.Mode88, output.Fold = saved.Mode88, saved.Fold
+pcall(output.SelectBackend, saved.Backend)
+player.Armed = autoArm and output.Available()
+view.ReducedMotion = saved.Motion or context.ReducedMotion
+for name, value in pairs({
+	arm = player.Armed,
+	autoarm = autoArm,
+	mode88 = output.Mode88,
+	fold = output.Fold,
+	sustain = player.Sustain,
+	drums = player.Drums,
+	recursive = recursive,
+	advance = advance,
+	motion = view.ReducedMotion,
+}) do
+	if view.Settings[name] then
+		view.Settings[name](value)
+	end
+end
+view.Keyboard(output.Mode88)
+if view.Preferences then
+	view.Preferences(saved)
+end
+if view.Persistence then
+	view.Persistence(store.Status)
+end
+view.SetPage(saved.Page)
+preferencesReady = true
 rows()
 render()
 refresh()

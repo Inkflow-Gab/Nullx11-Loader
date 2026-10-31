@@ -28,7 +28,7 @@ that MIDI compositions become NULL property. NULL is the edition/developer brand
   speed, transposition, gate and A–B loops. Stalls drop stale events, not spam keys.
 - `AutoPlayer.luau`: async generation-owned scans/parses, local library/queue/
   favorites, countdown, real API status, focus-pause, F8/F7 and independent session.
-- `AutoPlayerView.luau`: newly made native cyan/violet studio; no source GUI/decal
+- `AutoPlayerView.luau`: native charcoal/ivory studio with warm accents; no source GUI/decal
   download. Opening/loading tweens are finite and cancel on unload. File/track/
   waterfall rows are pooled. Static draggable piano dock. Reduced motion honored.
 - `tools/build.mjs`: separate lightweight standalone bundle, not the whole generic
@@ -93,3 +93,25 @@ from the screenshot. Development tests now use realistic enum values, independen
 check every screenshot binding, verify Shift/VK numbers and native Enum dispatch,
 old-backend release ownership, failed switching, unsupported/refused APIs and the
 published chunk's actual Keys/profile/backend/manual-test controls.
+
+### Follow-up: redesigned placement, preferences and requested auto-arm
+
+The current edition supersedes the earlier disarmed/session-only defaults. At the
+user's request, input is armed at launch when a backend exists, with an opt-out;
+no notes/Play/test are generated on launch. Emergency stop remains disarmed for
+the session. The main loader waits for a valid viewport and recenters until the
+user explicitly moves/resizes it. Its static restore icon starts bottom-center.
+Auto Player adds a movable Open/Play/Pause/Stop holder above that icon, a centered
+960×680 maximum window, flat selected navigation, warmer palette and compact
+portrait composition. No CanvasGroup texture or idle icon animation is restored.
+
+`MidiPreferences.luau` implements bounded, whitelisted data-only workspace JSON.
+Only `Nullx11-AutoPlayer.json` is written: never songs, scripts or arbitrary paths.
+Save requests are coalesced away from transport ticks, flushed on explicit save/
+close, and report denied/missing storage. It restores the screenshot profile or
+explicit extended mode, preferences, last scanned song without autoplay, favorites,
+queue, song-specific mutes/loop and normalized placements. Runtime input ownership,
+playback position and preview are not rehydrated. Unit and published-chunk tests
+cover false flags, corrupt/oversized/denied JSON, reload, manual holder actions,
+auto-arm without automatic notes, explicit opt-out and actual window-fit logic.
+Native device rendering, filesystem permissions and game input remain unverified.

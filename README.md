@@ -350,12 +350,12 @@ It reads `.mid`/`.midi`/`.smf` files from
 fallback if Delta blocks absolute listing. Custom folders are configurable; no
 filesystem restriction is bypassed and no demo songs are inserted.
 
-Features: searchable/paginated library, session queue/favorites, a pooled piano
+Features: searchable/paginated library, locally saved queue/favorites, a pooled piano
 roll and live keyboard, tempo maps, track mixer, speed/transposition, 61/88-key
 mapping, sustain, gate/velocity filters, seek, A–B loops, countdown, focus-pause,
-F8 play/pause and F7 emergency stop/disarm. Input starts **disarmed**; explicit
-Preview only sends no game input. Opening/file-load stages animate, while the
-movable piano dock stays static. No raw hub, online presets or asset fetches run.
+F8 play/pause and F7 emergency stop/disarm. Input is **armed on launch** when an API is present; Play is always manual.
+STOP INPUT disarms immediately. Explicit Preview sends no game input. Opening/file-load stages animate, while the
+movable bottom-center piano holder keeps its graphical icon static. No raw hub, online presets or asset fetches run.
 
 Read the [setup/features guide](docs/AUTO-PLAYER.md) and
 [source/native-validation boundary](docs/MIDI-REVIEW.md). The phone path and game
@@ -368,3 +368,18 @@ real-input tests, a screenshot-layout profile and explicit VIM/VK/enum backends.
 Executor virtual-key values are no longer confused with Roblox enum numbers.
 Arm input and confirm white/black notes in the actual game before MIDI playback.
 See [the piano setup guide](docs/AUTO-PLAYER.md#matching-the-supplied-61-key-piano-screenshot).
+
+### Auto Player redesign and saved setup
+
+The player now uses a quieter charcoal/ivory/amber design, selected navigation
+markers, a compact portrait now-playing panel and larger transport controls.
+The main loader centers after a real viewport is available instead of settling in
+a corner. Its restore icon starts bottom-center. Auto Player has a separate movable
+mini holder above it, with Open, Play/Pause and emergency Stop.
+
+`Nullx11-AutoPlayer.json` stores the screenshot keyboard setup, input backend,
+practice settings, queue/favorites, last song and player/holder placement locally.
+Settings shows save status and offers **Save**, **Center**, and **Arm on launch**.
+Last-song restoration loads only; it never presses Play. Missing/denied file APIs
+keep a usable session-only player. Native Delta rendering and game key acceptance
+still need testing on the actual phone/piano.

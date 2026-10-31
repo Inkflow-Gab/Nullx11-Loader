@@ -557,6 +557,9 @@ local fakeView
 local function makeView()
 	local view =
 		{ Actions = {}, Settings = {}, Page = "Library", LoadingPhases = {} }
+	function view.SetPage(page)
+		view.Page = page
+	end
 	for _, name in ipairs({
 		"arm",
 		"preview",
@@ -606,6 +609,7 @@ local context = {
 	MidiFiles = MidiFiles,
 	MidiParser = MidiParser,
 	MakeMidiOutput = MakeMidiOutput,
+	MakeMidiPreferences = MakeMidiPreferences,
 	MakeMidiTransport = MakeMidiTransport,
 	MakeAutoPlayerView = makeView,
 	Hooks = {},
@@ -638,15 +642,16 @@ local controller = runAutoPlayer(context)
 step(0)
 step(0)
 assert(
-	#fakeView.Rows == 4 and reads == 0 and not controller.Transport.Armed,
+	#fakeView.Rows == 4 and reads == 0 and controller.Transport.Armed,
 	"scan on open does not read/play a song"
 )
 fakeView.Dispatch("select", fakeView.Rows[1])
 step(0)
 step(0)
 assert(reads == 1 and fakeView.Loaded and controller.Transport.State == "Ready")
+fakeView.Dispatch("arm", false)
 fakeView.Dispatch("play")
-assert(controller.Transport.State == "Ready" and fakeView.Bad)
+assert(controller.Transport.State == "Paused" and fakeView.Bad)
 fakeView.Dispatch("delay", "0")
 fakeView.Dispatch("arm", true)
 fakeView.Dispatch("play")

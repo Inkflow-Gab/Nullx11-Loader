@@ -62,7 +62,19 @@ assert(
 	not find("LoadingStage").Visible and not find("LoadingStage").Active,
 	"standalone opening removes its input blocker without a scan"
 )
-assert(panel.Size.X.Offset <= 1040 and panel.Size.Y.Offset <= 750)
+assert(panel.Size.X.Offset <= 960 and panel.Size.Y.Offset <= 680)
+assert(
+	panel.Position.X.Offset == 500 and panel.Position.Y.Offset == 370,
+	"player opens in the true viewport center"
+)
+assert(
+	view.Holder.Position.X.Offset == 500,
+	"mini holder starts bottom-center, not in a corner"
+)
+local placement = view.Placement()
+assert(placement.Panel.X == 0.5 and placement.Panel.Y == 0.5)
+view.Center()
+assert(panel.Position.X.Offset == 500)
 local entries = {}
 for index = 1, 24 do
 	entries[index] = {

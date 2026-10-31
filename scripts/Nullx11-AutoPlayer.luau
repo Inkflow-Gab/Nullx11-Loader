@@ -518,6 +518,196 @@ local midiFiles = (function()
 	end
 	return files
 end)()
+local makeMidiPreferences = (function()
+	-- Data-only workspace preferences. Never evaluates Lua or stores MIDI bytes.
+	return function(api, codec)
+		local store = {
+			Path = "Nullx11-AutoPlayer.json",
+			Status = "Session only / storage unavailable",
+		}
+		local numbers = {
+			Speed = { 0.25, 2, 1 },
+			Transpose = { -24, 24, 0 },
+			Velocity = { 1, 127, 1 },
+			Gate = { 0.1, 1, 1 },
+			Delay = { 0, 10, 2 },
+			LoopA = { 0, 14400, 0 },
+		}
+		local booleans = {
+			Sustain = true,
+			Drums = false,
+			Mode88 = false,
+			Fold = true,
+			AutoArm = true,
+			Recursive = true,
+			Advance = false,
+			Motion = false,
+			Loop = false,
+		}
+		local function path(value)
+			if
+				type(value) ~= "string"
+				or #value == 0
+				or #value > 1024
+				or value:find("[%z\1-\31]")
+				or value:find(":", 1, true)
+			then
+				return nil
+			end
+			value = value:gsub("\\", "/"):gsub("/+", "/"):gsub("/$", "")
+			for part in value:gmatch("[^/]+") do
+				if part == "." or part == ".." then
+					return nil
+				end
+			end
+			return #value > 0 and value or nil
+		end
+		function store.Clean(raw)
+			raw = type(raw) == "table" and raw or {}
+			local clean = {
+				Version = 1,
+				Profile = raw.Mode88 == true and "Extended88" or "Screenshot61",
+				Favorites = {},
+				Queue = {},
+				Muted = {},
+			}
+			for key, range in pairs(numbers) do
+				local value = raw[key]
+				clean[key] = type(value) == "number"
+						and value == value
+						and value >= range[1]
+						and value <= range[2]
+						and value
+					or range[3]
+			end
+			if
+				type(raw.LoopB) == "number"
+				and raw.LoopB == raw.LoopB
+				and raw.LoopB > 0
+				and raw.LoopB <= 14400
+			then
+				clean.LoopB = raw.LoopB
+			end
+			clean.Transpose = math.floor(clean.Transpose)
+			clean.Velocity = math.floor(clean.Velocity)
+			for key, default in pairs(booleans) do
+				if type(raw[key]) == "boolean" then
+					clean[key] = raw[key]
+				else
+					clean[key] = default
+				end
+			end
+			clean.Folder = path(raw.Folder)
+				or "/storage/emulated/0/Delta/Workspace/MIDI"
+			clean.Selected = path(raw.Selected)
+			clean.Backend = (
+				{ Auto = true, VIM = true, VK = true, Enum = true }
+			)[raw.Backend] and raw.Backend or "Auto"
+			clean.Page = ({
+				Library = true,
+				Queue = true,
+				Mixer = true,
+				Keys = true,
+				Settings = true,
+			})[raw.Page] and raw.Page or "Library"
+			for _, key in ipairs({ "Favorites", "Queue" }) do
+				local seen = {}
+				for index, value in
+					ipairs(type(raw[key]) == "table" and raw[key] or {})
+				do
+					if index > (key == "Queue" and 128 or 512) then
+						break
+					end
+					local valid = path(value)
+					if valid and not seen[valid] then
+						seen[valid] = true
+						table.insert(clean[key], valid)
+					end
+				end
+			end
+			for index, value in
+				ipairs(type(raw.Muted) == "table" and raw.Muted or {})
+			do
+				if index > 64 then
+					break
+				end
+				if
+					type(value) == "number"
+					and value % 1 == 0
+					and value >= 1
+					and value <= 64
+				then
+					table.insert(clean.Muted, value)
+				end
+			end
+			for _, key in ipairs({ "Panel", "Dock" }) do
+				local value = raw[key]
+				if
+					type(value) == "table"
+					and type(value.X) == "number"
+					and type(value.Y) == "number"
+					and value.X == value.X
+					and value.Y == value.Y
+				then
+					clean[key] = {
+						X = math.clamp(value.X, 0, 1),
+						Y = math.clamp(value.Y, 0, 1),
+					}
+				end
+			end
+			return clean
+		end
+		function store.Load()
+			local defaults = store.Clean({})
+			if not codec or type(api.Read) ~= "function" then
+				return defaults
+			end
+			if type(api.Exists) == "function" then
+				local ok, exists = pcall(api.Exists, store.Path)
+				if ok and not exists then
+					store.Status = type(api.Write) == "function"
+							and "Ready / preferences save locally"
+						or "Session only / writefile unavailable"
+					return defaults
+				end
+			end
+			local ok, value = pcall(function()
+				local text = api.Read(store.Path)
+				assert(
+					type(text) == "string" and #text <= 65536,
+					"Preference file exceeds 64 KiB"
+				)
+				local decoded = codec.Decode(text)
+				assert(
+					type(decoded) == "table" and decoded.Version == 1,
+					"Unsupported preference version"
+				)
+				return store.Clean(decoded)
+			end)
+			store.Status = ok and "Restored / local preferences"
+				or "Defaults / no readable saved preferences"
+			return ok and value or defaults
+		end
+		function store.Save(raw)
+			if not codec or type(api.Write) ~= "function" then
+				store.Status = "Session only / writefile or JSON unavailable"
+				return false
+			end
+			local ok, reason = pcall(function()
+				local text = codec.Encode(store.Clean(raw))
+				assert(
+					type(text) == "string" and #text <= 65536,
+					"Preferences exceed 64 KiB"
+				)
+				api.Write(store.Path, text)
+			end)
+			store.Status = ok and "Saved locally / Nullx11-AutoPlayer.json"
+				or "Save failed / " .. tostring(reason):sub(1, 120)
+			return ok
+		end
+		return store
+	end
+end)()
 local makeMidiOutput = (function()
 	-- Virtual-piano mapping from the supplied RoMidi source, isolated from its
 	-- HTTP/preset/decal/announcement systems. NULL edition; see MIDI-REVIEW.md.
@@ -1118,19 +1308,20 @@ local makeAutoPlayerView = (function()
 			Bars = {},
 			Keys = {},
 			KeyCaptions = {},
+			Inputs = {},
 			Page = "Library",
 			ReducedMotion = context.ReducedMotion,
 			Tweens = {},
 		}
 		local color = {
-			Background = Color3.fromRGB(8, 12, 24),
-			Panel = Color3.fromRGB(15, 22, 39),
-			Card = Color3.fromRGB(23, 33, 53),
-			Border = Color3.fromRGB(44, 60, 86),
-			Text = Color3.fromRGB(230, 242, 255),
-			Muted = Color3.fromRGB(143, 164, 191),
-			Cyan = Color3.fromRGB(86, 226, 234),
-			Violet = Color3.fromRGB(171, 136, 255),
+			Background = Color3.fromRGB(18, 18, 22),
+			Panel = Color3.fromRGB(24, 24, 30),
+			Card = Color3.fromRGB(33, 33, 41),
+			Border = Color3.fromRGB(57, 56, 66),
+			Text = Color3.fromRGB(244, 240, 232),
+			Muted = Color3.fromRGB(159, 156, 168),
+			Cyan = Color3.fromRGB(230, 187, 126),
+			Violet = Color3.fromRGB(174, 165, 213),
 			Red = Color3.fromRGB(255, 118, 139),
 		}
 		local gui = Instance.new("ScreenGui")
@@ -1191,14 +1382,14 @@ local makeAutoPlayerView = (function()
 			create(
 				"UICorner",
 				object,
-				{ CornerRadius = UDim.new(0, radius or 12) }
+				{ CornerRadius = UDim.new(0, radius or 10) }
 			)
 		end
 		local function stroke(object, accent)
 			create("UIStroke", object, {
 				Color = accent or color.Border,
 				Thickness = 1,
-				Transparency = 0.2,
+				Transparency = 0.55,
 			})
 		end
 		local function frame(parent, name, shade)
@@ -1299,15 +1490,8 @@ local makeAutoPlayerView = (function()
 			Position = UDim2.fromScale(0.5, 0.5),
 			Visible = true,
 		})
-		corner(panel, 20)
+		corner(panel, 16)
 		stroke(panel)
-		create("UIGradient", panel, {
-			Rotation = 30,
-			Color = ColorSequence.new(
-				color.Background,
-				Color3.fromRGB(19, 23, 48)
-			),
-		})
 		local openingScale = create("UIScale", panel, { Scale = 0.94 })
 		view.Panel = panel
 		local header = frame(panel, "Header", color.Panel)
@@ -1336,13 +1520,8 @@ local makeAutoPlayerView = (function()
 		end
 		local logo = pianoMark(header, 44)
 		logo.Position = UDim2.fromOffset(14, 12)
-		local brand = label(
-			header,
-			"Brand",
-			"DEVELOPED BY NULL / MIDI STUDIO",
-			10,
-			color.Cyan
-		)
+		local brand =
+			label(header, "Brand", "NULL / PIANO PLAYER", 10, color.Cyan)
 		brand.Position = UDim2.fromOffset(70, 11)
 		brand.Size = UDim2.new(1, -180, 0, 17)
 		local title = label(header, "Title", "Auto Player", 25)
@@ -1366,7 +1545,7 @@ local makeAutoPlayerView = (function()
 		)
 		local rail = frame(main, "SongRail", color.Panel)
 		local listHeading =
-			label(rail, "ListHeading", "YOUR MIDI LIBRARY", 11, color.Muted)
+			label(rail, "ListHeading", "YOUR LIBRARY", 11, color.Muted)
 		listHeading.Position = UDim2.fromOffset(12, 8)
 		listHeading.Size = UDim2.new(1, -24, 0, 24)
 		local search = create("TextBox", rail, {
@@ -1415,17 +1594,11 @@ local makeAutoPlayerView = (function()
 		end)
 		local refresh = button(rail, "RefreshFiles", "Refresh", "refresh")
 		local stage = frame(main, "PianoStage", color.Panel)
-		local stageTag = label(
-			stage,
-			"StageTag",
-			"LOCAL FILE / AWAITING SELECTION",
-			10,
-			color.Cyan
-		)
+		local stageTag = label(stage, "StageTag", "NOW PLAYING", 10, color.Cyan)
 		stageTag.Position = UDim2.fromOffset(16, 12)
 		stageTag.Size = UDim2.new(1, -32, 0, 18)
 		local song =
-			label(stage, "SongTitle", "Make room for your next piece.", 22)
+			label(stage, "SongTitle", "Your next piece starts here.", 22)
 		song.Position = UDim2.fromOffset(16, 35)
 		song.Size = UDim2.new(1, -32, 0, 31)
 		song.Font = Enum.Font.GothamBold
@@ -1554,6 +1727,7 @@ local makeAutoPlayerView = (function()
 			context.Connect(box.FocusLost, function()
 				view.Dispatch(action, box.Text)
 			end)
+			view.Inputs[action] = box
 			return box
 		end
 		view.Toggle(
@@ -1741,21 +1915,49 @@ local makeAutoPlayerView = (function()
 			11,
 			color.Muted
 		)
-		local dockMoved = false
-		local dock = button(root, "PianoDock", "", function()
+		local dockMoved, dockPositioned = false, false
+		local holder = frame(root, "AutoPlayerHolder", color.Panel)
+		holder.AnchorPoint = Vector2.new(0.5, 0.5)
+		holder.Position = UDim2.new(0.5, 0, 1, -116)
+		holder.Size = UDim2.fromOffset(256, 80)
+		holder.Visible = false
+		holder.Active = true
+		stroke(holder)
+		view.Holder = holder
+		local dock = button(holder, "PianoDock", "", function()
 			if not dockMoved then
-				view.SetVisible(not view.Visible)
+				view.SetVisible(true)
 			end
 		end)
-		dock.Size = UDim2.fromOffset(56, 56)
-		dock.Position = UDim2.new(0, 12, 0.5, -28)
+		dock.Size = UDim2.fromOffset(48, 48)
+		dock.Position = UDim2.fromOffset(8, 9)
 		dock.Visible = false
-		local dockPiano = pianoMark(dock, 44)
+		local dockPiano = pianoMark(dock, 36)
 		dockPiano.Position = UDim2.fromOffset(6, 6)
 		dockPiano.Active = false
+		local miniTitle =
+			label(holder, "HolderTitle", "Auto Player / NULL", 10, color.Muted)
+		miniTitle.Position = UDim2.fromOffset(66, 7)
+		miniTitle.Size = UDim2.fromOffset(178, 16)
+		local miniPlay = button(holder, "HolderPlay", "Play", function()
+			if not dockMoved then
+				view.Dispatch(view.Playing and "pause" or "play")
+			end
+		end, color.Cyan)
+		miniPlay.Position = UDim2.fromOffset(66, 28)
+		miniPlay.Size = UDim2.fromOffset(90, 44)
+		local miniStop = button(holder, "HolderStop", "STOP", function()
+			if not dockMoved then
+				view.Dispatch("panic")
+			end
+		end)
+		miniStop.TextColor3 = color.Red
+		miniStop.Position = UDim2.fromOffset(164, 28)
+		miniStop.Size = UDim2.fromOffset(80, 44)
 		function view.SetVisible(value)
 			view.Visible = value
 			panel.Visible = value
+			holder.Visible = not value
 			dock.Visible = not value
 			if value then
 				animate(openingScale, 0.3, { Scale = 1 })
@@ -1929,9 +2131,7 @@ local makeAutoPlayerView = (function()
 				UDim2.fromOffset(0, trackStart + #(tracks or {}) * 86 + 12)
 		end
 		function view.Files(entries, selected, queuePage, pageNumber, pageCount)
-			listHeading.Text = (
-				queuePage and "SESSION QUEUE" or "YOUR MIDI LIBRARY"
-			)
+			listHeading.Text = (queuePage and "YOUR QUEUE" or "YOUR LIBRARY")
 				.. " / "
 				.. pageNumber
 				.. "/"
@@ -1971,7 +2171,7 @@ local makeAutoPlayerView = (function()
 					row.Name.Text = row.Entry.Name
 					row.Detail.Text = row.Entry.Folder or row.Entry.Path
 					row.Object.BackgroundColor3 = selected == row.Entry.Path
-							and Color3.fromRGB(37, 65, 81)
+							and Color3.fromRGB(69, 54, 39)
 						or color.Card
 				end
 			end
@@ -2054,6 +2254,7 @@ local makeAutoPlayerView = (function()
 		end
 		function view.Score(score, name)
 			song.Text = name
+			miniTitle.Text = name
 			stageTag.Text = "LOCAL MIDI / " .. #score.Tracks .. " TRACKS"
 			meta.Text = #score.Notes
 				.. " notes  /  "
@@ -2062,6 +2263,8 @@ local makeAutoPlayerView = (function()
 				.. time(score.Duration)
 		end
 		function view.Snapshot(player, output)
+			view.Playing = player.State == "Playing"
+			miniPlay.Text = view.Playing and "Pause" or "Play"
 			if view.BackendStatus then
 				view.BackendStatus(output)
 			end
@@ -2073,7 +2276,7 @@ local makeAutoPlayerView = (function()
 				.. time(player.Score and player.Score.Duration or 0)
 			stateLabel.Text = player.Preview and "PREVIEW / NO GAME INPUT"
 				or player.Armed and "ARMED / " .. player.State:upper()
-				or "DISARMED / " .. player.State:upper()
+				or "INPUT OFF / " .. player.State:upper()
 			seekFill.Size = UDim2.fromScale(
 				player.Score
 						and player.Position / math.max(
@@ -2185,8 +2388,14 @@ local makeAutoPlayerView = (function()
 				page.Visible = pageName == name
 			end
 			for pageName, object in pairs(navButtons) do
-				object.TextColor3 = name == pageName and color.Cyan
+				object.TextColor3 = name == pageName and color.Text
 					or color.Muted
+				object.BackgroundColor3 = name == pageName and color.Card
+					or color.Background
+				local marker = object:FindFirstChild("SelectedTab")
+				if marker then
+					marker.Visible = name == pageName
+				end
 			end
 			view.Dispatch("tab", name)
 		end
@@ -2202,6 +2411,18 @@ local makeAutoPlayerView = (function()
 			end)
 			object.Size = UDim2.new(0.2, -4, 1, 0)
 			object.Position = UDim2.new((index - 1) * 0.2, 0, 0, 0)
+			local outline = object:FindFirstChildOfClass("UIStroke")
+			if outline then
+				outline.Transparency = 1
+			end
+			create("Frame", object, {
+				Name = "SelectedTab",
+				BackgroundColor3 = color.Cyan,
+				BorderSizePixel = 0,
+				Position = UDim2.new(0.2, 0, 1, -2),
+				Size = UDim2.new(0.6, 0, 0, 2),
+				Visible = false,
+			})
 			navButtons[name] = object
 		end
 		local keyHelp = label(
@@ -2290,6 +2511,34 @@ local makeAutoPlayerView = (function()
 					or color.Text
 			end
 		end
+		view.Toggle(
+			settings,
+			"Arm on launch",
+			"Ready for manual Play on launch. STOP INPUT still disarms immediately.",
+			true,
+			"autoarm"
+		)
+		local storageRow = settingRow(
+			settings,
+			"Your saved setup",
+			"Profile, favorites, queue and placement stay on this device."
+		)
+		local saveButton = button(storageRow, "SavePlayerSetup", "Save", "save")
+		saveButton.Position = UDim2.new(1, -100, 0.5, -20)
+		saveButton.Size = UDim2.fromOffset(88, 40)
+		local storageStatus = storageRow:FindFirstChild("Detail")
+		view.Persistence = function(text)
+			storageStatus.Text = text
+		end
+		local centerRow = settingRow(
+			settings,
+			"Window placement",
+			"Return the player to the center with its holder below."
+		)
+		local centerButton =
+			button(centerRow, "CenterPlayer", "Center", "center")
+		centerButton.Position = UDim2.new(1, -100, 0.5, -20)
+		centerButton.Size = UDim2.fromOffset(88, 40)
 		local testRow = settingRow(
 			settings,
 			"Input test / F7 panic",
@@ -2309,8 +2558,8 @@ local makeAutoPlayerView = (function()
 		panicButton.Position = UDim2.new(1, -112, 0.5, -20)
 		local clearRow = settingRow(
 			settings,
-			"Session queue",
-			"In memory only; no files are deleted or written."
+			"Saved queue",
+			"Stored locally with your player setup. Songs are never modified."
 		)
 		local clearButton =
 			button(clearRow, "ClearQueue", "Clear", "clearqueue")
@@ -2340,6 +2589,21 @@ local makeAutoPlayerView = (function()
 			view.Dispatch("folder", path.Text)
 		end)
 		settings.CanvasSize = UDim2.fromOffset(0, rowHeights.Settings + 18)
+		local savedPlacement = context.MidiPreferences or {}
+		view.Preferences = function(data)
+			speed.Text = tostring(data.Speed)
+			transpose.Text = tostring(data.Transpose)
+			path.Text = data.Folder
+			for name, value in pairs({
+				velocity = data.Velocity,
+				gate = data.Gate,
+				delay = data.Delay,
+			}) do
+				if view.Inputs[name] then
+					view.Inputs[name].Text = tostring(value)
+				end
+			end
+		end
 		local initialized = false
 		local function layout()
 			if not view.Alive then
@@ -2350,16 +2614,40 @@ local makeAutoPlayerView = (function()
 				return
 			end
 			local width, height =
-				math.min(1040, size.X - 16), math.min(750, size.Y - 16)
+				math.min(960, size.X - 24), math.min(680, size.Y - 24)
 			panel.Size = UDim2.fromOffset(width, height)
-			if not initialized then
-				panel.Position = UDim2.fromOffset(size.X / 2, size.Y / 2)
+			do
+				local saved = savedPlacement.Panel
+				panel.Position = UDim2.fromOffset(
+					size.X * (saved and saved.X or 0.5),
+					size.Y * (saved and saved.Y or 0.5)
+				)
 				initialized = true
 			end
 			local position = panel.Position
 			panel.Position = UDim2.fromOffset(
 				math.clamp(position.X.Offset, width / 2, size.X - width / 2),
 				math.clamp(position.Y.Offset, height / 2, size.Y - height / 2)
+			)
+			do
+				local saved = savedPlacement.Dock
+				holder.Position = UDim2.fromOffset(
+					size.X * (saved and saved.X or 0.5),
+					saved and size.Y * saved.Y or size.Y - 116
+				)
+				dockPositioned = true
+			end
+			holder.Position = UDim2.fromOffset(
+				math.clamp(
+					holder.Position.X.Offset,
+					134,
+					math.max(134, size.X - 134)
+				),
+				math.clamp(
+					holder.Position.Y.Offset,
+					46,
+					math.max(46, size.Y - 46)
+				)
 			)
 			header.Position = UDim2.fromOffset(8, 8)
 			header.Size = UDim2.new(1, -16, 0, 68)
@@ -2373,13 +2661,14 @@ local makeAutoPlayerView = (function()
 			main.Size = UDim2.new(1, -28, 1, -278)
 			local short = height < 520
 			local contentY = short and 108 or 130
+			local transportReserve = short and 148 or 170
 			main.Position = UDim2.fromOffset(14, contentY)
-			main.Size = UDim2.new(1, -28, 1, -contentY - 148)
+			main.Size = UDim2.new(1, -28, 1, -contentY - transportReserve)
 			local contentWidth, contentHeight =
-				width - 28, height - contentY - 148
+				width - 28, height - contentY - transportReserve
 			local compact = width < 700 and not short
 			local railWidth = short and math.min(210, (width - 40) * 0.42)
-				or 258
+				or 276
 			if short then
 				header.Size = UDim2.new(1, -16, 0, 54)
 				logo.Position = UDim2.fromOffset(14, 5)
@@ -2391,11 +2680,11 @@ local makeAutoPlayerView = (function()
 			if compact then
 				rail.Position = UDim2.fromOffset(0, 0)
 				rail.Size =
-					UDim2.new(1, 0, 0, math.max(184, contentHeight * 0.42))
+					UDim2.new(1, 0, 0, math.max(184, contentHeight - 128))
 				stage.Position =
-					UDim2.fromOffset(0, math.max(184, contentHeight * 0.42) + 8)
+					UDim2.fromOffset(0, math.max(184, contentHeight - 128) + 8)
 				stage.Size =
-					UDim2.new(1, 0, 1, -math.max(192, contentHeight * 0.42 + 8))
+					UDim2.new(1, 0, 1, -math.max(192, contentHeight - 120))
 				-- Portrait focuses on song selection and the visual piano, with compact
 				-- metadata. Mixer/settings retain full-width scrollable touch controls.
 				stageTag.Visible = false
@@ -2449,17 +2738,17 @@ local makeAutoPlayerView = (function()
 			search.Visible = not short
 			list.Position = UDim2.fromOffset(8, short and 6 or 82)
 			list.Size = UDim2.new(1, -16, 1, short and -48 or -126)
-			footer.Position = UDim2.new(0, 14, 1, -140)
-			footer.Size = UDim2.new(1, -28, 0, 82)
+			footer.Position = UDim2.new(0, 14, 1, short and -140 or -162)
+			footer.Size = UDim2.new(1, -28, 0, short and 82 or 104)
 			local controlWidth = (contentWidth - 32) / 5
 			for index, object in ipairs(transport) do
 				object.Position =
 					UDim2.fromOffset(8 + (index - 1) * (controlWidth + 4), 28)
-				object.Size = UDim2.fromOffset(controlWidth, 32)
+				object.Size = UDim2.fromOffset(controlWidth, short and 32 or 44)
 			end
-			clockLabel.Position = UDim2.fromOffset(12, 63)
+			clockLabel.Position = UDim2.fromOffset(12, short and 63 or 80)
 			clockLabel.Size = UDim2.new(0.5, 0, 0, 16)
-			stateLabel.Position = UDim2.new(0.4, 0, 0, 63)
+			stateLabel.Position = UDim2.new(0.4, 0, 0, short and 63 or 80)
 			stateLabel.Size = UDim2.new(0.6, -12, 0, 16)
 			stateLabel.TextXAlignment = Enum.TextXAlignment.Right
 			bottom.Position = UDim2.new(0, 14, 1, -52)
@@ -2481,6 +2770,33 @@ local makeAutoPlayerView = (function()
 			end
 			status.Position = UDim2.new(0, 14, 1, -16)
 			status.Size = UDim2.new(1, -28, 0, 14)
+		end
+		view.Placement = function()
+			local size = root.AbsoluteSize
+			if size.X > 0 and size.Y > 0 and view.Alive then
+				view.LastPlacement = {
+					Panel = {
+						X = panel.Position.X.Offset / size.X,
+						Y = panel.Position.Y.Offset / size.Y,
+					},
+					Dock = {
+						X = holder.Position.X.Offset / size.X,
+						Y = holder.Position.Y.Offset / size.Y,
+					},
+				}
+			end
+			if view.LastPlacement then
+				savedPlacement.Panel = view.LastPlacement.Panel
+				savedPlacement.Dock = view.LastPlacement.Dock
+			end
+			return view.LastPlacement
+				or { Panel = savedPlacement.Panel, Dock = savedPlacement.Dock }
+		end
+		view.Center = function()
+			savedPlacement.Panel, savedPlacement.Dock = nil, nil
+			initialized, dockPositioned = false, false
+			layout()
+			view.Placement()
 		end
 		context.Connect(root:GetPropertyChangedSignal("AbsoluteSize"), layout)
 		local dragging, dragStart, dragPosition = false, nil, nil
@@ -2522,17 +2838,19 @@ local makeAutoPlayerView = (function()
 		context.Connect(input.InputEnded, function(event)
 			if event == dragging then
 				dragging = false
+				view.Placement()
+				view.Dispatch("placement")
 			end
 		end)
 		local dockDrag, dockStart, dockPosition
-		context.Connect(dock.InputBegan, function(event)
+		context.Connect(holder.InputBegan, function(event)
 			if
 				event.UserInputType == Enum.UserInputType.MouseButton1
 				or event.UserInputType == Enum.UserInputType.Touch
 			then
 				dockDrag = event
 				dockStart = event.Position
-				dockPosition = dock.AbsolutePosition
+				dockPosition = holder.Position
 				dockMoved = false
 			end
 		end)
@@ -2550,16 +2868,16 @@ local makeAutoPlayerView = (function()
 					dockMoved = true
 				end
 				if dockMoved then
-					dock.Position = UDim2.fromOffset(
+					holder.Position = UDim2.fromOffset(
 						math.clamp(
-							dockPosition.X + delta.X - root.AbsolutePosition.X,
-							0,
-							math.max(0, root.AbsoluteSize.X - 56)
+							dockPosition.X.Offset + delta.X,
+							134,
+							math.max(134, root.AbsoluteSize.X - 134)
 						),
 						math.clamp(
-							dockPosition.Y + delta.Y - root.AbsolutePosition.Y,
-							0,
-							math.max(0, root.AbsoluteSize.Y - 56)
+							dockPosition.Y.Offset + delta.Y,
+							46,
+							math.max(46, root.AbsoluteSize.Y - 46)
 						)
 					)
 				end
@@ -2568,6 +2886,8 @@ local makeAutoPlayerView = (function()
 		context.Connect(input.InputEnded, function(event)
 			if event == dockDrag then
 				dockDrag = nil
+				view.Placement()
+				view.Dispatch("placement")
 				task.delay(0.1, function()
 					if view.Alive then
 						dockMoved = false
@@ -2581,6 +2901,7 @@ local makeAutoPlayerView = (function()
 			end
 		end)
 		layout()
+		view.Placement()
 		view.SetPage("Library")
 		animate(openingScale, 0.6, { Scale = 1 })
 		-- Standalone construction also has a finite opening, even without a scan.
@@ -2601,6 +2922,22 @@ local function runGame(context)
 		Enum.KeyCode,
 		game
 	)
+	local okJson, json = pcall(game.GetService, game, "HttpService")
+	local store = context.MakeMidiPreferences(
+		{ Read = readfile, Write = writefile, Exists = isfile },
+		okJson
+				and {
+					Encode = function(value)
+						return json:JSONEncode(value)
+					end,
+					Decode = function(text)
+						return json:JSONDecode(text)
+					end,
+				}
+			or nil
+	)
+	local saved = store.Load()
+	context.MidiPreferences = saved
 	local player = context.MakeMidiTransport(output, os.clock)
 	context.MidiOutput = output
 	local view = context.MakeAutoPlayerView(context)
@@ -2609,6 +2946,77 @@ local function runGame(context)
 	local root, recursive, advance, startDelay =
 		files.AndroidRoot, true, false, 2
 	local generation, operation, countdown, renderAt = 0, nil, nil, 0
+	local saveSerial, autoArm, restoring, preferencesReady =
+		0, saved.AutoArm, true, false
+	local function saveNow()
+		local data = {
+			Speed = player.Speed,
+			Transpose = player.Transpose,
+			Velocity = player.MinimumVelocity,
+			Gate = player.Gate,
+			Sustain = player.Sustain,
+			Drums = player.Drums,
+			Mode88 = output.Mode88,
+			Fold = output.Fold,
+			AutoArm = autoArm,
+			Recursive = recursive,
+			Advance = advance,
+			Motion = view.ReducedMotion,
+			Delay = startDelay,
+			Backend = output.Preferred,
+			Folder = root,
+			Selected = selected and selected.Path or saved.Selected,
+			Favorites = {},
+			Queue = {},
+			Muted = {},
+			Page = view.Page,
+			Loop = player.Loop,
+			LoopA = player.LoopA,
+			LoopB = player.LoopB,
+		}
+		for path, favorite in pairs(favorites) do
+			if favorite then
+				table.insert(data.Favorites, path)
+			end
+		end
+		if restoring then
+			data.Favorites = saved.Favorites
+			data.Queue = saved.Queue
+			data.Muted = saved.Muted
+		end
+		table.sort(data.Favorites)
+		for _, entry in ipairs(queue) do
+			table.insert(data.Queue, entry.Path)
+		end
+		for index, muted in pairs(player.Muted) do
+			if muted then
+				table.insert(data.Muted, index)
+			end
+		end
+		if view.Placement then
+			local positions = view.Placement()
+			data.Panel = positions.Panel
+			data.Dock = positions.Dock
+		end
+		store.Save(data)
+		if view.Alive and view.Persistence then
+			view.Persistence(store.Status)
+		end
+	end
+	local function requestSave()
+		if not preferencesReady then
+			return
+		end
+		saveSerial += 1
+		local serial = saveSerial
+		task.delay(0.65, function()
+			if context.Alive and saveSerial == serial then
+				saveNow()
+			end
+		end)
+	end
+	local load
+
 	local function current(token)
 		return context.Alive and generation == token
 	end
@@ -2767,6 +3175,28 @@ local function runGame(context)
 			return { Entries = entries, Info = info }
 		end, function(result)
 			library = result.Entries
+			if restoring then
+				local byPath = {}
+				for _, entry in ipairs(library) do
+					byPath[entry.Path] = entry
+				end
+				for _, path in ipairs(saved.Favorites) do
+					favorites[path] = true
+				end
+				for _, path in ipairs(saved.Queue) do
+					if byPath[path] then
+						table.insert(queue, byPath[path])
+					end
+				end
+				restoring = false
+				if saved.Selected and byPath[saved.Selected] then
+					task.defer(function()
+						if context.Alive then
+							load(byPath[saved.Selected], false)
+						end
+					end)
+				end
+			end
 			pageNumber = 1
 			rows()
 			view.Message(
@@ -2779,7 +3209,7 @@ local function runGame(context)
 			)
 		end)
 	end
-	local function load(entry, continueQueue)
+	load = function(entry, continueQueue)
 		entry = entry.Original or entry
 		operationStart("Reading " .. entry.Name, function(token)
 			assert(
@@ -2797,10 +3227,27 @@ local function runGame(context)
 			return score
 		end, function(score)
 			player.Load(score)
+			if saved.Selected == entry.Path then
+				for _, index in ipairs(saved.Muted) do
+					if score.Tracks[index] then
+						player.Muted[index] = true
+					end
+				end
+				player.LoopA = math.min(saved.LoopA, score.Duration)
+				player.LoopB = saved.LoopB
+						and math.min(saved.LoopB, score.Duration)
+					or nil
+				player.Loop = saved.Loop
+					and player.LoopA < (player.LoopB or score.Duration)
+				view.Settings.loop(player.Loop)
+				player.Rebuild()
+				saved.Selected = nil
+			end
 			selected = entry
 			view.Score(score, entry.Name)
 			view.Tracks(score.Tracks, player.Muted)
 			rows()
+			requestSave()
 			view.Message(
 				"Loaded "
 					.. entry.Name
@@ -2899,6 +3346,17 @@ local function runGame(context)
 		render()
 	end
 	view.Actions = {
+		placement = function() end,
+		autoarm = function(value)
+			autoArm = value
+			view.Settings.autoarm(value)
+		end,
+		save = saveNow,
+		center = function()
+			if view.Center then
+				view.Center()
+			end
+		end,
 		reveal = render,
 		backend = function(mode)
 			pause()
@@ -3002,7 +3460,7 @@ local function runGame(context)
 			favorites[selected.Path] = not favorites[selected.Path]
 			rows()
 			view.Message(
-				"Session favorite updated. Search fav: to show favorites. Favorites are not written to disk."
+				"Favorite updated. Search fav: to show favorites. Settings shows local save status."
 			)
 		end,
 		seek = function(ratio)
@@ -3135,6 +3593,15 @@ local function runGame(context)
 			testNote(60)
 		end,
 	}
+	-- Save only successful user actions, coalesced off the playback clock.
+	for name, callback in pairs(view.Actions) do
+		if name ~= "save" and name ~= "unload" and name ~= "search" then
+			view.Actions[name] = function(...)
+				callback(...)
+				requestSave()
+			end
+		end
+	end
 	context.Connect(input.InputBegan, function(event, processed)
 		if event.KeyCode == Enum.KeyCode.F7 then
 			panic()
@@ -3220,6 +3687,10 @@ local function runGame(context)
 		end
 	end)
 	context.RegisterCleanup(function()
+		saveSerial += 1
+		if preferencesReady then
+			saveNow()
+		end
 		generation += 1
 		cancelCountdown()
 		if operation and operation ~= coroutine.running() then
@@ -3233,6 +3704,39 @@ local function runGame(context)
 			)
 		end
 	end)
+	root, recursive, advance, startDelay =
+		saved.Folder, saved.Recursive, saved.Advance, saved.Delay
+	player.Speed, player.Transpose, player.MinimumVelocity, player.Gate =
+		saved.Speed, saved.Transpose, saved.Velocity, saved.Gate
+	player.Sustain, player.Drums = saved.Sustain, saved.Drums
+	output.Mode88, output.Fold = saved.Mode88, saved.Fold
+	pcall(output.SelectBackend, saved.Backend)
+	player.Armed = autoArm and output.Available()
+	view.ReducedMotion = saved.Motion or context.ReducedMotion
+	for name, value in pairs({
+		arm = player.Armed,
+		autoarm = autoArm,
+		mode88 = output.Mode88,
+		fold = output.Fold,
+		sustain = player.Sustain,
+		drums = player.Drums,
+		recursive = recursive,
+		advance = advance,
+		motion = view.ReducedMotion,
+	}) do
+		if view.Settings[name] then
+			view.Settings[name](value)
+		end
+	end
+	view.Keyboard(output.Mode88)
+	if view.Preferences then
+		view.Preferences(saved)
+	end
+	if view.Persistence then
+		view.Persistence(store.Status)
+	end
+	view.SetPage(saved.Page)
+	preferencesReady = true
 	rows()
 	render()
 	refresh()
@@ -3266,6 +3770,7 @@ end
 local context = makeSession("autoplayer", library)
 local environment = type(getgenv) == "function" and getgenv() or _G
 context.ReducedMotion = environment.Nullx11ReducedMotion == true
+context.MakeMidiPreferences = makeMidiPreferences
 context.MidiParser = midiParser
 context.MidiFiles = midiFiles
 context.MakeMidiOutput = makeMidiOutput

@@ -151,7 +151,7 @@
       "Universal": true,
       "Collection": "NULL Studio",
       "Author": "Owner: NULL. Local MIDI piano edition; source review retained in docs/MIDI-REVIEW.md.",
-      "Description": "Local Delta MIDI library, animated piano studio, tempo-aware playback, track mixer, speed/transpose, 61/88-key mapping, queue and A-B loops. Input starts disarmed; no remote presets."
+      "Description": "Local MIDI library, tempo-aware playback, track mixer, speed/transpose and A-B loops. Saved screenshot keys, queue/favorites and mini holder. Ready-on-launch input; Play is manual. No remote presets."
     }
   ]
 }

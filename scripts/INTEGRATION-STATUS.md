@@ -63,8 +63,9 @@ The library now has collection and universe/Universal-aware filters and badges.
 
 `Nullx11-AutoPlayer.luau` is an explicit universal local-piano tool, not a specific
 game-remote port. Custom native opening/loading UI; Android/relative MIDI folder;
-bounded SMF decode; opt-in keyboard output; track/tempo/practice/queue tools.
-Input starts disarmed. File access/key simulation depend on Delta permissions and
+bounded SMF decode; manual-play keyboard output; track/tempo/practice/queue tools.
+Input is armed on launch when an API exists; STOP disarms and Arm on launch can be disabled.
+The redesigned centered player/mini holder persists a validated local JSON setup. File access/key simulation depend on Delta permissions and
 the game's actual mapping. [Guide](../docs/AUTO-PLAYER.md),
 [review](../docs/MIDI-REVIEW.md). Local contracts compile/pass under doubles;
 native visuals/gameplay/device filesystem/touch remain unverified.

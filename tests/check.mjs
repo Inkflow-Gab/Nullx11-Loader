@@ -19,6 +19,7 @@ try {
   for (const entry of manifest.Scripts) {
     assert.ok(typeof entry.Id === 'string' && entry.Id.length > 0 && !ids.has(entry.Id));
     ids.add(entry.Id);
+    assert.ok(typeof entry.Description === 'string' && entry.Description.length <= 240, 'every published description fits the runtime catalog validator');
     assert.ok(typeof entry.File === 'string' && /^[\w/.-]+\.luau$/.test(entry.File)
       && !entry.File.startsWith('/') && !entry.File.includes('..'));
     state.loadstring(read(`scripts/${entry.File}`), `library/${entry.File}`, true);
@@ -65,15 +66,18 @@ try {
     .replace('-- @CATALOG_VALIDATE', read('src/loader.luau').slice(read('src/loader.luau').indexOf('function catalog.Validate('), read('src/loader.luau').indexOf('-- @NULLX11_CATALOG')))
     .replace('-- @HUB_MODULES', module('makePatches','src/games/OwnedPatches.luau') + '\n' + module('makeSession','src/games/Context.luau') + '\n' + hubModules.map(name => ['HubForsaken','HubMM2','HubFTF','HubBrookhaven','HubUniversal'].includes(name) ? `local ${name}=function(context)\n${read(`src/games/${name}.luau`)}\nend` : module(name, `src/games/${name}.luau`)).join('\n'));
   console.log(...await state.loadstring(hubChecks, 'actual-hub-collection-contracts', true)());
-  const midiModules = [['MidiParser','src/games/MidiParser.luau'],['MidiFiles','src/games/MidiFiles.luau'],['MakeMidiOutput','src/games/MidiOutput.luau'],['MakeMidiTransport','src/games/MidiTransport.luau']];
+  const midiModules = [['MakeMidiPreferences','src/games/MidiPreferences.luau'],['MidiParser','src/games/MidiParser.luau'],['MidiFiles','src/games/MidiFiles.luau'],['MakeMidiOutput','src/games/MidiOutput.luau'],['MakeMidiTransport','src/games/MidiTransport.luau']];
   const midiChecks = read('tests/midi-contracts.luau')
     .replace('-- @MIDI_MODULES',midiModules.map(([name,path])=>module(name,path)).join('\n'))
     .replace('-- @MIDI_CONTROLLER',`local function runAutoPlayer(context)\n${read('src/games/AutoPlayer.luau')}\nend`);
   console.log(...await state.loadstring(midiChecks,'actual-midi-contracts',true)());
+  console.log(...await state.loadstring(module('makePreferences','src/games/MidiPreferences.luau')+'\n'+read('tests/midi-preferences.luau'),'actual-midi-preferences',true)());
   const midiViewChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-view.luau').replace('-- @MIDI_UI_RUNTIME',read('tests/midi-ui-runtime.luau')).replace('-- @MIDI_OUTPUT',module('makeViewOutput','src/games/MidiOutput.luau')).replace('-- @MIDI_VIEW',module('makeAutoPlayerView','src/ui/AutoPlayerView.luau'));
   console.log(...await state.loadstring(midiViewChecks,'actual-midi-view',true)());
+  const fitSource=read('src/ui/Nullx11UI.luau').slice(read('src/ui/Nullx11UI.luau').indexOf('function Window:ClampPosition()'),read('src/ui/Nullx11UI.luau').indexOf('function Window:ApplyLayout()'));
+  console.log(...await state.loadstring(read('tests/roblox-mock.luau')+'\n'+read('tests/midi-ui-runtime.luau')+'\n'+read('tests/window-placement.luau').replace('-- @WINDOW_FIT',fitSource),'actual-window-placement',true)());
   const midiBundle=read('scripts/Nullx11-AutoPlayer.luau');
-  assert.ok(!/HttpGet|loadstring|https?:\/\/|writefile|makefolder|BindToRenderStep/.test(midiBundle),'Auto Player executes local MIDI data only; no presets, writes or idle rendering worker');
+  assert.ok(!/HttpGet|loadstring|https?:\/\/|makefolder|BindToRenderStep/.test(midiBundle),'Auto Player executes local MIDI data only; no presets, directory creation or idle rendering worker');
   assert.ok(!/while true/.test(read('src/ui/AutoPlayerView.luau')),'no immortal loading animation');
   const brainrot = read('src/games/StealABrainrot.luau');
   assert.ok(!/tienkhanh1|webhooks|request_|loadstring|queue_on_teleport|queueonteleport|ChilliLibrary\/configs|Default = true|BlockTools/.test(brainrot), 'no exfiltration, upstream loader, auto-enable defaults or startup tool-block bypass');

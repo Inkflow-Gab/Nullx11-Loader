@@ -163,7 +163,7 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
 - Check exact tempo-change timing with a known multi-track MIDI; same pitches in
   different tracks/channels, repeated overlapping notes, CC64, note-off velocity
   zero, gate/velocity/drum filters and independent track muting.
-- Input is initially disarmed. Test C4 in the actual target piano, then 61-key and
+- Input is armed on launch when an API exists, but never starts playback. Test C4 in the actual target piano, then 61-key and
   optional 88-key Ctrl extension, black keys, fast repeated notes and chords.
   Verify whether Delta really permits each backend and the game accepts it.
   Preview must be clearly labeled and never send game input. Do not infer success
@@ -201,3 +201,15 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
   physical typing, low FPS and Android app focus. If no backend works, record the
   actual game link/place ID, Delta input API errors and white/black test results;
   do not infer a compatible game remote from a screenshot.
+
+### Redesign / local persistence / centering
+
+- Fresh-load with a delayed/zero initial viewport; ensure the loader and player
+  appear in the middle, stay usable after rotation and preserve deliberate drags.
+- Verify the bottom-center loader icon and separate player holder do not overlap;
+  test holder Play/Pause/Stop/Open while the main player is hidden.
+- Save/relaunch: verify screenshot profile, backend, settings, favorites, queue,
+  last song, mutes/loop and normalized placement. No sound should play on restore.
+- Check Arm on launch defaults, explicit opt-out, STOP staying disarmed within a
+  session, missing input API, unavailable/corrupt/read-only JSON storage, Save and
+  Center. Confirm actual phone rendering/input separately from development tests.

@@ -5,7 +5,15 @@ local environment = {}
 local getgenv = function()
 	return environment
 end
-local loadstring, listfiles, readfile, isfolder
+local loadstring, listfiles, readfile, isfolder, writefile, isfile
+local preferenceDisk = {}
+writefile = function(path, text)
+	assert(path == "Nullx11-AutoPlayer.json")
+	preferenceDisk[path] = text
+end
+isfile = function(path)
+	return preferenceDisk[path] ~= nil
+end
 local failNextPublished = false
 local latest, result, failLabel, blockCore = nil, nil, false, true
 services.CoreGui = Instance.new("CoreGui")
@@ -72,7 +80,10 @@ end
 isfolder = function()
 	return false
 end
-readfile = function()
+readfile = function(path)
+	if preferenceDisk[path] then
+		return preferenceDisk[path]
+	end
 	reads += 1
 	return midi
 end
@@ -116,7 +127,12 @@ assert(
 )
 find("GameExecute").Activated:Fire()
 flushUI()
-assert(result and result.Nullx11Ready and result.View.Alive)
+assert(
+	result
+		and result.Nullx11Ready
+		and result.View.Alive
+		and result.Transport.Armed
+)
 assert(
 	result.View.Gui.Parent == playerGui,
 	"blocked CoreGui assignment falls back to PlayerGui"
@@ -211,7 +227,21 @@ assert(next(result.Output.Held))
 find("PanicInput").Activated:Fire()
 assert(not result.Transport.Armed and next(result.Output.Held) == nil)
 -- Hiding/restoring never restores a blocking loading sheet or stale state.
+find("SavePlayerSetup").Activated:Fire()
+assert(
+	preferenceDisk["Nullx11-AutoPlayer.json"],
+	"explicit Save writes only the local setup"
+)
 find("Minimize").Activated:Fire()
+assert(find("AutoPlayerHolder").Visible)
+find("Arm piano inputToggle").Activated:Fire()
+find("HolderPlay").Activated:Fire()
+services.RunService.Heartbeat:Fire()
+assert(
+	result.Transport.State == "Playing" and find("HolderPlay").Text == "Pause"
+)
+find("HolderStop").Activated:Fire()
+assert(not result.Transport.Armed and next(result.Output.Held) == nil)
 find("PianoDock").Activated:Fire()
 assert(oldView.Panel.Visible and not find("LoadingStage").Visible)
 -- A failed new startup must clean both the prior session and partial GUI,
@@ -234,9 +264,33 @@ find("GameExecute").Activated:Fire()
 flushUI()
 stepUI(0.6)
 assert(result.View.Alive and latest.Closed)
+assert(
+	result.Transport.Armed and result.Transport.State ~= "Playing",
+	"arm on launch never auto-plays"
+)
+assert(
+	result.Transport.Score
+		and result.Transport.Speed == 1.25
+		and result.Transport.Transpose == 0,
+	"saved song/preferences restore without replay"
+)
+assert(find("PlaybackSpeed").Text == "1.25")
+find("Queue").Activated:Fire()
+assert(result.View.Rows[1].Entry, "saved queue restores")
 local remaining = result.View
 find("Close").Activated:Fire()
 assert(remaining.Alive and not remaining.Gui.Destroyed)
+find("Settings").Activated:Fire()
+find("Arm on launchToggle").Activated:Fire()
+find("SavePlayerSetup").Activated:Fire()
 find("Unload").Activated:Fire()
 assert(not remaining.Alive and remaining.Gui.Destroyed)
+local optOut = runPublishedAutoPlayer()
+flushUI()
+stepUI(0.7)
+assert(
+	not optOut.Transport.Armed and optOut.Transport.State ~= "Playing",
+	"saved arm-on-launch opt-out is respected"
+)
+optOut.View.Actions.unload()
 return "PASS: real catalog-to-published Auto Player handoff, actual UI button/file/parse/preview/armed input flow, blocked GUI-parent fallback, startup error cleanup/rethrow, retry and loader-independent lifetime (development APIs only)"

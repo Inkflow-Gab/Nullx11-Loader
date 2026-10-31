@@ -12,19 +12,20 @@ return function(context)
 		Bars = {},
 		Keys = {},
 		KeyCaptions = {},
+		Inputs = {},
 		Page = "Library",
 		ReducedMotion = context.ReducedMotion,
 		Tweens = {},
 	}
 	local color = {
-		Background = Color3.fromRGB(8, 12, 24),
-		Panel = Color3.fromRGB(15, 22, 39),
-		Card = Color3.fromRGB(23, 33, 53),
-		Border = Color3.fromRGB(44, 60, 86),
-		Text = Color3.fromRGB(230, 242, 255),
-		Muted = Color3.fromRGB(143, 164, 191),
-		Cyan = Color3.fromRGB(86, 226, 234),
-		Violet = Color3.fromRGB(171, 136, 255),
+		Background = Color3.fromRGB(18, 18, 22),
+		Panel = Color3.fromRGB(24, 24, 30),
+		Card = Color3.fromRGB(33, 33, 41),
+		Border = Color3.fromRGB(57, 56, 66),
+		Text = Color3.fromRGB(244, 240, 232),
+		Muted = Color3.fromRGB(159, 156, 168),
+		Cyan = Color3.fromRGB(230, 187, 126),
+		Violet = Color3.fromRGB(174, 165, 213),
 		Red = Color3.fromRGB(255, 118, 139),
 	}
 	local gui = Instance.new("ScreenGui")
@@ -82,13 +83,13 @@ return function(context)
 		return object
 	end
 	local function corner(object, radius)
-		create("UICorner", object, { CornerRadius = UDim.new(0, radius or 12) })
+		create("UICorner", object, { CornerRadius = UDim.new(0, radius or 10) })
 	end
 	local function stroke(object, accent)
 		create("UIStroke", object, {
 			Color = accent or color.Border,
 			Thickness = 1,
-			Transparency = 0.2,
+			Transparency = 0.55,
 		})
 	end
 	local function frame(parent, name, shade)
@@ -188,12 +189,8 @@ return function(context)
 		Position = UDim2.fromScale(0.5, 0.5),
 		Visible = true,
 	})
-	corner(panel, 20)
+	corner(panel, 16)
 	stroke(panel)
-	create("UIGradient", panel, {
-		Rotation = 30,
-		Color = ColorSequence.new(color.Background, Color3.fromRGB(19, 23, 48)),
-	})
 	local openingScale = create("UIScale", panel, { Scale = 0.94 })
 	view.Panel = panel
 	local header = frame(panel, "Header", color.Panel)
@@ -222,13 +219,7 @@ return function(context)
 	end
 	local logo = pianoMark(header, 44)
 	logo.Position = UDim2.fromOffset(14, 12)
-	local brand = label(
-		header,
-		"Brand",
-		"DEVELOPED BY NULL / MIDI STUDIO",
-		10,
-		color.Cyan
-	)
+	local brand = label(header, "Brand", "NULL / PIANO PLAYER", 10, color.Cyan)
 	brand.Position = UDim2.fromOffset(70, 11)
 	brand.Size = UDim2.new(1, -180, 0, 17)
 	local title = label(header, "Title", "Auto Player", 25)
@@ -249,7 +240,7 @@ return function(context)
 		create("Frame", panel, { Name = "Content", BackgroundTransparency = 1 })
 	local rail = frame(main, "SongRail", color.Panel)
 	local listHeading =
-		label(rail, "ListHeading", "YOUR MIDI LIBRARY", 11, color.Muted)
+		label(rail, "ListHeading", "YOUR LIBRARY", 11, color.Muted)
 	listHeading.Position = UDim2.fromOffset(12, 8)
 	listHeading.Size = UDim2.new(1, -24, 0, 24)
 	local search = create("TextBox", rail, {
@@ -298,16 +289,10 @@ return function(context)
 	end)
 	local refresh = button(rail, "RefreshFiles", "Refresh", "refresh")
 	local stage = frame(main, "PianoStage", color.Panel)
-	local stageTag = label(
-		stage,
-		"StageTag",
-		"LOCAL FILE / AWAITING SELECTION",
-		10,
-		color.Cyan
-	)
+	local stageTag = label(stage, "StageTag", "NOW PLAYING", 10, color.Cyan)
 	stageTag.Position = UDim2.fromOffset(16, 12)
 	stageTag.Size = UDim2.new(1, -32, 0, 18)
-	local song = label(stage, "SongTitle", "Make room for your next piece.", 22)
+	local song = label(stage, "SongTitle", "Your next piece starts here.", 22)
 	song.Position = UDim2.fromOffset(16, 35)
 	song.Size = UDim2.new(1, -32, 0, 31)
 	song.Font = Enum.Font.GothamBold
@@ -436,6 +421,7 @@ return function(context)
 		context.Connect(box.FocusLost, function()
 			view.Dispatch(action, box.Text)
 		end)
+		view.Inputs[action] = box
 		return box
 	end
 	view.Toggle(
@@ -621,21 +607,49 @@ return function(context)
 		11,
 		color.Muted
 	)
-	local dockMoved = false
-	local dock = button(root, "PianoDock", "", function()
+	local dockMoved, dockPositioned = false, false
+	local holder = frame(root, "AutoPlayerHolder", color.Panel)
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.new(0.5, 0, 1, -116)
+	holder.Size = UDim2.fromOffset(256, 80)
+	holder.Visible = false
+	holder.Active = true
+	stroke(holder)
+	view.Holder = holder
+	local dock = button(holder, "PianoDock", "", function()
 		if not dockMoved then
-			view.SetVisible(not view.Visible)
+			view.SetVisible(true)
 		end
 	end)
-	dock.Size = UDim2.fromOffset(56, 56)
-	dock.Position = UDim2.new(0, 12, 0.5, -28)
+	dock.Size = UDim2.fromOffset(48, 48)
+	dock.Position = UDim2.fromOffset(8, 9)
 	dock.Visible = false
-	local dockPiano = pianoMark(dock, 44)
+	local dockPiano = pianoMark(dock, 36)
 	dockPiano.Position = UDim2.fromOffset(6, 6)
 	dockPiano.Active = false
+	local miniTitle =
+		label(holder, "HolderTitle", "Auto Player / NULL", 10, color.Muted)
+	miniTitle.Position = UDim2.fromOffset(66, 7)
+	miniTitle.Size = UDim2.fromOffset(178, 16)
+	local miniPlay = button(holder, "HolderPlay", "Play", function()
+		if not dockMoved then
+			view.Dispatch(view.Playing and "pause" or "play")
+		end
+	end, color.Cyan)
+	miniPlay.Position = UDim2.fromOffset(66, 28)
+	miniPlay.Size = UDim2.fromOffset(90, 44)
+	local miniStop = button(holder, "HolderStop", "STOP", function()
+		if not dockMoved then
+			view.Dispatch("panic")
+		end
+	end)
+	miniStop.TextColor3 = color.Red
+	miniStop.Position = UDim2.fromOffset(164, 28)
+	miniStop.Size = UDim2.fromOffset(80, 44)
 	function view.SetVisible(value)
 		view.Visible = value
 		panel.Visible = value
+		holder.Visible = not value
 		dock.Visible = not value
 		if value then
 			animate(openingScale, 0.3, { Scale = 1 })
@@ -808,9 +822,7 @@ return function(context)
 			UDim2.fromOffset(0, trackStart + #(tracks or {}) * 86 + 12)
 	end
 	function view.Files(entries, selected, queuePage, pageNumber, pageCount)
-		listHeading.Text = (
-			queuePage and "SESSION QUEUE" or "YOUR MIDI LIBRARY"
-		)
+		listHeading.Text = (queuePage and "YOUR QUEUE" or "YOUR LIBRARY")
 			.. " / "
 			.. pageNumber
 			.. "/"
@@ -845,7 +857,7 @@ return function(context)
 				row.Name.Text = row.Entry.Name
 				row.Detail.Text = row.Entry.Folder or row.Entry.Path
 				row.Object.BackgroundColor3 = selected == row.Entry.Path
-						and Color3.fromRGB(37, 65, 81)
+						and Color3.fromRGB(69, 54, 39)
 					or color.Card
 			end
 		end
@@ -927,6 +939,7 @@ return function(context)
 	end
 	function view.Score(score, name)
 		song.Text = name
+		miniTitle.Text = name
 		stageTag.Text = "LOCAL MIDI / " .. #score.Tracks .. " TRACKS"
 		meta.Text = #score.Notes
 			.. " notes  /  "
@@ -935,6 +948,8 @@ return function(context)
 			.. time(score.Duration)
 	end
 	function view.Snapshot(player, output)
+		view.Playing = player.State == "Playing"
+		miniPlay.Text = view.Playing and "Pause" or "Play"
 		if view.BackendStatus then
 			view.BackendStatus(output)
 		end
@@ -946,7 +961,7 @@ return function(context)
 			.. time(player.Score and player.Score.Duration or 0)
 		stateLabel.Text = player.Preview and "PREVIEW / NO GAME INPUT"
 			or player.Armed and "ARMED / " .. player.State:upper()
-			or "DISARMED / " .. player.State:upper()
+			or "INPUT OFF / " .. player.State:upper()
 		seekFill.Size = UDim2.fromScale(
 			player.Score
 					and player.Position / math.max(0.001, player.Score.Duration)
@@ -1055,7 +1070,13 @@ return function(context)
 			page.Visible = pageName == name
 		end
 		for pageName, object in pairs(navButtons) do
-			object.TextColor3 = name == pageName and color.Cyan or color.Muted
+			object.TextColor3 = name == pageName and color.Text or color.Muted
+			object.BackgroundColor3 = name == pageName and color.Card
+				or color.Background
+			local marker = object:FindFirstChild("SelectedTab")
+			if marker then
+				marker.Visible = name == pageName
+			end
 		end
 		view.Dispatch("tab", name)
 	end
@@ -1071,6 +1092,18 @@ return function(context)
 		end)
 		object.Size = UDim2.new(0.2, -4, 1, 0)
 		object.Position = UDim2.new((index - 1) * 0.2, 0, 0, 0)
+		local outline = object:FindFirstChildOfClass("UIStroke")
+		if outline then
+			outline.Transparency = 1
+		end
+		create("Frame", object, {
+			Name = "SelectedTab",
+			BackgroundColor3 = color.Cyan,
+			BorderSizePixel = 0,
+			Position = UDim2.new(0.2, 0, 1, -2),
+			Size = UDim2.new(0.6, 0, 0, 2),
+			Visible = false,
+		})
 		navButtons[name] = object
 	end
 	local keyHelp = label(
@@ -1155,6 +1188,33 @@ return function(context)
 				or color.Text
 		end
 	end
+	view.Toggle(
+		settings,
+		"Arm on launch",
+		"Ready for manual Play on launch. STOP INPUT still disarms immediately.",
+		true,
+		"autoarm"
+	)
+	local storageRow = settingRow(
+		settings,
+		"Your saved setup",
+		"Profile, favorites, queue and placement stay on this device."
+	)
+	local saveButton = button(storageRow, "SavePlayerSetup", "Save", "save")
+	saveButton.Position = UDim2.new(1, -100, 0.5, -20)
+	saveButton.Size = UDim2.fromOffset(88, 40)
+	local storageStatus = storageRow:FindFirstChild("Detail")
+	view.Persistence = function(text)
+		storageStatus.Text = text
+	end
+	local centerRow = settingRow(
+		settings,
+		"Window placement",
+		"Return the player to the center with its holder below."
+	)
+	local centerButton = button(centerRow, "CenterPlayer", "Center", "center")
+	centerButton.Position = UDim2.new(1, -100, 0.5, -20)
+	centerButton.Size = UDim2.fromOffset(88, 40)
 	local testRow = settingRow(
 		settings,
 		"Input test / F7 panic",
@@ -1174,8 +1234,8 @@ return function(context)
 	panicButton.Position = UDim2.new(1, -112, 0.5, -20)
 	local clearRow = settingRow(
 		settings,
-		"Session queue",
-		"In memory only; no files are deleted or written."
+		"Saved queue",
+		"Stored locally with your player setup. Songs are never modified."
 	)
 	local clearButton = button(clearRow, "ClearQueue", "Clear", "clearqueue")
 	clearButton.Size = UDim2.fromOffset(88, 40)
@@ -1204,6 +1264,21 @@ return function(context)
 		view.Dispatch("folder", path.Text)
 	end)
 	settings.CanvasSize = UDim2.fromOffset(0, rowHeights.Settings + 18)
+	local savedPlacement = context.MidiPreferences or {}
+	view.Preferences = function(data)
+		speed.Text = tostring(data.Speed)
+		transpose.Text = tostring(data.Transpose)
+		path.Text = data.Folder
+		for name, value in pairs({
+			velocity = data.Velocity,
+			gate = data.Gate,
+			delay = data.Delay,
+		}) do
+			if view.Inputs[name] then
+				view.Inputs[name].Text = tostring(value)
+			end
+		end
+	end
 	local initialized = false
 	local function layout()
 		if not view.Alive then
@@ -1214,16 +1289,36 @@ return function(context)
 			return
 		end
 		local width, height =
-			math.min(1040, size.X - 16), math.min(750, size.Y - 16)
+			math.min(960, size.X - 24), math.min(680, size.Y - 24)
 		panel.Size = UDim2.fromOffset(width, height)
-		if not initialized then
-			panel.Position = UDim2.fromOffset(size.X / 2, size.Y / 2)
+		do
+			local saved = savedPlacement.Panel
+			panel.Position = UDim2.fromOffset(
+				size.X * (saved and saved.X or 0.5),
+				size.Y * (saved and saved.Y or 0.5)
+			)
 			initialized = true
 		end
 		local position = panel.Position
 		panel.Position = UDim2.fromOffset(
 			math.clamp(position.X.Offset, width / 2, size.X - width / 2),
 			math.clamp(position.Y.Offset, height / 2, size.Y - height / 2)
+		)
+		do
+			local saved = savedPlacement.Dock
+			holder.Position = UDim2.fromOffset(
+				size.X * (saved and saved.X or 0.5),
+				saved and size.Y * saved.Y or size.Y - 116
+			)
+			dockPositioned = true
+		end
+		holder.Position = UDim2.fromOffset(
+			math.clamp(
+				holder.Position.X.Offset,
+				134,
+				math.max(134, size.X - 134)
+			),
+			math.clamp(holder.Position.Y.Offset, 46, math.max(46, size.Y - 46))
 		)
 		header.Position = UDim2.fromOffset(8, 8)
 		header.Size = UDim2.new(1, -16, 0, 68)
@@ -1237,11 +1332,13 @@ return function(context)
 		main.Size = UDim2.new(1, -28, 1, -278)
 		local short = height < 520
 		local contentY = short and 108 or 130
+		local transportReserve = short and 148 or 170
 		main.Position = UDim2.fromOffset(14, contentY)
-		main.Size = UDim2.new(1, -28, 1, -contentY - 148)
-		local contentWidth, contentHeight = width - 28, height - contentY - 148
+		main.Size = UDim2.new(1, -28, 1, -contentY - transportReserve)
+		local contentWidth, contentHeight =
+			width - 28, height - contentY - transportReserve
 		local compact = width < 700 and not short
-		local railWidth = short and math.min(210, (width - 40) * 0.42) or 258
+		local railWidth = short and math.min(210, (width - 40) * 0.42) or 276
 		if short then
 			header.Size = UDim2.new(1, -16, 0, 54)
 			logo.Position = UDim2.fromOffset(14, 5)
@@ -1252,11 +1349,10 @@ return function(context)
 		end
 		if compact then
 			rail.Position = UDim2.fromOffset(0, 0)
-			rail.Size = UDim2.new(1, 0, 0, math.max(184, contentHeight * 0.42))
+			rail.Size = UDim2.new(1, 0, 0, math.max(184, contentHeight - 128))
 			stage.Position =
-				UDim2.fromOffset(0, math.max(184, contentHeight * 0.42) + 8)
-			stage.Size =
-				UDim2.new(1, 0, 1, -math.max(192, contentHeight * 0.42 + 8))
+				UDim2.fromOffset(0, math.max(184, contentHeight - 128) + 8)
+			stage.Size = UDim2.new(1, 0, 1, -math.max(192, contentHeight - 120))
 			-- Portrait focuses on song selection and the visual piano, with compact
 			-- metadata. Mixer/settings retain full-width scrollable touch controls.
 			stageTag.Visible = false
@@ -1310,17 +1406,17 @@ return function(context)
 		search.Visible = not short
 		list.Position = UDim2.fromOffset(8, short and 6 or 82)
 		list.Size = UDim2.new(1, -16, 1, short and -48 or -126)
-		footer.Position = UDim2.new(0, 14, 1, -140)
-		footer.Size = UDim2.new(1, -28, 0, 82)
+		footer.Position = UDim2.new(0, 14, 1, short and -140 or -162)
+		footer.Size = UDim2.new(1, -28, 0, short and 82 or 104)
 		local controlWidth = (contentWidth - 32) / 5
 		for index, object in ipairs(transport) do
 			object.Position =
 				UDim2.fromOffset(8 + (index - 1) * (controlWidth + 4), 28)
-			object.Size = UDim2.fromOffset(controlWidth, 32)
+			object.Size = UDim2.fromOffset(controlWidth, short and 32 or 44)
 		end
-		clockLabel.Position = UDim2.fromOffset(12, 63)
+		clockLabel.Position = UDim2.fromOffset(12, short and 63 or 80)
 		clockLabel.Size = UDim2.new(0.5, 0, 0, 16)
-		stateLabel.Position = UDim2.new(0.4, 0, 0, 63)
+		stateLabel.Position = UDim2.new(0.4, 0, 0, short and 63 or 80)
 		stateLabel.Size = UDim2.new(0.6, -12, 0, 16)
 		stateLabel.TextXAlignment = Enum.TextXAlignment.Right
 		bottom.Position = UDim2.new(0, 14, 1, -52)
@@ -1342,6 +1438,33 @@ return function(context)
 		end
 		status.Position = UDim2.new(0, 14, 1, -16)
 		status.Size = UDim2.new(1, -28, 0, 14)
+	end
+	view.Placement = function()
+		local size = root.AbsoluteSize
+		if size.X > 0 and size.Y > 0 and view.Alive then
+			view.LastPlacement = {
+				Panel = {
+					X = panel.Position.X.Offset / size.X,
+					Y = panel.Position.Y.Offset / size.Y,
+				},
+				Dock = {
+					X = holder.Position.X.Offset / size.X,
+					Y = holder.Position.Y.Offset / size.Y,
+				},
+			}
+		end
+		if view.LastPlacement then
+			savedPlacement.Panel = view.LastPlacement.Panel
+			savedPlacement.Dock = view.LastPlacement.Dock
+		end
+		return view.LastPlacement
+			or { Panel = savedPlacement.Panel, Dock = savedPlacement.Dock }
+	end
+	view.Center = function()
+		savedPlacement.Panel, savedPlacement.Dock = nil, nil
+		initialized, dockPositioned = false, false
+		layout()
+		view.Placement()
 	end
 	context.Connect(root:GetPropertyChangedSignal("AbsoluteSize"), layout)
 	local dragging, dragStart, dragPosition = false, nil, nil
@@ -1382,17 +1505,19 @@ return function(context)
 	context.Connect(input.InputEnded, function(event)
 		if event == dragging then
 			dragging = false
+			view.Placement()
+			view.Dispatch("placement")
 		end
 	end)
 	local dockDrag, dockStart, dockPosition
-	context.Connect(dock.InputBegan, function(event)
+	context.Connect(holder.InputBegan, function(event)
 		if
 			event.UserInputType == Enum.UserInputType.MouseButton1
 			or event.UserInputType == Enum.UserInputType.Touch
 		then
 			dockDrag = event
 			dockStart = event.Position
-			dockPosition = dock.AbsolutePosition
+			dockPosition = holder.Position
 			dockMoved = false
 		end
 	end)
@@ -1409,16 +1534,16 @@ return function(context)
 				dockMoved = true
 			end
 			if dockMoved then
-				dock.Position = UDim2.fromOffset(
+				holder.Position = UDim2.fromOffset(
 					math.clamp(
-						dockPosition.X + delta.X - root.AbsolutePosition.X,
-						0,
-						math.max(0, root.AbsoluteSize.X - 56)
+						dockPosition.X.Offset + delta.X,
+						134,
+						math.max(134, root.AbsoluteSize.X - 134)
 					),
 					math.clamp(
-						dockPosition.Y + delta.Y - root.AbsolutePosition.Y,
-						0,
-						math.max(0, root.AbsoluteSize.Y - 56)
+						dockPosition.Y.Offset + delta.Y,
+						46,
+						math.max(46, root.AbsoluteSize.Y - 46)
 					)
 				)
 			end
@@ -1427,6 +1552,8 @@ return function(context)
 	context.Connect(input.InputEnded, function(event)
 		if event == dockDrag then
 			dockDrag = nil
+			view.Placement()
+			view.Dispatch("placement")
 			task.delay(0.1, function()
 				if view.Alive then
 					dockMoved = false
@@ -1440,6 +1567,7 @@ return function(context)
 		end
 	end)
 	layout()
+	view.Placement()
 	view.SetPage("Library")
 	animate(openingScale, 0.6, { Scale = 1 })
 	-- Standalone construction also has a finite opening, even without a scan.

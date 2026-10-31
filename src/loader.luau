@@ -591,11 +591,7 @@ local function layout()
 		Vector2.new(width, height) * scale
 	)
 	miniCenter = clampCenter(
-		miniCenter
-			or Vector2.new(
-				if viewport.X > viewport.Y then viewport.X - 48 else 48,
-				viewport.Y - 46
-			),
+		miniCenter or Vector2.new(viewport.X / 2, viewport.Y - 46),
 		mini.AbsoluteSize
 	)
 	if not portal.Jobs[card] then
