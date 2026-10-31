@@ -40,7 +40,7 @@ Use [the game validation checklist](../diagnostics/GAME-PORTS.md) on an authoriz
 
 ## Latest additions and library
 
-See [TTK/Money review](../docs/TTK-MONEY-REVIEW.md) for preserved source data, removed telemetry hook, Instant ADS boundary, request limits and native test checklist. The main Scripts page now uses a fixed eight-slot row pool and viewport-sized pagination, editable page jumping, category/collection/current-game filters, literal multiword search, sorting and session pins/recent details. The separate Scripts window also uses compact bounded pages. Full-viewport coordinate alignment, hidden restore-target correction and Auto/Balanced/Low power UI budgets are implemented; native layout/touch/FPS are still unverified. See [the loader UI guide](../docs/LOADER-UI.md).
+See [TTK/Money review](../docs/TTK-MONEY-REVIEW.md) for preserved source data, removed telemetry hook, Instant ADS boundary, request limits and native test checklist. The main Scripts page now uses a fixed eight-slot card pool, a local detail screen, explicit Continue-to-launch, direct-choice category/collection/sort lists, viewport-sized pagination, page jumping, search and session saves/recent details. The separate Scripts window also uses compact bounded pages. Full-viewport coordinate alignment, hidden restore-target correction and Auto/Balanced/Low power UI budgets are implemented; native layout/touch/FPS are still unverified. See [the loader UI guide](../docs/LOADER-UI.md).
 
 ## Chaos / YARHM additions
 
@@ -65,7 +65,7 @@ The library now has collection and universe/Universal-aware filters and badges.
 game-remote port. Custom native opening/loading UI; Android/relative MIDI folder;
 bounded SMF decode; manual-play keyboard output; track/tempo/practice/queue tools.
 Input is armed on launch when an API exists; STOP disarms and Arm on launch can be disabled.
-The redesigned centered player/mini holder persists a validated local JSON setup. File access/key simulation depend on Delta permissions and
+The clean charcoal/blue player uses full-size mobile Songs/Piano screens, desktop library/piano panes and an emphasized Play control. The centered player/mini holder persists a validated local JSON setup. File access/key simulation depend on Delta permissions and
 the game's actual mapping. [Guide](../docs/AUTO-PLAYER.md),
 [review](../docs/MIDI-REVIEW.md). Local contracts compile/pass under doubles;
 native visuals/gameplay/device filesystem/touch remain unverified.

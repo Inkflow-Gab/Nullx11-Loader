@@ -62,7 +62,7 @@ do
 				actions:AddButton({
 					Text = "Open Scripts library",
 					Func = function()
-						secondary(playerToolsBridge.OpenScripts)
+						window:SelectTab(scriptsTab)
 					end,
 				})
 				actions:AddButton({
@@ -117,7 +117,7 @@ do
 				})
 				catalog.WorkspaceBrowser = browser
 				welcomeGroup:AddButton({
-					Text = "Browse pinned / recent scripts",
+					Text = "Saved & recently viewed scripts",
 					Func = function()
 						window:SelectTab(scriptsTab)
 					end,

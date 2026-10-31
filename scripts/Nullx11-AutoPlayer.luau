@@ -605,6 +605,7 @@ local makeMidiPreferences = (function()
 			)[raw.Backend] and raw.Backend or "Auto"
 			clean.Page = ({
 				Library = true,
+				Player = true,
 				Queue = true,
 				Mixer = true,
 				Keys = true,
@@ -1314,20 +1315,21 @@ local makeAutoPlayerView = (function()
 			Tweens = {},
 		}
 		local color = {
-			Background = Color3.fromRGB(18, 18, 22),
-			Panel = Color3.fromRGB(24, 24, 30),
-			Card = Color3.fromRGB(33, 33, 41),
-			Border = Color3.fromRGB(57, 56, 66),
-			Text = Color3.fromRGB(244, 240, 232),
-			Muted = Color3.fromRGB(159, 156, 168),
-			Cyan = Color3.fromRGB(230, 187, 126),
-			Violet = Color3.fromRGB(174, 165, 213),
+			Background = Color3.fromRGB(17, 18, 22),
+			Panel = Color3.fromRGB(22, 24, 29),
+			Card = Color3.fromRGB(31, 35, 43),
+			Border = Color3.fromRGB(51, 57, 68),
+			Text = Color3.fromRGB(242, 244, 248),
+			Muted = Color3.fromRGB(141, 150, 166),
+			Cyan = Color3.fromRGB(104, 155, 250),
+			Violet = Color3.fromRGB(144, 180, 247),
 			Red = Color3.fromRGB(255, 118, 139),
 		}
 		local gui = Instance.new("ScreenGui")
 		gui.Name = "Nullx11AutoPlayer"
 		gui.ResetOnSpawn = false
-		gui.IgnoreGuiInset = false
+		gui.IgnoreGuiInset = true
+		gui.ScreenInsets = Enum.ScreenInsets.None
 		gui.DisplayOrder = 350
 		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 		view.Gui = gui
@@ -1465,8 +1467,7 @@ local makeAutoPlayerView = (function()
 				BorderSizePixel = 0,
 				AutoButtonColor = true,
 			})
-			corner(object, 10)
-			stroke(object, shade)
+			corner(object, 8)
 			context.Connect(object.Activated, function()
 				if type(action) == "function" then
 					action()
@@ -1520,8 +1521,7 @@ local makeAutoPlayerView = (function()
 		end
 		local logo = pianoMark(header, 44)
 		logo.Position = UDim2.fromOffset(14, 12)
-		local brand =
-			label(header, "Brand", "NULL / PIANO PLAYER", 10, color.Cyan)
+		local brand = label(header, "Brand", "Nullx11 / MIDI", 10, color.Cyan)
 		brand.Position = UDim2.fromOffset(70, 11)
 		brand.Size = UDim2.new(1, -180, 0, 17)
 		local title = label(header, "Title", "Auto Player", 25)
@@ -1545,7 +1545,7 @@ local makeAutoPlayerView = (function()
 		)
 		local rail = frame(main, "SongRail", color.Panel)
 		local listHeading =
-			label(rail, "ListHeading", "YOUR LIBRARY", 11, color.Muted)
+			label(rail, "ListHeading", "Your songs", 14, color.Muted)
 		listHeading.Position = UDim2.fromOffset(12, 8)
 		listHeading.Size = UDim2.new(1, -24, 0, 24)
 		local search = create("TextBox", rail, {
@@ -1594,18 +1594,18 @@ local makeAutoPlayerView = (function()
 		end)
 		local refresh = button(rail, "RefreshFiles", "Refresh", "refresh")
 		local stage = frame(main, "PianoStage", color.Panel)
-		local stageTag = label(stage, "StageTag", "NOW PLAYING", 10, color.Cyan)
+		local stageTag =
+			label(stage, "StageTag", "PIANO WORKSPACE", 10, color.Cyan)
 		stageTag.Position = UDim2.fromOffset(16, 12)
 		stageTag.Size = UDim2.new(1, -32, 0, 18)
-		local song =
-			label(stage, "SongTitle", "Your next piece starts here.", 22)
+		local song = label(stage, "SongTitle", "No song selected", 22)
 		song.Position = UDim2.fromOffset(16, 35)
 		song.Size = UDim2.new(1, -32, 0, 31)
 		song.Font = Enum.Font.GothamBold
 		local meta = label(
 			stage,
 			"SongMetadata",
-			"SMF 0 / 1  |  Tempo maps  |  Track control",
+			"Choose a local MIDI file from Songs to get started.",
 			12,
 			color.Muted
 		)
@@ -1676,10 +1676,10 @@ local makeAutoPlayerView = (function()
 			local row = frame(page, heading, color.Card)
 			row.Position = UDim2.fromOffset(12, y)
 			row.Size = UDim2.new(1, -24, 0, 76)
-			local headingLabel = label(row, "Heading", heading, 13)
+			local headingLabel = label(row, "Heading", heading, 14)
 			headingLabel.Position = UDim2.fromOffset(12, 8)
 			headingLabel.Size = UDim2.new(1, -132, 0, 22)
-			local description = label(row, "Detail", detail, 10, color.Muted)
+			local description = label(row, "Detail", detail, 12, color.Muted)
 			description.Position = UDim2.fromOffset(12, 33)
 			description.Size = UDim2.new(1, -132, 0, 34)
 			description.TextWrapped = true
@@ -1908,6 +1908,17 @@ local makeAutoPlayerView = (function()
 		local favorite = button(bottom, "Favorite", "Favorite", "favorite")
 		local loopA = button(bottom, "LoopA", "Set A", "loopA")
 		local loopB = button(bottom, "LoopB", "Set B", "loopB")
+		local loopMarks = settingRow(
+			settings,
+			"Practice loop marks",
+			"Set start and end at the current playhead. Enable Repeat A / B to use them."
+		)
+		loopA.Parent, loopB.Parent = loopMarks, loopMarks
+		loopA.Position, loopB.Position =
+			UDim2.new(1, -100, 0.5, -20), UDim2.new(1, -52, 0.5, -20)
+		loopA.Size, loopB.Size =
+			UDim2.fromOffset(44, 40), UDim2.fromOffset(44, 40)
+		loopA.Text, loopB.Text = "A", "B"
 		local status = label(
 			panel,
 			"SessionStatus",
@@ -2131,7 +2142,7 @@ local makeAutoPlayerView = (function()
 				UDim2.fromOffset(0, trackStart + #(tracks or {}) * 86 + 12)
 		end
 		function view.Files(entries, selected, queuePage, pageNumber, pageCount)
-			listHeading.Text = (queuePage and "YOUR QUEUE" or "YOUR LIBRARY")
+			listHeading.Text = (queuePage and "Queue" or "Songs")
 				.. " / "
 				.. pageNumber
 				.. "/"
@@ -2151,27 +2162,39 @@ local makeAutoPlayerView = (function()
 							local item = view.Rows[index].Entry
 							if item then
 								view.Dispatch("select", item)
+								if view.Compact then
+									view.SetPage("Player")
+								end
 							end
 						end
 					)
 					object.Position = UDim2.fromOffset(0, (index - 1) * 58)
 					object.Size = UDim2.new(1, -6, 0, 52)
-					local name = label(object, "FileName", "", 12)
+					local mark = frame(object, "SelectedSong", color.Cyan)
+					mark.Position, mark.Size =
+						UDim2.fromOffset(0, 6), UDim2.new(0, 3, 1, -12)
+					local name = label(object, "FileName", "", 14)
 					name.Position = UDim2.fromOffset(10, 6)
 					name.Size = UDim2.new(1, -20, 0, 21)
-					local detail = label(object, "Folder", "", 9, color.Muted)
+					local detail = label(object, "Folder", "", 11, color.Muted)
 					detail.Position = UDim2.fromOffset(10, 29)
 					detail.Size = UDim2.new(1, -20, 0, 17)
-					row = { Object = object, Name = name, Detail = detail }
+					row = {
+						Object = object,
+						Name = name,
+						Detail = detail,
+						Marker = mark,
+					}
 					view.Rows[index] = row
 				end
 				row.Entry = entries[index]
 				row.Object.Visible = row.Entry ~= nil
 				if row.Entry then
 					row.Name.Text = row.Entry.Name
+					row.Marker.Visible = selected == row.Entry.Path
 					row.Detail.Text = row.Entry.Folder or row.Entry.Path
 					row.Object.BackgroundColor3 = selected == row.Entry.Path
-							and Color3.fromRGB(69, 54, 39)
+							and Color3.fromRGB(34, 49, 76)
 						or color.Card
 				end
 			end
@@ -2286,6 +2309,9 @@ local makeAutoPlayerView = (function()
 					or 0,
 				1
 			)
+			if not stage.Visible then
+				return
+			end
 			local pressed = {}
 			for _, pitch in pairs(player.Active) do
 				local token = output.Map(pitch)
@@ -2380,10 +2406,12 @@ local makeAutoPlayerView = (function()
 				end
 			end
 		end
-		function view.SetPage(name)
-			view.Page = name
+		local function showPage()
+			local name = view.Page
 			rail.Visible = name == "Library" or name == "Queue"
-			stage.Visible = rail.Visible
+			stage.Visible = name == "Player"
+				or (rail.Visible and not view.Compact)
+
 			for pageName, page in pairs(pages) do
 				page.Visible = pageName == name
 			end
@@ -2397,20 +2425,45 @@ local makeAutoPlayerView = (function()
 					marker.Visible = name == pageName
 				end
 			end
+		end
+		function view.SetPage(name)
+			if
+				name ~= "Player"
+				and name ~= "Library"
+				and name ~= "Queue"
+				and not pages[name]
+			then
+				return
+			end
+			view.Page = name
+			if view.Relayout then
+				view.Relayout()
+			else
+				showPage()
+			end
 			view.Dispatch("tab", name)
 		end
 		for index, name in ipairs({
 			"Library",
+			"Player",
 			"Queue",
 			"Mixer",
 			"Keys",
 			"Settings",
 		}) do
-			local object = button(nav, name, name, function()
+			local captions = {
+				Library = "Songs",
+				Player = "Piano",
+				Queue = "Queue",
+				Mixer = "Tracks",
+				Keys = "Keys",
+				Settings = "Setup",
+			}
+			local object = button(nav, name, captions[name], function()
 				view.SetPage(name)
 			end)
-			object.Size = UDim2.new(0.2, -4, 1, 0)
-			object.Position = UDim2.new((index - 1) * 0.2, 0, 0, 0)
+			object.Size = UDim2.new(1 / 6, -4, 1, 0)
+			object.Position = UDim2.new((index - 1) / 6, 0, 0, 0)
 			local outline = object:FindFirstChildOfClass("UIStroke")
 			if outline then
 				outline.Transparency = 1
@@ -2655,13 +2708,13 @@ local makeAutoPlayerView = (function()
 			minimize.Position = UDim2.new(1, -102, 0, 14)
 			close.Size = UDim2.fromOffset(44, 40)
 			close.Position = UDim2.new(1, -52, 0, 14)
-			nav.Position = UDim2.fromOffset(14, 84)
+			nav.Position = UDim2.fromOffset(14, 78)
 			nav.Size = UDim2.new(1, -28, 0, 36)
 			main.Position = UDim2.fromOffset(14, 130)
 			main.Size = UDim2.new(1, -28, 1, -278)
 			local short = height < 520
-			local contentY = short and 108 or 130
-			local transportReserve = short and 148 or 170
+			local contentY = short and 90 or 122
+			local transportReserve = short and 126 or 158
 			main.Position = UDim2.fromOffset(14, contentY)
 			main.Size = UDim2.new(1, -28, 1, -contentY - transportReserve)
 			local contentWidth, contentHeight =
@@ -2669,44 +2722,51 @@ local makeAutoPlayerView = (function()
 			local compact = width < 700 and not short
 			local railWidth = short and math.min(210, (width - 40) * 0.42)
 				or 276
+			logo.Visible = not short
+			logo.Position = UDim2.fromOffset(14, 12)
+			logo.Size = UDim2.fromOffset(44, 44)
+			title.TextSize = 25
+			title.Size = UDim2.new(1, -180, 0, 30)
+			brand.Position = UDim2.fromOffset(70, 11)
+			title.Position = UDim2.fromOffset(69, 28)
+			if width < 500 and not short then
+				logo.Size, logo.Position =
+					UDim2.fromOffset(32, 32), UDim2.fromOffset(12, 16)
+				brand.Position, title.Position =
+					UDim2.fromOffset(56, 11), UDim2.fromOffset(56, 28)
+				brand.Size = UDim2.new(1, -164, 0, 17)
+				title.Size, title.TextSize = UDim2.new(1, -164, 0, 28), 20
+			end
 			if short then
-				header.Size = UDim2.new(1, -16, 0, 54)
-				logo.Position = UDim2.fromOffset(14, 5)
-				brand.Position = UDim2.fromOffset(70, 4)
-				title.Position = UDim2.fromOffset(69, 19)
-				nav.Position = UDim2.fromOffset(14, 68)
+				header.Size = UDim2.new(1, -16, 0, 44)
+				logo.Visible = false
+				brand.Position = UDim2.fromOffset(12, 2)
+				title.Position = UDim2.fromOffset(12, 16)
+				title.Size, title.TextSize = UDim2.new(1, -128, 0, 24), 20
+				minimize.Position, close.Position =
+					UDim2.new(1, -102, 0, 4), UDim2.new(1, -52, 0, 4)
+				minimize.Size, close.Size =
+					UDim2.fromOffset(44, 32), UDim2.fromOffset(44, 32)
+				nav.Position = UDim2.fromOffset(14, 52)
 				nav.Size = UDim2.new(1, -28, 0, 32)
 			end
-			if compact then
-				rail.Position = UDim2.fromOffset(0, 0)
-				rail.Size =
-					UDim2.new(1, 0, 0, math.max(184, contentHeight - 128))
-				stage.Position =
-					UDim2.fromOffset(0, math.max(184, contentHeight - 128) + 8)
-				stage.Size =
-					UDim2.new(1, 0, 1, -math.max(192, contentHeight - 120))
-				-- Portrait focuses on song selection and the visual piano, with compact
-				-- metadata. Mixer/settings retain full-width scrollable touch controls.
-				stageTag.Visible = false
-				song.Position = UDim2.fromOffset(12, 8)
-				song.TextSize = 16
-				song.Size = UDim2.new(1, -24, 0, 24)
-				meta.Visible = false
-				roll.Position = UDim2.fromOffset(10, 40)
-				roll.Size = UDim2.new(1, -20, 1, -94)
-			else
-				rail.Position = UDim2.fromOffset(0, 0)
-				rail.Size = UDim2.new(0, railWidth, 1, 0)
-				stage.Position = UDim2.fromOffset(railWidth + 12, 0)
-				stage.Size = UDim2.new(1, -railWidth - 12, 1, 0)
-				stageTag.Visible = true
-				song.Position = UDim2.fromOffset(16, 35)
-				song.TextSize = 22
-				song.Size = UDim2.new(1, -32, 0, 31)
-				meta.Visible = true
-				roll.Position = UDim2.fromOffset(14, 104)
-				roll.Size = UDim2.new(1, -28, 1, -190)
-			end
+			view.Compact = width < 700
+			rail.Position = UDim2.fromOffset(0, 0)
+			rail.Size = if view.Compact
+				then UDim2.fromScale(1, 1)
+				else UDim2.new(0, railWidth, 1, 0)
+			local stageFull = view.Compact or view.Page == "Player"
+			stage.Position =
+				UDim2.fromOffset(if stageFull then 0 else railWidth + 16, 0)
+			stage.Size = if stageFull
+				then UDim2.fromScale(1, 1)
+				else UDim2.new(1, -railWidth - 16, 1, 0)
+			stageTag.Visible, meta.Visible = true, true
+			song.Position, song.Size, song.TextSize =
+				UDim2.fromOffset(16, 35), UDim2.new(1, -32, 0, 31), 22
+			roll.Position, roll.Size =
+				UDim2.fromOffset(14, 104), UDim2.new(1, -28, 1, -190)
+
 			if short then
 				stageTag.Visible = false
 				meta.Visible = false
@@ -2738,17 +2798,36 @@ local makeAutoPlayerView = (function()
 			search.Visible = not short
 			list.Position = UDim2.fromOffset(8, short and 6 or 82)
 			list.Size = UDim2.new(1, -16, 1, short and -48 or -126)
-			footer.Position = UDim2.new(0, 14, 1, short and -140 or -162)
-			footer.Size = UDim2.new(1, -28, 0, short and 82 or 104)
-			local controlWidth = (contentWidth - 32) / 5
+			footer.Position = UDim2.new(0, 14, 1, short and -118 or -150)
+			footer.Size = UDim2.new(1, -28, 0, short and 66 or 96)
+			seek.Position = UDim2.fromOffset(12, short and 0 or 12)
+			seek.Size = UDim2.new(1, -24, 0, 4)
+			local widths = if contentWidth < 320
+				then { 32, 80, 44, 44, 32 }
+				else {
+					40,
+					math.min(112, math.max(80, contentWidth - 224)),
+					52,
+					52,
+					40,
+				}
+			local total = widths[1]
+				+ widths[2]
+				+ widths[3]
+				+ widths[4]
+				+ widths[5]
+				+ 24
+			local x = math.max(6, (contentWidth - total) / 2)
 			for index, object in ipairs(transport) do
-				object.Position =
-					UDim2.fromOffset(8 + (index - 1) * (controlWidth + 4), 28)
-				object.Size = UDim2.fromOffset(controlWidth, short and 32 or 44)
+				object.Position = UDim2.fromOffset(x, if short then 26 else 32)
+				object.Size =
+					UDim2.fromOffset(widths[index], if short then 32 else 40)
+				object.TextSize = if index == 2 then 15 else 12
+				x += widths[index] + 6
 			end
-			clockLabel.Position = UDim2.fromOffset(12, short and 63 or 80)
+			clockLabel.Position = UDim2.fromOffset(12, short and 8 or 76)
 			clockLabel.Size = UDim2.new(0.5, 0, 0, 16)
-			stateLabel.Position = UDim2.new(0.4, 0, 0, short and 63 or 80)
+			stateLabel.Position = UDim2.new(0.4, 0, 0, short and 8 or 76)
 			stateLabel.Size = UDim2.new(0.6, -12, 0, 16)
 			stateLabel.TextXAlignment = Enum.TextXAlignment.Right
 			bottom.Position = UDim2.new(0, 14, 1, -52)
@@ -2761,16 +2840,18 @@ local makeAutoPlayerView = (function()
 			pitchTitle.Size = UDim2.fromOffset(58, 10)
 			transpose.Position = UDim2.fromOffset(50, 10)
 			transpose.Size = UDim2.fromOffset(48, 24)
-			local smallWidth = math.max(43, (contentWidth - 110) / 4 - 4)
-			for index, object in ipairs({ addQueue, favorite, loopA, loopB }) do
+			local smallWidth = math.max(70, (contentWidth - 110) / 2 - 4)
+			for index, object in ipairs({ addQueue, favorite }) do
 				object.Position =
 					UDim2.fromOffset(106 + (index - 1) * (smallWidth + 4), 4)
 				object.Size = UDim2.fromOffset(smallWidth, 28)
-				object.TextSize = compact and 10 or 12
+				object.TextSize = 12
 			end
 			status.Position = UDim2.new(0, 14, 1, -16)
 			status.Size = UDim2.new(1, -28, 0, 14)
+			showPage()
 		end
+		view.Relayout = layout
 		view.Placement = function()
 			local size = root.AbsoluteSize
 			if size.X > 0 and size.Y > 0 and view.Alive then

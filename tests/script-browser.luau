@@ -90,10 +90,14 @@ assert(#tab.Left.Items == 1, "no stacked groupboxes or catalog-sized canvas")
 local layout = tab.Left.Items[1].Spec
 assert(layout.Height(650) == 400)
 layout.OnLayout(650, 400)
-assert(browser.PageSize == 3 and browser.Pages == 2)
+assert(browser.PageSize == 4 and browser.Pages == 1 and browser.Columns == 2)
 local first = browser.Cards[1]
-assert(first.Id == "a" and first.Description.Text == "Cash routing")
-local allocations, connections = #objects, #browser.Connections
+assert(first.Id == "a" and first.Title.Text == "Alpha")
+assert(
+	browser.Cards[2].Frame.Position.X.Offset > 0
+		and browser.Cards[3].Frame.Position.Y.Offset > 0,
+	"readable two-column card grid"
+)
 local function click(name)
 	find(name).Activated:Fire()
 end
@@ -101,59 +105,72 @@ local function query(value)
 	browser.Search.Text = value
 	browser.Search:GetPropertyChangedSignal("Text"):Fire()
 end
+layout.OnLayout(650, 300)
+assert(browser.PageSize == 2 and browser.Pages == 2)
 click("ScriptNext")
-assert(
-	browser.Page == 2
-		and browser.Cards[1].Id == "c"
-		and not browser.Cards[2].Frame.Visible
-)
+assert(browser.Page == 2 and browser.Cards[1].Id == "d")
 click("ScriptPrevious")
 query("alice cash")
 assert(#browser.Matches == 1 and first.Id == "a")
 query("%[")
-assert(
-	#browser.Matches == 0 and find("ScriptEmpty").Visible,
-	"literal search, not patterns"
-)
+assert(#browser.Matches == 0 and find("ScriptEmpty").Visible)
 click("ScriptClear")
 click("ScriptView2")
 assert(
 	#browser.Matches == 3,
-	"this game includes matching place/universe/universal, not unknown modules"
+	"strict place/universe/universal view does not assume module compatibility"
 )
 click("ScriptClear")
 click("ScriptPin1")
 click("ScriptView3")
-assert(#browser.Matches == 1 and first.Id == "a" and first.Pin.Text == "Unpin")
+assert(#browser.Matches == 1 and first.Pin.Text == "Saved")
 click("ScriptPin1")
-assert(#browser.Matches == 0, "unpin clamps empty page immediately")
-click("ScriptView4")
-assert(#browser.Matches == 0 and opened == nil)
+assert(#browser.Matches == 0)
 click("ScriptClear")
 click("ScriptOpen1")
 assert(
-	opened == entries[1] and browser.Recent.a == 1,
-	"only explicit details action delegates"
+	opened == nil and browser.SelectedId == "a" and find("ScriptDetail").Visible,
+	"selecting a card opens local details, never launches code"
 )
+assert(
+	find("ScriptDetailDescription").Text == "Cash routing"
+		and browser.Recent.a == 1
+)
+click("ScriptDetailBack")
+assert(not find("ScriptDetail").Visible and find("ScriptRows").Visible)
 click("ScriptView4")
 assert(#browser.Matches == 1 and first.Id == "a")
 click("ScriptClear")
 click("ScriptFilters")
-assert(browser.ShowFilters and find("ScriptFilterRow").Visible)
+assert(browser.ShowFilters)
 click("ScriptCategory")
-assert(browser.Category == "Community" and #browser.Matches == 2)
+assert(
+	browser.Category == "All games",
+	"opening choices does not cycle or change filters"
+)
+click("ScriptOption2")
+assert(
+	browser.Category == "Community"
+		and #browser.Matches == 2
+		and not browser.ShowFilters,
+	"choose any category directly"
+)
 click("ScriptClear")
+click("ScriptFilters")
 click("ScriptCollection")
+click("ScriptOption2")
 assert(
 	browser.Collection == "Chaos" and #browser.Matches == 1 and first.Id == "b"
 )
 click("ScriptClear")
--- Global header API still delegates; local search survives leaving/reentering an
--- unchanged global query via the normal tab FilteredQuery contract.
+click("ScriptFilters")
+click("ScriptSort")
+click("ScriptOption3")
+assert(browser.Sort == "Recent")
+click("ScriptClear")
 tab.ApplyLibraryFilter("beta")
 assert(#browser.Matches == 1 and tab.FilteredQuery == "beta")
 click("ScriptClear")
--- Replacement metadata is resolved at click after refresh, never a stale closure.
 entries[1] = {
 	Id = "a",
 	Name = "Alpha revised",
@@ -162,11 +179,16 @@ entries[1] = {
 }
 browser:Refresh()
 click("ScriptOpen1")
-assert(opened == entries[1] and opened.Name == "Alpha revised")
-if browser.ShowFilters then
-	click("ScriptFilters")
-end
--- A larger catalog must not allocate any more GUI objects or callbacks.
+assert(opened == nil and find("ScriptDetailName").Text == "Alpha revised")
+click("ScriptDetailLaunch")
+assert(
+	opened == entries[1],
+	"only explicit Continue delegates current metadata to the existing launch gate"
+)
+click("ScriptDetailBack")
+-- Allocate all initial filter choices before measuring paging: choice rows are
+-- lazy, whereas catalog cards and their callbacks are a fixed eight-slot pool.
+local allocations, connections = #objects, #browser.Connections
 for index = 1, 500 do
 	table.insert(entries, {
 		Id = "extra" .. index,
@@ -182,7 +204,7 @@ for page = 1, browser.Pages do
 end
 assert(
 	#objects == allocations and #browser.Connections == connections,
-	"paging/filter/refresh reuse the fixed pool"
+	"paging/refresh reuse cards and callbacks"
 )
 local jump = find("ScriptPageJump")
 jump.Text = "99999"
@@ -191,28 +213,38 @@ assert(browser.Page == browser.Pages)
 jump.Text = "-99"
 jump.FocusLost:Fire()
 assert(browser.Page == 1)
-jump.Text = "not a number"
+jump.Text = "bad"
 jump.FocusLost:Fire()
 assert(browser.Page == 1)
 browser:SetPage(7)
 local firstIndex = (browser.Page - 1) * browser.PageSize
 layout.OnLayout(272, 400)
-assert(browser.PageSize == 3 and browser.Page == math.floor(firstIndex / 3) + 1)
 assert(
-	first.Pin.Position.Y.Offset == 40 and first.Pin.Size.Y.Offset == 32,
-	"portrait actions stack, giving titles more width"
+	browser.Columns == 1
+		and browser.PageSize == 2
+		and browser.Page == math.floor(firstIndex / 2) + 1
 )
--- Short landscape removes the secondary toolbar, never overlapping the pager.
+assert(first.Frame.Size.X.Offset == 272 and first.Title.Size.X.Offset == -24)
 layout.OnLayout(600, 158)
 assert(
-	browser.PageSize == 1
+	browser.PageSize == 2
 		and not find("ScriptView1").Visible
 		and not find("ScriptFilterRow").Visible
 )
 assert(
-	first.Frame.Position.Y.Offset + first.Frame.Size.Y.Offset <= 158 - 44 - 44
+	first.Frame.Size.Y.Offset <= 158 - 44 - 44
+		and first.Open.Size.Y.Offset >= 32
 )
-assert(first.Open.Size.Y.Offset >= 32)
+-- A refresh removes the detail selection and its authority to delegate a launch.
+browser:Select(first.Id)
+entries = {}
+browser:Refresh()
+opened = nil
+click("ScriptDetailLaunch")
+assert(
+	opened == nil and not find("ScriptDetail").Visible,
+	"removed selected metadata cannot launch"
+)
 tab.Window.PageHost:GetPropertyChangedSignal("AbsoluteSize"):Fire()
 assert(
 	tab.Left.Dirty,
@@ -248,4 +280,4 @@ assert(
 	refreshes == 1 and #entries == 0,
 	"disposed controls cannot invoke callbacks or mutate catalog"
 )
-return "PASS: shipped bounded browser: paging/jump/rotation/short landscape, search/category/collection/place/universe, pin/recent, latest-entry resolution, 504-entry constant UI allocations and disposal (API doubles)"
+return "PASS: shipped card/detail browser: direct choices, local selection vs explicit launch, paging/jump/rotation/short landscape, search/category/collection/place/universe, pin/recent, latest-entry resolution, 504-entry constant UI allocations and disposal (API doubles)"

@@ -210,14 +210,36 @@ view.SetVisible(false)
 assert(find("PianoDock").Visible and not panel.Visible)
 find("PianoDock").Activated:Fire()
 assert(view.Visible and panel.Visible)
--- Portrait library leaves at least one actual selectable row, unlike a fake
--- list whose header consumes the entire compact rail height.
+-- Portrait gives Songs and Piano independent full-size workspaces. Selecting
+-- a song changes view, never starts playback or sends input.
+view.SetPage("Library")
 safe.AbsoluteSize = Vector2.new(390, 640)
 safe:GetPropertyChangedSignal("AbsoluteSize"):Fire()
+assert(find("SongRail").Visible and not find("PianoStage").Visible)
 assert(
-	find("SongRail").Size.Y.Offset >= 184
-		and find("PooledWaterfall").Size.Y.Offset == -94
+	find("SongRail").Size.Y.Scale == 1 and find("SongRail").Size.Y.Offset == 0,
+	"portrait no longer squeezes the list above a miniature piano"
 )
+find("SongRow3").Activated:Fire()
+assert(
+	view.Page == "Player"
+		and find("PianoStage").Visible
+		and not find("SongRail").Visible
+)
+assert(
+	find("PianoStage").Size.X.Scale == 1
+		and find("PooledWaterfall").Size.Y.Offset == -190
+)
+assert(
+	find("LoopA").Parent.Name == "Practice loop marks",
+	"advanced marks are off the transport"
+)
+assert(
+	find("play").Size.X.Offset > find("pause").Size.X.Offset,
+	"Play has a clear primary hierarchy"
+)
+view.SetPage("Library")
+assert(find("SongRail").Visible and not find("PianoStage").Visible)
 -- Short landscape uses the compact visualization rather than negative heights.
 safe.AbsoluteSize = Vector2.new(740, 360)
 safe:GetPropertyChangedSignal("AbsoluteSize"):Fire()
@@ -225,6 +247,19 @@ assert(
 	find("PooledWaterfall").Size.Y.Offset == -70
 		and not find("StageTag").Visible
 )
+safe.AbsoluteSize = Vector2.new(320, 560)
+safe:GetPropertyChangedSignal("AbsoluteSize"):Fire()
+local nextControl = find("next")
+assert(
+	nextControl.Position.X.Offset + nextControl.Size.X.Offset
+		<= find("Transport").Size.X.Offset + panel.Size.X.Offset,
+	"narrow transport controls stay inside panel"
+)
+-- Back to desktop restores the two-pane library, including its header geometry.
+safe.AbsoluteSize = Vector2.new(1000, 740)
+safe:GetPropertyChangedSignal("AbsoluteSize"):Fire()
+assert(find("SongRail").Visible and find("PianoStage").Visible)
+assert(find("StaticPianoMark").Visible)
 assert(find("PanicInput"), "touch emergency stop is available")
 assert(find("TestInput"), "touch-accessible C4 input test exists in settings")
 view.Actions.unload = function()

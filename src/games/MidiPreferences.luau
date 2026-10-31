@@ -84,6 +84,7 @@ return function(api, codec)
 			or "Auto"
 		clean.Page = ({
 			Library = true,
+			Player = true,
 			Queue = true,
 			Mixer = true,
 			Keys = true,

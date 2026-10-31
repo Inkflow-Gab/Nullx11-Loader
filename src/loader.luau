@@ -12,7 +12,7 @@ local RunService = game:GetService("RunService")
 local CONFIG = {
 	Name = "Nullx11",
 	Subtitle = "Developed by NULL.",
-	Accent = Color3.fromRGB(167, 146, 255),
+	Accent = Color3.fromRGB(104, 155, 250),
 	ReducedMotion = false,
 	StartupAnimation = true,
 	EnhancedWorkspace = true,
@@ -30,11 +30,11 @@ if previous then
 end
 
 local colors = {
-	Panel = Color3.fromRGB(12, 16, 28),
-	Surface = Color3.fromRGB(23, 29, 46),
-	Border = Color3.fromRGB(60, 75, 104),
-	Text = Color3.fromRGB(242, 241, 249),
-	Muted = Color3.fromRGB(178, 190, 211),
+	Panel = Color3.fromRGB(17, 18, 22),
+	Surface = Color3.fromRGB(28, 31, 38),
+	Border = Color3.fromRGB(51, 57, 68),
+	Text = Color3.fromRGB(242, 244, 248),
+	Muted = Color3.fromRGB(141, 150, 166),
 	Error = Color3.fromRGB(255, 151, 160),
 	Success = Color3.fromRGB(143, 221, 182),
 }

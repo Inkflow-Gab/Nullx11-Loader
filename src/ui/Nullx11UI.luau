@@ -53,14 +53,14 @@ local Config = {
 		Section = 14,
 	},
 	Window = {
-		Width = 820,
-		Height = 560,
+		Width = 960,
+		Height = 640,
 		MinWidth = 520,
 		MinHeight = 360,
 		TouchMinWidth = 320,
 		TouchMinHeight = 260,
 		Topbar = 56,
-		Sidebar = 196,
+		Sidebar = 180,
 		SidebarCompact = 64,
 		Header = 62,
 		Ground = 24,
@@ -70,7 +70,7 @@ local Config = {
 		Margin = 24,
 		TouchMargin = 10,
 		Radius = 12,
-		Stroke = 3,
+		Stroke = 1,
 		Shadow = 6,
 	},
 	Metrics = {
@@ -116,14 +116,14 @@ local Config = {
 		Radius = 8,
 		HoverAlpha = 0.35,
 	},
-	Button = { PadX = 14, IconGap = 6, Depth = 4, HoverLighten = 0.14 },
+	Button = { PadX = 14, IconGap = 6, Depth = 1, HoverLighten = 0.14 },
 	Group = {
 		Header = 36,
 		PadX = 12,
 		PadY = 10,
-		Shadow = 4,
+		Shadow = 0,
 		Radius = 12,
-		Stroke = 2,
+		Stroke = 1,
 	},
 	Gap = { X = 8, Y = 6, Column = 12 },
 	Page = { Pad = 14, ScrollBar = 6 },
@@ -169,7 +169,7 @@ local Config = {
 		[Enum.UserInputType.MouseButton2] = "MB2",
 		[Enum.UserInputType.MouseButton3] = "MB3",
 	},
-	TitleColors = { "Accent", "Coin", "Good", "Blue" },
+	TitleColors = { "Text" },
 }
 
 local function rgb(hex)
@@ -622,31 +622,31 @@ local Themes = {
 Themes.Nullx11 = table.clone(Themes.Dark)
 for token, value in
 	pairs(Palette({
-		Backdrop = "0C101C",
-		BackdropAlt = "131D30",
-		Topbar = "101829",
-		Sidebar = "141B30",
-		SidebarAlt = "101626",
-		SidebarText = "F2F1F9",
-		SidebarMuted = "B2BED3",
-		TabActive = "A792FF",
-		TabActiveText = "0C101C",
-		Panel = "171D2E",
-		PanelHeader = "202941",
-		Element = "1C2840",
-		Hover = "2D3955",
-		Outline = "3C4B68",
-		Shadow = "060913",
-		Text = "F2F1F9",
-		SubText = "BEC9DE",
-		Muted = "9EADC5",
-		Accent = "A792FF",
-		AccentDark = "6D58AD",
-		Grass = "283652",
-		GrassDark = "162139",
-		Brick = "23324F",
-		BrickDark = "101829",
-		Particle = { "*", false, "A792FF" },
+		Backdrop = "111216",
+		BackdropAlt = "14161B",
+		Topbar = "14161B",
+		Sidebar = "16181D",
+		SidebarAlt = "16181D",
+		SidebarText = "F2F4F8",
+		SidebarMuted = "8D96A6",
+		TabActive = "689BFA",
+		TabActiveText = "111216",
+		Panel = "1C1F26",
+		PanelHeader = "1C1F26",
+		Element = "252932",
+		Hover = "303642",
+		Outline = "333944",
+		Shadow = "090A0D",
+		Text = "F2F4F8",
+		SubText = "ADB6C5",
+		Muted = "8D96A6",
+		Accent = "689BFA",
+		AccentDark = "4568AD",
+		Grass = "252932",
+		GrassDark = "20242C",
+		Brick = "17191F",
+		BrickDark = "14161B",
+		Particle = { "*", false, "689BFA" },
 	}))
 do
 	Themes.Nullx11[token] = value
@@ -1744,11 +1744,11 @@ function Lang.Set(code)
 end
 
 Fonts.Latin = {
-	Display = Enum.Font.LuckiestGuy,
-	Body = Enum.Font.FredokaOne,
+	Display = Enum.Font.GothamBold,
+	Body = Enum.Font.Gotham,
 	Desc = Enum.Font.BuilderSansMedium,
 	Strong = Enum.Font.BuilderSansBold,
-	Logo = Enum.Font.Arcade,
+	Logo = Enum.Font.GothamBold,
 	Glyph = Enum.Font.BuilderSansBold,
 }
 Fonts.ThaiWeights = {
@@ -9114,7 +9114,9 @@ function Window:BuildGround()
 		ClipsDescendants = true,
 		Parent = ground,
 	})
-	Draw.Bricks(bricks, 28, "BrickDark")
+	if State.ThemeName ~= "Nullx11" then
+		Draw.Bricks(bricks, 28, "BrickDark")
+	end
 	Draw.Box(
 		"Frame",
 		{ Size = UDim2.new(1, 0, 0, 6), Parent = ground },

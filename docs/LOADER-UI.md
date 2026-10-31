@@ -4,42 +4,51 @@ The main workspace keeps its dark Nullx11 skin, static draggable prism dock,
 original player tools, Design Studio and independent game-window handoff. This
 update changes actual native GUI construction; it is not an HTML mockup.
 
-## Finding a script without a catalog-length scroll
+## Clean dark visual direction
 
-Use the **Scripts** sidebar tab or **Workspace → Browse pinned / recent scripts**.
+The chosen design is neutral charcoal with restrained blue accents, modern native
+Gotham text, thinner outlines and less raised-block/brick decoration. The default
+workspace is 960×640 before viewport fitting, with a 180-pixel desktop sidebar.
+It still keeps the static prism, optional glitch/transport effects, themes and
+independent game/tool windows. This is native GUI construction, not an HTML demo.
 
-- Search by game, feature, creator, collection, category or filename. Multiple
-  words are literal AND matches; search text is never a Lua pattern or code.
-- **All / This game / Pinned / Recent** are instant views. This game includes
-  explicit matching place IDs, matching universe IDs and universal tools. It does
-  **not** guess that an unknown module-signature port is compatible. Its details
-  and standalone preflight still check compatibility.
-- **Filters** expands one compact row. Tap category/collection to cycle available
-  values; sort cycles Name A–Z, Collection and Recently viewed. **Clear** resets
-  the query, view, category, collection, sort and page, not your pins/history.
-- Rows show a name, description, collection/compatibility badge, Pin and Details.
-  Narrow portrait stacks the actions to keep more width for names. Details still
-  opens the existing independent launch/confirmation window. Browsing, pinning,
-  filtering and paging never fetch or execute scripts, require game modules, or
-  teleport the player. Refresh explicitly requests the repository manifest.
-- **Prev / Next** and the editable page number reach every matching entry. The
-  footer reports total pages and matching scripts. Resizing preserves the range
-  around the first visible result and clamps pages when results disappear.
-- Only **eight row slots** are constructed, with **one to eight visible rows**
-  determined by the available viewport. Filtering, refreshing and paging reuse
-  the slots and callbacks. The canvas does not grow with the catalog.
-- Very short landscape hides the secondary toolbar and reduces row detail so
-  search, a result, and page navigation remain reachable. Rotate to a taller
-  layout to change advanced filters. Long names/descriptions truncate; the full
-  information remains in Details.
-- Pins and **recently viewed details** are session-only. They are not proof that a
-  script ran, and are not saved to disk. Refresh prunes history for removed IDs.
+## Card-based script selection
 
-**Open Scripts library** still opens the separate classic Scripts window as an
-action, not an on/off toggle. That window now creates only **one to four compact
-rows** per page, with search, Prev/Next and result counts. It may still need a
-small local scroll on extremely short screens, but never renders the full catalog
-as a long stack. Its original place filtering and confirmation gates remain.
+Use **Workspace → Open Scripts library**, the **Scripts** sidebar tab, or
+**Saved & recently viewed scripts**. Main navigation now opens this card browser,
+not the compact legacy list that was difficult to use.
+
+- Click a game card or **View script** to inspect the title, full description,
+  compatibility and owner/provenance **inside the browser**. Back returns to the
+  same browse/filter/page context. **Continue to launch** explicitly opens the
+  existing separate launch/confirmation window; a card tap itself never executes.
+- Wide layouts use two columns; portrait uses full-width cards. Pagination keeps
+  the catalog bounded without a long stack. The eight card slots and callbacks
+  are reused, with one to eight visible cards according to viewport space.
+- Names omit the redundant Nullx11 prefix on cards only; published names and the
+  complete details/launch titles remain unchanged. Card hover is subtle and does
+  not animate the restore icon. Long names wrap; full information is in Details.
+- Search matches literal words across name, description, creator, category,
+  collection and filename. **All / This game / Pinned / Recent** are quick views.
+  This game includes explicit matching place/universe IDs and universal tools;
+  it does not assume unknown module-signature ports are compatible.
+- **Filters** opens direct **Category / Collection / Sort** choices. Tap a value
+  from the list instead of repeatedly cycling a button. The choice list is lazy
+  and reuses its rows. **Clear** resets the query/filters/sort/page, not history.
+- **Save / Saved** marks session favorites. Recent means recently inspected
+  details, not proof of execution. These are session-only and are pruned when
+  entries are removed on Refresh. Refresh explicitly fetches the repository
+  manifest; other browsing actions do not fetch code or probe game modules.
+- Prev/Next and the editable page number reach every matching result. Rotation
+  preserves the range around the first visible result. Very short landscape hides
+  secondary controls and uses a compact card; rotate to change advanced filters.
+- Refresh closes an obsolete selection. Continue resolves current metadata;
+  removed entries cannot use an old selection to launch. No teleport is added.
+
+The **classic launcher → Tools → Scripts window** remains a separate opening
+**action**, with its existing bounded one-to-four-row pages and confirmation
+flow. It remains available for compatibility, but is no longer the primary
+Workspace script-picking experience.
 
 ## Centering and restoration
 
@@ -86,7 +95,7 @@ lifetimes after loader unload.
 ## Verification boundary
 
 The automated suite compiles the generated main and all fifteen bundles and runs
-the actual browser/model, fitting/restore code, budget policy/application,
+the actual card/direct-choice/detail browser/model, fitting/restore code, budget policy/application,
 loading layers, startup and existing game/MIDI integration contracts with API
 doubles. It includes a 504-entry allocation-bound stress fixture; the production
 manifest remains capped at 64 entries. This does not render Roblox or run Delta.

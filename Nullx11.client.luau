@@ -64,14 +64,14 @@ local function createNullx11UI(scope)
 			Section = 14,
 		},
 		Window = {
-			Width = 820,
-			Height = 560,
+			Width = 960,
+			Height = 640,
 			MinWidth = 520,
 			MinHeight = 360,
 			TouchMinWidth = 320,
 			TouchMinHeight = 260,
 			Topbar = 56,
-			Sidebar = 196,
+			Sidebar = 180,
 			SidebarCompact = 64,
 			Header = 62,
 			Ground = 24,
@@ -81,7 +81,7 @@ local function createNullx11UI(scope)
 			Margin = 24,
 			TouchMargin = 10,
 			Radius = 12,
-			Stroke = 3,
+			Stroke = 1,
 			Shadow = 6,
 		},
 		Metrics = {
@@ -127,14 +127,14 @@ local function createNullx11UI(scope)
 			Radius = 8,
 			HoverAlpha = 0.35,
 		},
-		Button = { PadX = 14, IconGap = 6, Depth = 4, HoverLighten = 0.14 },
+		Button = { PadX = 14, IconGap = 6, Depth = 1, HoverLighten = 0.14 },
 		Group = {
 			Header = 36,
 			PadX = 12,
 			PadY = 10,
-			Shadow = 4,
+			Shadow = 0,
 			Radius = 12,
-			Stroke = 2,
+			Stroke = 1,
 		},
 		Gap = { X = 8, Y = 6, Column = 12 },
 		Page = { Pad = 14, ScrollBar = 6 },
@@ -180,7 +180,7 @@ local function createNullx11UI(scope)
 			[Enum.UserInputType.MouseButton2] = "MB2",
 			[Enum.UserInputType.MouseButton3] = "MB3",
 		},
-		TitleColors = { "Accent", "Coin", "Good", "Blue" },
+		TitleColors = { "Text" },
 	}
 
 	local function rgb(hex)
@@ -633,31 +633,31 @@ local function createNullx11UI(scope)
 	Themes.Nullx11 = table.clone(Themes.Dark)
 	for token, value in
 		pairs(Palette({
-			Backdrop = "0C101C",
-			BackdropAlt = "131D30",
-			Topbar = "101829",
-			Sidebar = "141B30",
-			SidebarAlt = "101626",
-			SidebarText = "F2F1F9",
-			SidebarMuted = "B2BED3",
-			TabActive = "A792FF",
-			TabActiveText = "0C101C",
-			Panel = "171D2E",
-			PanelHeader = "202941",
-			Element = "1C2840",
-			Hover = "2D3955",
-			Outline = "3C4B68",
-			Shadow = "060913",
-			Text = "F2F1F9",
-			SubText = "BEC9DE",
-			Muted = "9EADC5",
-			Accent = "A792FF",
-			AccentDark = "6D58AD",
-			Grass = "283652",
-			GrassDark = "162139",
-			Brick = "23324F",
-			BrickDark = "101829",
-			Particle = { "*", false, "A792FF" },
+			Backdrop = "111216",
+			BackdropAlt = "14161B",
+			Topbar = "14161B",
+			Sidebar = "16181D",
+			SidebarAlt = "16181D",
+			SidebarText = "F2F4F8",
+			SidebarMuted = "8D96A6",
+			TabActive = "689BFA",
+			TabActiveText = "111216",
+			Panel = "1C1F26",
+			PanelHeader = "1C1F26",
+			Element = "252932",
+			Hover = "303642",
+			Outline = "333944",
+			Shadow = "090A0D",
+			Text = "F2F4F8",
+			SubText = "ADB6C5",
+			Muted = "8D96A6",
+			Accent = "689BFA",
+			AccentDark = "4568AD",
+			Grass = "252932",
+			GrassDark = "20242C",
+			Brick = "17191F",
+			BrickDark = "14161B",
+			Particle = { "*", false, "689BFA" },
 		}))
 	do
 		Themes.Nullx11[token] = value
@@ -1836,11 +1836,11 @@ local function createNullx11UI(scope)
 	end
 
 	Fonts.Latin = {
-		Display = Enum.Font.LuckiestGuy,
-		Body = Enum.Font.FredokaOne,
+		Display = Enum.Font.GothamBold,
+		Body = Enum.Font.Gotham,
 		Desc = Enum.Font.BuilderSansMedium,
 		Strong = Enum.Font.BuilderSansBold,
-		Logo = Enum.Font.Arcade,
+		Logo = Enum.Font.GothamBold,
 		Glyph = Enum.Font.BuilderSansBold,
 	}
 	Fonts.ThaiWeights = {
@@ -9661,7 +9661,9 @@ local function createNullx11UI(scope)
 			ClipsDescendants = true,
 			Parent = ground,
 		})
-		Draw.Bricks(bricks, 28, "BrickDark")
+		if State.ThemeName ~= "Nullx11" then
+			Draw.Bricks(bricks, 28, "BrickDark")
+		end
 		Draw.Box(
 			"Frame",
 			{ Size = UDim2.new(1, 0, 0, 6), Parent = ground },
@@ -13324,8 +13326,8 @@ local function createNullx11UI(scope)
 		end
 		return model
 	end)()
-	-- Bounded native library: fixed row pool, viewport-sized pages, no catalog-sized
-	-- canvas. Opening a row still delegates to the existing details/confirmation gate.
+	-- Premium dark card library: fixed card pool, direct-choice filters and an
+	-- in-place detail sheet. Launch remains a separate, explicit confirmation flow.
 	function Library:CreateScriptBrowser(tab, options)
 		options = options or {}
 		local model = makeScriptLibraryModel
@@ -13347,6 +13349,11 @@ local function createNullx11UI(scope)
 			Visit = 0,
 			ShowFilters = false,
 			Width = 600,
+			Columns = 1,
+			CardHeight = 164,
+			SelectedId = nil,
+			MenuField = "Category",
+			MenuRows = {},
 			Height = 400,
 			Closed = false,
 		}
@@ -13449,59 +13456,83 @@ local function createNullx11UI(scope)
 			UDim2.new(0.2, 0, 0, 32),
 			function()
 				browser.ShowFilters = not browser.ShowFilters
-				browser:Layout(browser.Width, browser.Height)
+				browser.SelectedId = nil
+				browser:Filter()
 			end
 		)
-		local filters = Draw.New("Frame", {
+		local filters = Draw.Box("Frame", {
 			Name = "ScriptFilterRow",
-			BackgroundTransparency = 1,
 			Visible = false,
+			ZIndex = 10,
 			Position = UDim2.fromOffset(0, 84),
-			Size = UDim2.new(1, 0, 0, 32),
+			Size = UDim2.new(1, 0, 1, -128),
 			Parent = surface,
-		})
-		local function cycle(values, current)
-			return values[(table.find(values, current) or 0) % #values + 1]
+		}, "Panel", "Outline", 12, 1)
+		local menuTabs = {}
+		for index, field in ipairs({ "Category", "Collection", "Sort" }) do
+			menuTabs[field] = button(
+				"Script" .. field,
+				filters,
+				field,
+				UDim2.new((index - 1) / 3, 8, 0, 8),
+				UDim2.new(1 / 3, -16, 0, 34),
+				function()
+					browser.MenuField = field
+					browser:Render()
+				end
+			)
+			menuTabs[field].ZIndex = 11
 		end
-		local category = button(
-			"ScriptCategory",
-			filters,
-			"All games",
-			UDim2.fromOffset(0, 0),
-			UDim2.new(0.35, -5, 1, 0),
-			function()
-				browser.Category =
-					cycle(model.Categories(browser.Entries), browser.Category)
-				browser.Page = 1
-				browser:Filter()
+		local choices = Draw.New("ScrollingFrame", {
+			Name = "ScriptChoices",
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(8, 50),
+			Size = UDim2.new(1, -16, 1, -58),
+			ScrollBarThickness = 3,
+			CanvasSize = UDim2.fromOffset(0, 0),
+			ZIndex = 11,
+			Parent = filters,
+		})
+		function browser:RenderChoices()
+			local values = if self.MenuField == "Category"
+				then model.Categories(self.Entries)
+				elseif self.MenuField == "Collection" then self.Collections
+				else { "Name", "Collection", "Recent" }
+			for index, value in ipairs(values or {}) do
+				local item = self.MenuRows[index]
+				if not item then
+					item = { Value = value }
+					item.Button = button(
+						"ScriptOption" .. index,
+						choices,
+						value,
+						UDim2.fromOffset(0, (index - 1) * 40),
+						UDim2.new(1, -8, 0, 36),
+						function()
+							self[self.MenuField] = item.Value
+							self.ShowFilters, self.Page = false, 1
+							self:Filter()
+						end
+					)
+					item.Button.ZIndex = 12
+					self.MenuRows[index] = item
+				end
+				item.Value, item.Button.Visible = value, true
+				item.Button.Text = (
+					self[self.MenuField] == value and "Selected / " or ""
+				) .. value
 			end
-		)
-		local collection = button(
-			"ScriptCollection",
-			filters,
-			"All collections",
-			UDim2.fromScale(0.35, 0),
-			UDim2.new(0.4, -5, 1, 0),
-			function()
-				browser.Collection =
-					cycle(browser.Collections, browser.Collection)
-				browser.Page = 1
-				browser:Filter()
+			for index = #(values or {}) + 1, #self.MenuRows do
+				self.MenuRows[index].Button.Visible = false
 			end
-		)
-		local sort = button(
-			"ScriptSort",
-			filters,
-			"Name A-Z",
-			UDim2.fromScale(0.75, 0),
-			UDim2.fromScale(0.25, 1),
-			function()
-				browser.Sort =
-					cycle({ "Name", "Collection", "Recent" }, browser.Sort)
-				browser.Page = 1
-				browser:Filter()
+			choices.CanvasSize = UDim2.fromOffset(0, #(values or {}) * 40)
+			for field, control in pairs(menuTabs) do
+				control.BackgroundTransparency = if field == self.MenuField
+					then 0
+					else 0.6
 			end
-		)
+		end
 		local rows = Draw.New("Frame", {
 			Name = "ScriptRows",
 			BackgroundTransparency = 1,
@@ -13573,26 +13604,39 @@ local function createNullx11UI(scope)
 					else browser.Page
 			)
 		end)
-		-- Eight rows is a hard allocation bound, independent of catalog size. Hidden
-		-- slots have no animation, polling, or per-entry signal connections.
+		-- Eight reusable cards, never one GUI tree per catalog entry.
 		for index = 1, 8 do
-			local frame = Draw.Box("Frame", {
+			local frame = Draw.Box("TextButton", {
 				Name = "ScriptSlot" .. index,
-				Size = UDim2.new(1, 0, 0, 76),
+				Text = "",
+				Size = UDim2.new(1, 0, 0, 152),
 				Visible = false,
 				Parent = rows,
-			}, "Panel", "Outline", 8, 1)
+			}, "Panel", "Outline", 12, 1)
 			local card = { Frame = frame }
-			card.Title = text("ScriptName", frame, "", 7, 22, 15)
+			card.Badge = text("ScriptBadge", frame, "", 12, 18, 11, "Accent")
+			card.Title = text("ScriptName", frame, "", 36, 44, 17)
+			card.Title.Font = Enum.Font.GothamMedium
+			card.Title.TextWrapped = true
 			card.Description =
-				text("ScriptDescription", frame, "", 30, 19, 12, "SubText")
-			card.Badge = text("ScriptBadge", frame, "", 51, 18, 11, "Muted")
+				text("ScriptDescription", frame, "", 82, 34, 12, "SubText")
+			card.Description.TextWrapped = true
+			card.Open = button(
+				"ScriptOpen" .. index,
+				frame,
+				"View script",
+				UDim2.new(0, 12, 1, -44),
+				UDim2.new(1, -88, 0, 32),
+				function()
+					browser:Select(card.Id)
+				end
+			)
 			card.Pin = button(
 				"ScriptPin" .. index,
 				frame,
-				"Pin",
-				UDim2.new(1, -128, 0, 18),
-				UDim2.fromOffset(48, 40),
+				"Save",
+				UDim2.new(1, -68, 1, -44),
+				UDim2.fromOffset(56, 32),
 				function()
 					if card.Id then
 						browser.Pinned[card.Id] = not browser.Pinned[card.Id]
@@ -13601,27 +13645,106 @@ local function createNullx11UI(scope)
 					end
 				end
 			)
-			card.Open = button(
-				"ScriptOpen" .. index,
-				frame,
-				"Details",
-				UDim2.new(1, -74, 0, 18),
-				UDim2.fromOffset(64, 40),
-				function()
-					-- A refresh can replace metadata while this slot is visible. Resolve the
-					-- current entry, never a captured executable or an obsolete table.
-					local entry = model.Resolve(browser.Entries, card.Id)
-					if entry and options.Open then
-						browser.Visit += 1
-						browser.Recent[entry.Id] = browser.Visit
-						options.Open(entry)
-						if not browser.Closed then
-							browser:Filter()
-						end
-					end
+			listen(frame.MouseEnter, function()
+				if not browser.Closed then
+					Theme.Bind(frame, { BackgroundColor3 = "Hover" })
 				end
-			)
+			end)
+			listen(frame.MouseLeave, function()
+				if not browser.Closed then
+					Theme.Bind(frame, { BackgroundColor3 = "Panel" })
+				end
+			end)
+			listen(frame.Activated, function()
+				if not browser.Closed then
+					browser:Select(card.Id)
+				end
+			end)
 			browser.Cards[index] = card
+		end
+		local detail = Draw.Box("Frame", {
+			Name = "ScriptDetail",
+			Visible = false,
+			Position = UDim2.fromOffset(0, 84),
+			Size = UDim2.new(1, 0, 1, -84),
+			ZIndex = 5,
+			Parent = surface,
+		}, "Panel", "Outline", 12, 1)
+		local detailScroll = Draw.New("ScrollingFrame", {
+			Name = "ScriptDetailBody",
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Position = UDim2.fromOffset(16, 12),
+			Size = UDim2.new(1, -32, 1, -74),
+			CanvasSize = UDim2.fromOffset(0, 416),
+			ScrollBarThickness = 3,
+			ZIndex = 6,
+			Parent = detail,
+		})
+		local detailName = text("ScriptDetailName", detailScroll, "", 0, 70, 24)
+		local detailBadge =
+			text("ScriptDetailBadge", detailScroll, "", 78, 40, 12, "Accent")
+		local detailDescription = text(
+			"ScriptDetailDescription",
+			detailScroll,
+			"",
+			130,
+			164,
+			14,
+			"SubText"
+		)
+		local detailAuthor =
+			text("ScriptDetailAuthor", detailScroll, "", 304, 104, 12, "Muted")
+		for _, object in ipairs({
+			detailName,
+			detailBadge,
+			detailDescription,
+			detailAuthor,
+		}) do
+			object.Position = UDim2.fromOffset(0, object.Position.Y.Offset)
+			object.Size = UDim2.new(1, -8, 0, object.Size.Y.Offset)
+			object.TextWrapped, object.TextYAlignment, object.ZIndex =
+				true, Enum.TextYAlignment.Top, 7
+		end
+		local back = button(
+			"ScriptDetailBack",
+			detail,
+			"Back",
+			UDim2.new(0, 12, 1, -52),
+			UDim2.fromOffset(70, 40),
+			function()
+				browser.SelectedId = nil
+				browser:Render()
+			end
+		)
+		local launch = button(
+			"ScriptDetailLaunch",
+			detail,
+			"Continue to launch",
+			UDim2.new(0, 92, 1, -52),
+			UDim2.new(1, -104, 0, 40),
+			function()
+				local entry = model.Resolve(browser.Entries, browser.SelectedId)
+				if entry and options.Open then
+					options.Open(entry)
+				end
+			end
+		)
+		back.ZIndex, launch.ZIndex = 7, 7
+		Theme.Bind(
+			launch,
+			{ BackgroundColor3 = "Accent", TextColor3 = "Black" }
+		)
+		function browser:Select(id)
+			local entry = model.Resolve(self.Entries, id)
+			if not entry or self.Closed then
+				return
+			end
+			self.SelectedId, self.ShowFilters = id, false
+			self.Visit += 1
+			self.Recent[id] = self.Visit
+			detailScroll.CanvasPosition = Vector2.new(0, 0)
+			self:Render()
 		end
 		function browser:Render()
 			if self.Closed then
@@ -13629,66 +13752,121 @@ local function createNullx11UI(scope)
 			end
 			self.Pages = math.max(1, math.ceil(#self.Matches / self.PageSize))
 			self.Page = math.clamp(self.Page, 1, self.Pages)
+			local cardWidth = (self.Width - (self.Columns - 1) * 12)
+				/ self.Columns
+			local compactCard = self.CardHeight < 112
 			for index, card in ipairs(self.Cards) do
 				local entry = if index <= self.PageSize
 					then self.Matches[(self.Page - 1) * self.PageSize + index]
 					else nil
 				card.Id, card.Frame.Visible = entry and entry.Id, entry ~= nil
 				card.Frame.Position = UDim2.fromOffset(
-					0,
-					(index - 1) * ((self.RowHeight or 76) + 6)
+					((index - 1) % self.Columns) * (cardWidth + 12),
+					math.floor((index - 1) / self.Columns)
+						* (self.CardHeight + 12)
 				)
-				card.Frame.Size = UDim2.new(1, 0, 0, self.RowHeight or 76)
-				card.Description.Visible = (self.RowHeight or 76) >= 64
-				card.Badge.Visible = (self.RowHeight or 76) >= 76
-				local actionY = math.max(0, ((self.RowHeight or 76) - 40) / 2)
-				local actionHeight = math.min(40, self.RowHeight or 76)
-				card.Pin.Position, card.Open.Position =
-					UDim2.new(1, -128, 0, actionY),
-					UDim2.new(1, -74, 0, actionY)
-				card.Pin.Size, card.Open.Size =
-					UDim2.fromOffset(48, actionHeight),
-					UDim2.fromOffset(64, actionHeight)
-				if self.Width < 360 and (self.RowHeight or 76) >= 76 then
-					card.Pin.Position, card.Open.Position =
-						UDim2.new(1, -74, 0, 40), UDim2.new(1, -74, 0, 4)
-					card.Pin.Size, card.Open.Size =
-						UDim2.fromOffset(64, 32), UDim2.fromOffset(64, 32)
+				card.Frame.Size = UDim2.fromOffset(cardWidth, self.CardHeight)
+				card.Badge.Size = UDim2.new(1, -24, 0, 18)
+				card.Title.Position =
+					UDim2.fromOffset(12, if compactCard then 10 else 36)
+				card.Title.Size = UDim2.new(
+					1,
+					-24,
+					0,
+					if compactCard
+						then math.max(22, self.CardHeight - 58)
+						else 44
+				)
+				card.Title.TextSize = if compactCard then 15 else 17
+				card.Description.Size = UDim2.new(1, -24, 0, 34)
+				card.Description.Visible = self.CardHeight >= 164
+				card.Badge.Visible = not compactCard
+				local tiny = self.CardHeight < 88
+				card.Pin.Visible = not tiny
+				card.Open.Position = if tiny
+					then UDim2.new(
+						1,
+						-80,
+						0,
+						math.max(0, (self.CardHeight - 32) / 2)
+					)
+					else UDim2.new(0, 12, 1, -44)
+				card.Open.Size = if tiny
+					then UDim2.fromOffset(68, 32)
+					else UDim2.new(1, -88, 0, 32)
+				if tiny then
+					card.Title.Position = UDim2.fromOffset(12, 4)
+					card.Title.Size = UDim2.new(1, -100, 0, 24)
 				end
-				local textInset = if self.Width < 360
-						and (self.RowHeight or 76) >= 76
-					then 96
-					else 150
-				card.Title.Size, card.Description.Size, card.Badge.Size =
-					UDim2.new(1, -textInset, 0, 22),
-					UDim2.new(1, -textInset, 0, 19),
-					UDim2.new(1, -textInset, 0, 18)
 				if entry then
-					card.Title.Text = entry.Name
+					card.Title.Text = entry.Name:gsub("^Nullx11%s*%-%s*", "")
 					card.Description.Text = entry.Description
-						or "Open details for compatibility and launch information."
-					card.Badge.Text = model.Badge(
-						entry,
-						game.PlaceId,
-						game.GameId
-					) .. " / " .. (entry.Collection or "Nullx11 originals")
+						or "View script information."
+					card.Badge.Text = model.Category(entry)
+						.. " / "
+						.. (entry.Collection or "Nullx11")
 					card.Pin.Text = if self.Pinned[entry.Id]
-						then "Unpin"
-						else "Pin"
+						then "Saved"
+						else "Save"
 				end
 			end
 			for view, control in pairs(viewButtons) do
 				control.BackgroundTransparency = if self.View == view
 					then 0
-					else 0.65
+					else 1
 				control.Visible = not self.Compact
 			end
-			category.Text, collection.Text = self.Category, self.Collection
-			sort.Text = if self.Sort == "Name" then "Name A-Z" else self.Sort
-			filterButton.Text = if self.ShowFilters then "Less" else "Filters"
+			filterButton.Text = if self.ShowFilters then "Close" else "Filters"
 			filterButton.Visible = not self.Compact
-			filters.Visible, empty.Visible =
-				self.ShowFilters and not self.Compact, #self.Matches == 0
+			filters.Visible = self.ShowFilters and not self.Compact
+			if filters.Visible then
+				self:RenderChoices()
+			end
+			local selected = model.Resolve(self.Entries, self.SelectedId)
+			detail.Visible = selected ~= nil
+			rows.Visible, footer.Visible = selected == nil, selected == nil
+			if selected then
+				detailName.Text = selected.Name
+				detailBadge.Text = model.Badge(
+					selected,
+					game.PlaceId,
+					game.GameId
+				) .. " / " .. model.Category(selected)
+				detailDescription.Text = selected.Description
+					or "No description published."
+				detailAuthor.Text = (selected.Collection or "Nullx11 originals")
+					.. "\n"
+					.. (selected.Author or "Owner: NULL")
+					.. "\nLaunch is manual. Compatibility is checked before execution."
+				-- Size the scrolling detail content for the current width. The full
+				-- description/provenance must not be clipped to a compact card height.
+				local chars = math.max(18, math.floor((self.Width - 48) / 8))
+				local titleHeight = math.max(
+					56,
+					math.ceil(#selected.Name / math.max(12, chars * 0.6)) * 28
+				)
+				local descriptionHeight = math.max(
+					64,
+					(math.ceil(#detailDescription.Text / chars) + 1) * 20
+				)
+				local authorHeight = math.max(
+					90,
+					(math.ceil(#detailAuthor.Text / chars) + 4) * 18
+				)
+				detailName.Size = UDim2.new(1, -8, 0, titleHeight)
+				detailBadge.Position = UDim2.fromOffset(0, titleHeight + 12)
+				detailDescription.Position =
+					UDim2.fromOffset(0, titleHeight + 66)
+				detailDescription.Size = UDim2.new(1, -8, 0, descriptionHeight)
+				detailAuthor.Position =
+					UDim2.fromOffset(0, titleHeight + descriptionHeight + 86)
+				detailAuthor.Size = UDim2.new(1, -8, 0, authorHeight)
+				detailScroll.CanvasSize = UDim2.fromOffset(
+					0,
+					titleHeight + descriptionHeight + authorHeight + 98
+				)
+			end
+			empty.Visible = #self.Matches == 0
 			jump.Text = tostring(self.Page)
 			status.Text =
 				string.format("of %d / %d scripts", self.Pages, #self.Matches)
@@ -13709,27 +13887,25 @@ local function createNullx11UI(scope)
 				return
 			end
 			self.Width, self.Height = width, height
-			self.Compact = height < 204
-			local top = if self.Compact
-				then 44
-				elseif self.ShowFilters then 124
-				else 84
+			self.Compact = height < 224
+			local top = if self.Compact then 44 else 84
 			local available = math.max(32, height - top - 44)
-			self.RowHeight = math.min(76, available)
+			self.Columns = if width >= 540 then 2 else 1
+			local rowCount =
+				math.clamp(math.floor((available + 12) / 140), 1, 4)
+			self.CardHeight =
+				math.min(184, (available - (rowCount - 1) * 12) / rowCount)
 			rows.Position, rows.Size =
 				UDim2.fromOffset(0, top), UDim2.new(1, 0, 0, available)
-			local size = math.clamp(
-				math.floor((available + 6) / (self.RowHeight + 6)),
-				1,
-				8
-			)
-			-- Preserve the first visible result when resizing/rotating the viewport.
+			detail.Position, detail.Size =
+				UDim2.fromOffset(0, top), UDim2.new(1, 0, 1, -top)
 			local first = (self.Page - 1) * self.PageSize
-			self.PageSize = size
-			self.Page = math.floor(first / size) + 1
+			self.PageSize = math.min(8, rowCount * self.Columns)
+			self.Page = math.floor(first / self.PageSize) + 1
 			self:Render()
 		end
 		function browser:Filter()
+			self.SelectedId = nil
 			if self.Closed then
 				return
 			end
@@ -13772,6 +13948,7 @@ local function createNullx11UI(scope)
 			self:Render()
 		end
 		function browser:Reset()
+			self.ShowFilters = false
 			if self.Closed then
 				return
 			end
@@ -13864,6 +14041,7 @@ local function createNullx11UI(scope)
 			for _, card in ipairs(browser.Cards) do
 				card.Id = nil
 			end
+			table.clear(browser.MenuRows)
 			table.clear(browser.Cards)
 			table.clear(browser.Matches)
 			browser.Entries = {}
@@ -13875,6 +14053,7 @@ local function createNullx11UI(scope)
 			end
 		end)
 		browser:Refresh()
+		browser.CardHeight = 164
 		browser:Layout(600, 400)
 		return browser
 	end
@@ -14587,7 +14766,7 @@ local RunService = game:GetService("RunService")
 local CONFIG = {
 	Name = "Nullx11",
 	Subtitle = "Developed by NULL.",
-	Accent = Color3.fromRGB(167, 146, 255),
+	Accent = Color3.fromRGB(104, 155, 250),
 	ReducedMotion = false,
 	StartupAnimation = true,
 	EnhancedWorkspace = true,
@@ -14605,11 +14784,11 @@ if previous then
 end
 
 local colors = {
-	Panel = Color3.fromRGB(12, 16, 28),
-	Surface = Color3.fromRGB(23, 29, 46),
-	Border = Color3.fromRGB(60, 75, 104),
-	Text = Color3.fromRGB(242, 241, 249),
-	Muted = Color3.fromRGB(178, 190, 211),
+	Panel = Color3.fromRGB(17, 18, 22),
+	Surface = Color3.fromRGB(28, 31, 38),
+	Border = Color3.fromRGB(51, 57, 68),
+	Text = Color3.fromRGB(242, 244, 248),
+	Muted = Color3.fromRGB(141, 150, 166),
 	Error = Color3.fromRGB(255, 151, 160),
 	Success = Color3.fromRGB(143, 221, 182),
 }
@@ -22492,7 +22671,7 @@ do
 				actions:AddButton({
 					Text = "Open Scripts library",
 					Func = function()
-						secondary(playerToolsBridge.OpenScripts)
+						window:SelectTab(scriptsTab)
 					end,
 				})
 				actions:AddButton({
@@ -22547,7 +22726,7 @@ do
 				})
 				catalog.WorkspaceBrowser = browser
 				welcomeGroup:AddButton({
-					Text = "Browse pinned / recent scripts",
+					Text = "Saved & recently viewed scripts",
 					Func = function()
 						window:SelectTab(scriptsTab)
 					end,

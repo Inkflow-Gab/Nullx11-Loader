@@ -56,9 +56,9 @@ preview, never passed off as successful game input. This is not an audio synth.
 - **Keyboard:** source-informed 61-key mapping, MIDI 36–96 (C2–C7), or opt-in
   88-key Ctrl extension, MIDI 21–108 (A0–C8). Out-of-range octave folding can be
   disabled. Different game bindings require a different mapping; none is guessed.
-- **Visuals:** animated opening and file-loading stage, warm amber/lavender piano roll,
+- **Visuals:** animated opening and file-loading stage, restrained blue piano roll,
   live key highlights/BPM, a static graphical piano icon in a movable mini holder, centered window,
-  dedicated Library/Queue/Mixer/Keys/Settings, compact portrait/landscape layouts and
+  dedicated Songs/Piano/Queue/Tracks/Keys/Setup views, responsive portrait/landscape layouts and
   reduced-motion option. The dock icon has no idle animation or letter monogram.
 - **F8:** play/pause (ignored while typing or when the game consumes input).
 - **F7 / Settings → STOP INPUT:** emergency stop/disarm and retry owned key
@@ -154,8 +154,7 @@ input at all. No unreviewed remote calls or guessed UI-coordinate clicks are use
 ## Saved setup and redesigned holder
 
 The default is the supplied screenshot's 61-key layout with zero transpose. The
-updated UI uses charcoal panels, ivory text, warm accents, a distinct selected tab,
-clearer now-playing/library separation and a compact portrait player. The minimized
+updated UI shares the loader’s clean charcoal/blue palette, native Gotham text and quieter borders. Desktop Songs/Queue keeps the library rail beside the piano. Mobile gives Songs and Piano independent full-size screens; explicitly selecting a song opens Piano but never starts playback. Piano is also a focus view on desktop. Play is emphasized, Pause/Stop remain separate, and loop markers A/B are under Setup → Practice loop marks rather than squeezed into the transport. The minimized
 holder sits bottom-center above the loader icon and provides **Open**, **Play/Pause**
 and **STOP**, without an animated icon. Drag its background to move it.
 
@@ -175,3 +174,20 @@ falls back to defaults/session controls. The app cannot grant Android permission
 No external upload or whole-device scan is added. **Arm on launch** may be disabled
 and saved if you prefer; unavailable input APIs remain unarmed. Automatic arming
 is readiness, not proof of game acceptance and never automatic playback.
+
+
+### Navigation names and compatibility
+
+The visible tabs are **Songs, Piano, Queue, Tracks, Keys, Setup**. Internally the
+old Library/Mixer/Settings IDs stay compatible with existing saved JSON; the new
+Piano focus view uses the whitelisted `Player` page. File scanning, parser/input
+bounds, screenshot mapping, saved setup, default arm-on-launch with opt-out,
+manual Play and independent cleanup are unchanged. Key mapping/backend diagnostics
+remain under Keys and Setup. The mini holder remains static and movable.
+
+Song tiles use larger filename/folder text and a restrained selected marker.
+On narrow displays, Queue/Favorite have a dedicated row beside speed/transpose;
+there are no tiny A/B buttons competing there. Very short landscape uses a shorter
+header and transport. Hidden piano pages skip note/key visualization updates,
+not the transport or game input. Layout/selection/resize regressions run against
+the actual view with API doubles, not native Roblox/Delta rendering.

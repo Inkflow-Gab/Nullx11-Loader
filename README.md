@@ -1,6 +1,6 @@
 # Nullx11
 
-A mobile-friendly Roblox workspace with **NULL** owner branding, branded **Nullx11**, now built on the full supplied **+1 Loot UI library**. The default interface has dark violet/navy surfaces, a movable static prism restore icon, responsive tabs/groupboxes, themes, dialogs, configuration, and pixel styling. Existing native player tools and Design Studio remain available.
+A mobile-friendly Roblox workspace with **NULL** owner branding, branded **Nullx11**, now built on the full supplied **+1 Loot UI library**. The default interface now uses a clean charcoal/blue design, modern readable typography, thinner borders, a movable static prism restore icon, responsive tabs/groupboxes, themes, dialogs and configuration. Optional classic looks remain available. Existing native player tools and Design Studio remain available.
 
 **Five adapted game controllers are included**, not just launch placeholders:
 
@@ -35,7 +35,7 @@ No external executor or `loadstring` is needed in Studio. With Rojo, map the `.c
 ## Shared workspace
 
 - **Workspace:** live session/FPS/player/place and UI-budget readout; quick access to pinned/recent and current-game scripts, Center loader window, Visuals, Aim, Design Studio and the classic launcher.
-- **Scripts:** all fifteen entries available without Refresh; bounded paginated rows, literal multiword search, category/collection filters, sort, session pins/recent details and page jumping. Separate game windows retain compatibility notices and confirmed execution. No game-launch teleports or arrival queues.
+- **Scripts:** all fifteen entries available without Refresh; a responsive game-card grid, in-place details, direct-choice category/collection filters, literal search, sorting, session saves/recent views and page jumping. Separate game windows retain compatibility notices and confirmed execution. No game-launch teleports or arrival queues.
 - **Session tools:** save/return window, floating FPS and coordinates, title glitch, reduced motion, Auto/Balanced/Low power UI budgets, and unloading registered game sessions.
 - **Settings:** full +1-derived themes, scaling, language, menu key, floating icon, particles and configuration controls. The static geometric prism is drawn locally; no Mario logo or letter monogram is used. Seasonal decoration and ambient particles are off by default. Optional Thai fonts use vendored repository assets.
 - **Game windows:** the original controllers adapted to this same UI. Each selected bundle contains its own shared library and only its game controller, and does not depend on the main loader remaining open.
@@ -373,8 +373,7 @@ See [the piano setup guide](docs/AUTO-PLAYER.md#matching-the-supplied-61-key-pia
 
 ### Auto Player redesign and saved setup
 
-The player now uses a quieter charcoal/ivory/amber design, selected navigation
-markers, a compact portrait now-playing panel and larger transport controls.
+The player now shares the clean charcoal/blue design. Desktop has a song rail and piano workspace; mobile uses full-size Songs and Piano screens instead of a squeezed stacked view. Play is the primary control, Queue/Favorite have room to breathe, and loop markers live under Setup. Modern typography and quieter borders replace the previous warm/pixel styling.
 The main loader centers after a real viewport is available instead of settling in
 a corner. Its restore icon starts bottom-center. Auto Player has a separate movable
 mini holder above it, with Open, Play/Pause and emergency Stop.

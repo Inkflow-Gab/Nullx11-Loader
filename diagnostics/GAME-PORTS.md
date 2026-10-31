@@ -242,3 +242,25 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
 - UI budgeting must not pause enabled gameplay, ESP/aim or MIDI transport. Preserve
   independent launched-script windows on loader unload. No native FPS or visual
   result has been measured in the development environment.
+
+## Clean dark cards / MIDI layout refresh
+
+- Open Scripts from Workspace: it should now show the card browser, not the
+  compact classic list. Test two-column desktop and single-column portrait cards.
+  Clicking card/View script opens in-place details with full owner/compatibility
+  information; only Continue enters the independent manual launch flow.
+- Choose category/collection/sort values directly from Filters; no cycling. Test
+  Back, filtered results, saves, Recent and refresh while a detail is open. Removed
+  metadata must not launch. The separate classic window remains available.
+- Inspect the clean charcoal/blue skin, readable Gotham text, thinner borders,
+  restrained hover and static dock on native Roblox. Test large and small text,
+  screen cutouts, landscape header/button overlap and long script/creator names.
+- In Auto Player portrait, Songs gets the whole content area and Piano is a
+  separate full-size view. Explicit file selection opens Piano but does not play.
+  Desktop Songs/Queue keeps the song rail beside the piano; Piano hides the rail.
+- Inspect the larger Play hierarchy and 320-pixel-wide transport bounds. Loop A/B
+  remain functional under Setup. Test speed, transpose, Queue/Favorite, Tracks,
+  Keys/input diagnostics, saved Player page and opt-out arming after a reload.
+  Never restore autoplay or hide STOP. Verify independent lifetime after unload.
+- API-double tests pass, but actual native visuals, touch, audio/input acceptance
+  and device frame times still need the above manual checks.

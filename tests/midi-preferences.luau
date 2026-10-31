@@ -39,6 +39,7 @@ assert(store.Save({
 	Selected = "MIDI/a.mid",
 	Panel = { X = 5, Y = -1 },
 	Backend = "VK",
+	Page = "Player",
 }))
 local saved = store.Load()
 assert(
@@ -46,6 +47,7 @@ assert(
 		and not saved.Fold
 		and saved.Speed == 1.5
 		and saved.Backend == "VK"
+		and saved.Page == "Player"
 )
 assert(
 	#saved.Favorites == 1
