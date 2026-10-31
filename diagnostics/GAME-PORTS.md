@@ -58,3 +58,9 @@ Record client version, device, place/version, steps and observed error text for 
 - Hide/reopen: predictors/finder work should pause while hidden, but intentionally enabled jobs continue. Unloading the loader must not stop those jobs; unloading this game must.
 - Opening/closing without changing performance settings must not alter the existing HUD, render setting or FPS cap. If a cap is explicitly changed, verify restoration where the executor supplies getfpscap.
 - Compare baseline versus loaded/hidden/active frame times and instance counts on desktop and physical mobile. Record device, scene population and enabled features; no zero-FPS-drop guarantee is claimed.
+
+## stealabrainrot / execution sheet
+
+Follow [the recovered-source review and native checklist](../docs/BRAINROT-REVIEW.md). Validate the ModuleScript/Plots signature, off defaults, missing-source notices, real controls and per-game cleanup. Never infer live success from compilation.
+
+During confirmed launch inspect the new four-stage loading sheet on desktop/mobile. Slow HTTP should not invent byte progress. Cancel before initialization, then let the HTTP response return: the selected chunk must not execute. Induce download/size/compile/startup errors and verify visible errors. Hide during initialization: the executed script must keep running. Close/unload the loader while a game runs: only loader-owned presentation/tools should stop. Check Reduced motion, rapid reopen, short-screen scrolling and the static prism/navigation artwork. Observe real device FPS and note enabled features; no zero-drop guarantee is implied.

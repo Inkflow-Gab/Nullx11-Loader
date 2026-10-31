@@ -34,7 +34,7 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by Gab",
-					Content = "Shared +1 interface, native player tools and four separate game workspaces. Nothing plays or farms until you enable it.",
+					Content = "Shared +1 interface, native player tools and five separate game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()
@@ -246,6 +246,9 @@ do
 				Watermark = false,
 				OnUnlocked = build,
 			})
+			playerToolsBridge.BeginExecution = function(title)
+				return library:BeginExecution(title)
+			end
 			-- The shared interface is the entry point; the older UI is an advanced
 			-- compatibility surface, available deliberately through Workspace.
 			playerToolsBridge.PrimaryActive = true

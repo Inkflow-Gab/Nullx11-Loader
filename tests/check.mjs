@@ -32,22 +32,35 @@ try {
     .replace('-- @WORKSPACE_TEARDOWN', read('src/ui/Workspace.luau').match(/connect\(gui\.Destroying, function\(\)[\s\S]*?\n\s*end\)/)[0]);
   const portResults = await state.loadstring(portContracts, 'game-port-contracts', true)();
   console.log(portResults[0]);
+  const brainrotChecks = read('tests/game-port-contracts.luau').split('-- Insert the actual modules')[0]
+    + read('tests/brainrot-contracts.luau')
+      .replace('-- @CHILLI_MODULE', module('makeChilliAdapter', 'src/ui/ChilliAdapter.luau'))
+      .replace('-- @OWNED_RUNTIME', module('makeOwnedRuntime', 'src/games/OwnedRuntime.luau'))
+      .replace('-- @EXECUTION_STATE', module('makeExecutionState', 'src/ui/ExecutionState.luau'));
+  console.log(...await state.loadstring(brainrotChecks, 'brainrot-module-contracts', true)());
   const coreChecks = read('tests/roblox-mock.luau') + '\n' + read('tests/player-tools-mock.luau') + '\n'
     + read('tests/shared-ui-core.luau').replace('-- @SHARED_UI', `local function createNullx11UI(scope)\n${read('src/ui/Nullx11UI.luau')}\nend`);
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 4);
+  assert.equal(manifest.Scripts.length, 5);
   assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
-    assert.ok(bundle.includes(entry.Id === 'egg' ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
+    assert.ok(bundle.includes(['egg', 'stealabrainrot'].includes(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
     assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
     assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');
     assert.ok(Buffer.byteLength(bundle, 'utf8') < 2097152, 'bundle fits reviewed source size budget');
   }
+  const brainrot = read('src/games/StealABrainrot.luau');
+  assert.ok(!/tienkhanh1|webhooks|request_|loadstring|queue_on_teleport|queueonteleport|ChilliLibrary\/configs|Default = true|BlockTools/.test(brainrot), 'no exfiltration, upstream loader, auto-enable defaults or startup tool-block bypass');
+  assert.equal((brainrot.match(/:Connect\(/g) || []).length, 200);
+  assert.equal((brainrot.match(/runtime.Track\(/g) || []).length, 200, 'every source subscription is owned');
+  assert.equal((brainrot.match(/runtime.Cleanup\(/g) || []).length, 9, 'restore callbacks do not depend on deferred event timing');
+  assert.ok(read('src/ui/BrandIcons.luau').includes('brain ='));
+  assert.ok(!/Anim.Loop|RenderStepped/.test(read('src/ui/ExecutionView.luau')), 'loading screen has no idle frame loop');
   const huss = read('src/games/Huss.luau');
   for (const setting of ['RunnerEnabled','CatcherChase','AutoGems','AutoRevive','AutoTackle','AutoMelee']) {
     assert.ok(huss.includes(`${setting} = false`), `${setting} starts off`);
@@ -75,7 +88,7 @@ try {
     .replace('-- @EGG_COMPATIBLE', between(read('scripts/Nullx11-StealAnEgg.luau'), 'local function compatible()', 'if not compatible() then'));
   console.log(...await state.loadstring(eggChecks, 'egg-idle-contracts', true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: four actual controllers, place/module gates, source/default-state/budget/size, static icon and font license checks');
+  console.log('PASS: five actual controllers, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),
@@ -109,6 +122,12 @@ try {
   );
   const gameResults = await gameChecks();
   console.log(gameResults[0]);
+  const executionFlow = read('tests/roblox-mock.luau')
+    + '\nlocal executionFactory, loadstring\n' + module('makeExecutionState', 'src/ui/ExecutionState.luau')
+    + '\nlocal function runLoader()\n' + logicSource.replace('local progress = playerToolsBridge.BeginExecution\n\t\t\tand playerToolsBridge.BeginExecution(entry.Name)', 'local progress = executionFactory(entry.Name)')
+    + '\nend\n' + read('tests/execution-flow.luau');
+  assert.ok(executionFlow.includes('local progress = executionFactory(entry.Name)'), 'execution test uses actual catalog path');
+  console.log(...await state.loadstring(executionFlow, 'execution-integration', true)());
   const introChecks = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + source.replace('EnhancedWorkspace = true', 'EnhancedWorkspace = false')
       + '\nend\nlocal function runReducedLoader()\n'

@@ -36,7 +36,7 @@ local Config = {
 	PreloadTimeout = 5,
 	ThaiFont = {
 		Family = "Nullx11Kanit",
-		Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/assets/fonts/Kanit-%s.ttf",
+		Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/assets/fonts/Kanit-%s.ttf",
 		Weights = { [400] = "Regular", [500] = "Medium", [600] = "SemiBold" },
 	},
 	-- Scale bonus for Thai glyphs to match Latin x-height
@@ -2081,6 +2081,31 @@ function Draw.DrawnEmblem(parent, size)
 		Size = UDim2.fromOffset(size, size),
 		Parent = parent,
 	}, "Panel", "Outline", 10, 2)
+	Draw.New("UIGradient", {
+		Color = ColorSequence.new(
+			Color3.fromRGB(34, 39, 65),
+			Color3.fromRGB(14, 19, 34)
+		),
+		Rotation = 45,
+		Parent = emblem,
+	})
+	local rim = Draw.New("Frame", {
+		Name = "PrismRim",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromScale(0.09, 0.09),
+		Size = UDim2.fromScale(0.82, 0.82),
+		Parent = emblem,
+	})
+	Draw.Corner(rim, 8)
+	local stroke = Draw.Stroke(rim, "Accent", 1)
+	Draw.New("UIGradient", {
+		Color = ColorSequence.new(
+			Color3.fromRGB(164, 143, 255),
+			Color3.fromRGB(96, 220, 224)
+		),
+		Rotation = 45,
+		Parent = stroke,
+	})
 	for _, shape in ipairs({
 		{ 0.35, 0.29, 0.075, 0.34, 55 },
 		{ 0.65, 0.29, 0.075, 0.34, -55 },
@@ -2974,6 +2999,8 @@ Icons.Vectors = {
 	end,
 }
 
+-- @NULLX11_BRAND_ICONS
+
 function Icons.NormalizeKey(rawName)
 	if type(rawName) ~= "string" then
 		return ""
@@ -2990,8 +3017,10 @@ function Icons.FromTitle(titleSpec, defaultSprite)
 	local text = Lang.SearchText(titleSpec)
 	if text ~= "" then
 		for _, rule in ipairs(Icons.Rules) do
-			if text:find(rule[1]) then
-				return rule[2]
+			for word in rule[1]:gmatch("[^|]+") do
+				if text:find(word, 1, true) then
+					return rule[2]
+				end
 			end
 		end
 	end
@@ -3043,6 +3072,11 @@ function Icons.Create(parent, iconSpec, size, colorToken, fallbackTitle)
 		return img
 	end
 	local key = Icons.NormalizeKey(iconSpec)
+	if key == "" then
+		key = Icons.NormalizeKey(
+			Icons.FromTitle(fallbackTitle or iconSpec, "info")
+		)
+	end
 	if Icons.Vectors[key] then
 		return Icons.Vector(parent, key, size, colorToken)
 	end
@@ -9292,7 +9326,7 @@ function Window:SelectTab(tab)
 	tab.Page.Position = UDim2.fromOffset(0, 18)
 	Anim.Tween(tab.Page, { Position = UDim2.new() }, Config.Tween.Slide)
 	tab:RenderButton()
-	Anim.Bump(tab.IconSlot, 6)
+	-- Restore and navigation artwork stays still; animate the content, not the icon.
 	Lang.Bind(self.HeaderTitle, tab.Name)
 	Lang.Bind(self.HeaderDesc, tab.Description or "")
 	local titleY = self.HeaderDesc.Visible and 10 or 11
@@ -9301,7 +9335,7 @@ function Window:SelectTab(tab)
 		self.HeaderTitle,
 		{ Position = UDim2.fromOffset(16, titleY) },
 		Config.Tween.Slide,
-		"Back"
+		"Out"
 	)
 	if (tab.FilteredQuery or "") ~= self.Query then
 		self:ApplyFilter()
@@ -12342,9 +12376,7 @@ function Configs.BuildSection(group)
 		Height = 4,
 		NoSave = true,
 	})
-	local autoload = group:AddLabel(
-		Lang.Format("Autoload", Configs.GetAutoload() or Lang.Get("None"))
-	)
+	group:AddLabel("Manual profiles / no automatic startup execution")
 	local function Selected()
 		local typed = nameInput.Value:gsub("^%s+", ""):gsub("%s+$", "")
 		return typed ~= "" and typed or list.Value
@@ -12411,19 +12443,6 @@ function Configs.BuildSection(group)
 				list:SetValues(Configs.List())
 			end,
 		})
-	group:AddButton({
-		Text = Lang.Strings.SetAutoload,
-		Style = "Warning",
-		Func = function()
-			Run("SetAutoload", function(name)
-				local ok, reason = Configs.SetAutoload(name)
-				if ok then
-					autoload:SetText(Lang.Format("Autoload", name))
-				end
-				return ok, reason
-			end)
-		end,
-	})
 end
 
 function Window:AddSettingsTab()
@@ -12516,6 +12535,8 @@ function Window:AddSettingsTab()
 	Configs.BuildSection(tab:AddRightGroupbox(Lang.Strings.Configs, "qblock"))
 	return tab
 end
+
+-- @NULLX11_EXECUTION_VIEW
 
 function Library:CreateWindow(options)
 	options = options or {}
@@ -12691,6 +12712,11 @@ function Library:SetReducedMotion(enabled)
 	for group in pairs(Anim.Loops) do
 		Anim.SetGroupActive(group, not enabled)
 	end
+end
+
+function Library:GetGuiParent()
+	assert(State.Gui and State.Gui.Parent, "Nullx11 GUI is not initialized")
+	return State.Gui.Parent
 end
 
 function Library:GetFPS()

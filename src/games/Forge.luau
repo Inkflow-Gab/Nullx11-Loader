@@ -180,7 +180,7 @@ Nullx11Forge.Config = {
 	ReloadSource = [[
 if not game:IsLoaded() then game.Loaded:Wait() end
 if game.PlaceId ~= 118805555015549 then return end
-local body = game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/Nullx11-Forge.luau", true)
+local body = game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/Nullx11-Forge.luau", true)
 assert(type(body) == "string" and #body <= 2097152, "Invalid selected game bundle")
 local run, reason = loadstring(body, "Nullx11Forge")
 assert(run, reason)

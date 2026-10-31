@@ -2,7 +2,7 @@
 
 A mobile-friendly Roblox workspace by **Gab**, branded **Nullx11**, now built on the full supplied **+1 Loot UI library**. The default interface has dark violet/navy surfaces, a movable static prism restore icon, responsive tabs/groupboxes, themes, dialogs, configuration, and pixel styling. Existing native player tools and Design Studio remain available.
 
-**Four adapted game controllers are included**, not just launch placeholders:
+**Five adapted game controllers are included**, not just launch placeholders:
 
 | Game workspace | Exact place | Standalone bundle |
 | --- | --- | --- |
@@ -10,6 +10,7 @@ A mobile-friendly Roblox workspace by **Gab**, branded **Nullx11**, now built on
 | Nullx11 - hussvalley | `107535308163741` | [Huss](scripts/Nullx11-Huss.luau) |
 | Nullx11 - +1 loot to forge | `118805555015549` | [Forge](scripts/Nullx11-Forge.luau) |
 | Nullx11 - Steal An Egg | Core ModuleScript signature (no supplied place ID) | [Steal An Egg](scripts/Nullx11-StealAnEgg.luau) |
+| stealabrainrot | `Datas.Animals`, `Packages.PlayerMouse`, `workspace.Plots` signature | [stealabrainrot](scripts/Nullx11-StealABrainrot.luau) |
 
 Sources were adapted using the user's reported developer permissions. See [provenance/restrictions](docs/SOURCE-PROVENANCE.md), [implementation status](scripts/INTEGRATION-STATUS.md), and [pending native validation](diagnostics/GAME-PORTS.md). **Compilation and development checks pass; live Roblox/Delta gameplay is not certified.**
 
@@ -34,7 +35,7 @@ No external executor or `loadstring` is needed in Studio. With Rojo, map the `.c
 ## Shared workspace
 
 - **Workspace:** live session/FPS/player/place readout; actions to open Scripts, Visuals, Aim, Design Studio and the classic launcher.
-- **Scripts:** four bundled entries available without Refresh; separate game windows, compatibility notices and confirmed execution. No game-launch teleport questions or arrival queues.
+- **Scripts:** five bundled entries available without Refresh; separate game windows, compatibility notices and confirmed execution. No game-launch teleport questions or arrival queues.
 - **Session tools:** save/return window, floating FPS and coordinates, title glitch, reduced motion, and unloading registered game sessions.
 - **Settings:** full +1-derived themes, scaling, language, menu key, floating icon, particles and configuration controls. The static geometric prism is drawn locally; no Mario logo or letter monogram is used. Seasonal decoration and ambient particles are off by default. Optional Thai fonts use vendored repository assets.
 - **Game windows:** the original controllers adapted to this same UI. Each selected bundle contains its own shared library and only its game controller, and does not depend on the main loader remaining open.
@@ -127,7 +128,7 @@ Set `CONFIG.StartupAnimation = false` to skip the decoration, or `CONFIG.Reduced
 
 ## Game ports / Scripts library
 
-**Workspace → Scripts** has all four adapted games immediately. **Open Scripts library** is an ordinary action, not an ON/OFF toggle. A game's detail window shows its description, target and provenance. Opening it performs no download or execution.
+**Workspace → Scripts** has all five adapted games immediately. **Open Scripts library** is an ordinary action, not an ON/OFF toggle. A game's detail window shows its description, target and provenance. Opening it performs no download or execution.
 
 - Unsupported place: direct Execute is blocked for the three exact-place ports. Join the game manually; the launcher never asks to teleport, teleports automatically or queues arrival code.
 - Steal An Egg has no place ID in the uploaded source. Its standalone bundle checks seven core ModuleScript paths before initializing its controller, then validates every required game module. No destination ID is invented. Game updates can break this signature.
@@ -140,6 +141,14 @@ Set `CONFIG.StartupAnimation = false` to skip the decoration, or `CONFIG.Reduced
 Remote execution requires client HTTP/loadstring; normal Studio LocalScripts cannot use that download path. The main UI/native tools do not depend on it. **Unloading or rerunning the loader leaves executed game scripts running.** Each bundled game has its own Unload action. The separate, confirmed **Unload launched game scripts** control deliberately stops registered games; ordinary loader Unload does not. Arbitrary external scripts still own their cleanup. Review code and prefer a commit-pinned URL.
 
 Forge's explicit routed remote/bindable calls are paced at most eight per second with cancellation and reduced worker/burst defaults. This does not certify server acceptance or bound all traffic generated internally by the game's own modules. Large original burst defaults were not retained. Automation and anti-idle start off; saved gameplay profiles load only through explicit user actions.
+
+## New: stealabrainrot and execution presentation
+
+**Scripts → stealabrainrot** opens the supplied recovered controller through **our embedded Nullx11 GUI**, not the original Chilli UI. Stealer/helper/player/ESP/server controls, live units/ranges, multi-selects and manual shared settings are integrated. Automation starts off. The source's AP/TP/Priority placeholders remain explicitly unavailable; see the [source/security review](docs/BRAINROT-REVIEW.md) for recovery limitations and the removed webhook/config exfiltration and upstream loaders.
+
+The shared interface now uses original semantic line assets, a richer static purple/cyan prism, and short content transitions without bouncing navigation art. The restore icon is still static. [Brand references](assets/brand/) are SVG exports; Roblox draws the actual assets natively without image downloads.
+
+Confirmed execution opens a responsive, scrollable Nullx11 loading sheet: **Download → Validate → Compile → Initialize**. Stages advance at actual client boundaries; the byte count is shown only after HTTP returns, with no fake timer percentage. The bar indicates completed stages, not bytes downloaded. Cancel before initialization prevents later compilation/startup; it cannot interrupt the executor's HTTP transport. Once initialization has begun, Hide closes only the sheet and does not stop the executed script. Errors stay visible. The final message means the client chunk returned, **not that gameplay succeeded**. Transitions respect Reduced motion and use no permanent loading-animation loop. Classic-only mode retains its status/button reporting.
 
 ## Idle-work and ownership changes
 
@@ -159,15 +168,15 @@ Baseline text is now **at least 14 px**, toggle headings 16 px, and the main tit
 
 [`bootstrap.luau`](bootstrap.luau) is a small launcher for a runtime that provides **both** client `loadstring` and `game:HttpGet`. Standard Roblox LocalScripts do not provide these capabilities.
 
-The launcher targets the public PR branch `arena/d92ad2cf-nullx11-loader`. Its source is separate from `main`; merging the PR is not required to load this branch version. Download failures are reported by the bootstrap.
+The launcher targets the public PR branch `arena/bc7610cd-nullx11-loader`. Its source is separate from `main`; merging the PR is not required to load this branch version. Download failures are reported by the bootstrap.
 
 For a short launcher targeting the PR branch:
 
 ```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/Nullx11.client.luau"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/Nullx11.client.luau"))()
 ```
 
-Or execute `bootstrap.luau` to get clearer download/compile/startup errors; change `SOURCE_URL` if you host your own reviewed copy. Its current URL targets the session's fixed branch `arena/d92ad2cf-nullx11-loader`, not `main`. Do not assume a file exists on `main` until it is actually merged there.
+Or execute `bootstrap.luau` to get clearer download/compile/startup errors; change `SOURCE_URL` if you host your own reviewed copy. Its current URL targets the session's fixed branch `arena/bc7610cd-nullx11-loader`, not `main`. Do not assume a file exists on `main` until it is actually merged there.
 
 Remote code runs with the capabilities of your runtime. Review the source; ideally pin the raw URL to a reviewed commit SHA rather than a mutable branch. There is no remote executable UI download at startup. Refresh fetches catalog data; confirmed Run fetches game code. Optional Thai fonts fetch data assets from this repository. Forge can request Roblox public-server data for an explicitly enabled server-hop flow.
 
@@ -268,7 +277,7 @@ npm run format:check
 npm test
 ```
 
-The checks verify reproducible generated artifacts, all four controllers/place-or-module gates/defaults/dependencies/size limits and font licensing; exercise actual shared reactive APIs and actual adapter/session/standalone launch modules with development fixtures; and compile the main, bootstrap, and native diagnostic Luau files (the native diagnostic is not executed here), parse the real repository manifest JSON, compile any published library scripts, and exercise deterministic development API doubles for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Player-tool tests cover separate/reused windows, team/visibility/death filters, bounding boxes/chams/tracers, editable numeric limits, FOV placement/color, smoothing versus strength-100 snap, hold/release and input guards, touch-pad input, camera replacement/loss, respawns, crowded-server ray/instance caps, emergency off, and teardown. New polish checks cover animation token lifetime/reversal/resize, native font choices/looks, Auto/Hold, root fallbacks, explicit camera override, play view, render fallback/error reporting, and library path validation/search/confirmation/refreshed-row cleanup. They do not prove rendered motion or real HTTP. Startup tests cover contraction/burst/reveal, actual readiness waiting, skip, short landscape positioning, reduced motion, rerun, and closing during animation. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
+The checks verify reproducible generated artifacts, all five controllers/place-or-module gates/defaults/dependencies/size limits and font licensing; exercise actual shared reactive APIs and actual adapter/session/standalone launch modules with development fixtures; and compile the main, bootstrap, and native diagnostic Luau files (the native diagnostic is not executed here), parse the real repository manifest JSON, compile any published library scripts, and exercise deterministic development API doubles for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Player-tool tests cover separate/reused windows, team/visibility/death filters, bounding boxes/chams/tracers, editable numeric limits, FOV placement/color, smoothing versus strength-100 snap, hold/release and input guards, touch-pad input, camera replacement/loss, respawns, crowded-server ray/instance caps, emergency off, and teardown. New polish checks cover animation token lifetime/reversal/resize, native font choices/looks, Auto/Hold, root fallbacks, explicit camera override, play view, render fallback/error reporting, and library path validation/search/confirmation/refreshed-row cleanup. They do not prove rendered motion or real HTTP. Startup tests cover contraction/burst/reveal, actual readiness waiting, skip, short landscape positioning, reduced motion, rerun, and closing during animation. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
 
 These mocks do not emulate Roblox physics, rendering, real touch input, or Delta. Test in Studio's **Device Emulator**, your own game, and a real device. In particular, verify the startup effect, chams and box alignment, FOV centering, camera/game compatibility, real touch hold/release, short-landscape layouts, drag-vs-tap behavior on the restore icon, respawns, closing while initialization yields, and whether your game's server accepts the intended movement.
 
@@ -282,7 +291,7 @@ Keep extras opt-in: a compact changelog or real asset preloading for your own ex
 
 ## Source / build / code size
 
-The generated standalone main is **21,163 lines**, exceeding the current **15,000-line** requirement. Its substantial +1 UI library is embedded **once as a working factory and used by the default workspace**. Existing player tools, Studio and launch flows remain functional code; there are no repeated dummy controls or unused source-string blobs to pad the count.
+The generated standalone main is **21,740 lines**, exceeding the current **15,000-line** requirement. Its substantial +1 UI library is embedded **once as a working factory and used by the default workspace**. Existing player tools, Studio and launch flows remain functional code; there are no repeated dummy controls or unused source-string blobs to pad the count.
 
 - Edit `src/loader.luau`, `src/ui/`, `src/games/` and `src/games/catalog.json`.
 - `npm run format` formats sources and builds the main, game bundles and manifest.
@@ -290,4 +299,4 @@ The generated standalone main is **21,163 lines**, exceeding the current **15,00
 - Do not hand-edit generated `Nullx11.client.luau` or `scripts/Nullx11-*.luau`.
 - Formatter/compiler/test packages are development-only and are not required by Delta or Roblox.
 
-The four standalone bundles intentionally each include the shared UI so that **selected-script-only execution is self-contained**. They do not embed other game controllers or the main client. See [source provenance](docs/SOURCE-PROVENANCE.md) before redistribution; Rosu-derived material is not for resale.
+The five standalone bundles intentionally each include the shared UI so that **selected-script-only execution is self-contained**. They do not embed other game controllers or the main client. See [source provenance](docs/SOURCE-PROVENANCE.md) before redistribution; Rosu-derived material is not for resale.

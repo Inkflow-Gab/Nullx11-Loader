@@ -39,7 +39,7 @@ local function createNullx11UI(scope)
 		PreloadTimeout = 5,
 		ThaiFont = {
 			Family = "Nullx11Kanit",
-			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/assets/fonts/Kanit-%s.ttf",
+			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/assets/fonts/Kanit-%s.ttf",
 			Weights = {
 				[400] = "Regular",
 				[500] = "Medium",
@@ -2123,6 +2123,31 @@ local function createNullx11UI(scope)
 			Size = UDim2.fromOffset(size, size),
 			Parent = parent,
 		}, "Panel", "Outline", 10, 2)
+		Draw.New("UIGradient", {
+			Color = ColorSequence.new(
+				Color3.fromRGB(34, 39, 65),
+				Color3.fromRGB(14, 19, 34)
+			),
+			Rotation = 45,
+			Parent = emblem,
+		})
+		local rim = Draw.New("Frame", {
+			Name = "PrismRim",
+			BackgroundTransparency = 1,
+			Position = UDim2.fromScale(0.09, 0.09),
+			Size = UDim2.fromScale(0.82, 0.82),
+			Parent = emblem,
+		})
+		Draw.Corner(rim, 8)
+		local stroke = Draw.Stroke(rim, "Accent", 1)
+		Draw.New("UIGradient", {
+			Color = ColorSequence.new(
+				Color3.fromRGB(164, 143, 255),
+				Color3.fromRGB(96, 220, 224)
+			),
+			Rotation = 45,
+			Parent = stroke,
+		})
 		for _, shape in ipairs({
 			{ 0.35, 0.29, 0.075, 0.34, 55 },
 			{ 0.65, 0.29, 0.075, 0.34, -55 },
@@ -3021,6 +3046,239 @@ local function createNullx11UI(scope)
 		end,
 	}
 
+	-- Original neutral line assets, drawn at native resolution. No emoji, character
+	-- imagery, remote image fetch, particle loop or per-frame redraw.
+	local brandPaths = {
+		home = {
+			{ { 0.15, 0.43 }, { 0.5, 0.14 }, { 0.85, 0.43 } },
+			{ { 0.24, 0.42 }, { 0.24, 0.84 }, { 0.76, 0.84 }, { 0.76, 0.42 } },
+			{ { 0.44, 0.84 }, { 0.44, 0.6 }, { 0.6, 0.6 }, { 0.6, 0.84 } },
+		},
+		code = {
+			{ { 0.33, 0.25 }, { 0.1, 0.5 }, { 0.33, 0.75 } },
+			{ { 0.67, 0.25 }, { 0.9, 0.5 }, { 0.67, 0.75 } },
+			{ { 0.58, 0.15 }, { 0.42, 0.85 } },
+		},
+		layers = {
+			{
+				{ 0.12, 0.34 },
+				{ 0.5, 0.14 },
+				{ 0.88, 0.34 },
+				{ 0.5, 0.54 },
+				{
+					0.12,
+					0.34,
+				},
+			},
+			{ { 0.12, 0.52 }, { 0.5, 0.72 }, { 0.88, 0.52 } },
+			{ { 0.12, 0.7 }, { 0.5, 0.9 }, { 0.88, 0.7 } },
+		},
+		play = { { { 0.3, 0.2 }, { 0.8, 0.5 }, { 0.3, 0.8 }, { 0.3, 0.2 } } },
+		settings = {
+			{ { 0.2, 0.15 }, { 0.2, 0.85 } },
+			{ { 0.5, 0.15 }, { 0.5, 0.85 } },
+			{ { 0.8, 0.15 }, { 0.8, 0.85 } },
+			{ { 0.1, 0.35 }, { 0.3, 0.35 } },
+			{ { 0.4, 0.65 }, { 0.6, 0.65 } },
+			{ { 0.7, 0.42 }, { 0.9, 0.42 } },
+		},
+		user = {
+			{
+				{ 0.35, 0.17 },
+				{ 0.65, 0.17 },
+				{ 0.72, 0.35 },
+				{ 0.65, 0.5 },
+				{ 0.35, 0.5 },
+				{ 0.28, 0.35 },
+				{ 0.35, 0.17 },
+			},
+			{
+				{ 0.15, 0.85 },
+				{ 0.22, 0.67 },
+				{ 0.38, 0.6 },
+				{ 0.62, 0.6 },
+				{ 0.78, 0.67 },
+				{ 0.85, 0.85 },
+			},
+		},
+		eye = {
+			{
+				{ 0.1, 0.5 },
+				{ 0.28, 0.3 },
+				{ 0.5, 0.22 },
+				{ 0.72, 0.3 },
+				{ 0.9, 0.5 },
+				{ 0.72, 0.7 },
+				{ 0.5, 0.78 },
+				{ 0.28, 0.7 },
+				{ 0.1, 0.5 },
+			},
+			{
+				{ 0.42, 0.4 },
+				{ 0.58, 0.4 },
+				{ 0.62, 0.5 },
+				{ 0.58, 0.6 },
+				{ 0.42, 0.6 },
+				{ 0.38, 0.5 },
+				{ 0.42, 0.4 },
+			},
+		},
+		server = {
+			{
+				{ 0.2, 0.15 },
+				{ 0.8, 0.15 },
+				{ 0.8, 0.85 },
+				{ 0.2, 0.85 },
+				{
+					0.2,
+					0.15,
+				},
+			},
+			{ { 0.2, 0.38 }, { 0.8, 0.38 } },
+			{ { 0.2, 0.62 }, { 0.8, 0.62 } },
+			{ { 0.3, 0.26 }, { 0.4, 0.26 } },
+			{ { 0.3, 0.5 }, { 0.4, 0.5 } },
+			{ { 0.3, 0.74 }, { 0.4, 0.74 } },
+		},
+		egg = {
+			{
+				{ 0.5, 0.1 },
+				{ 0.3, 0.27 },
+				{ 0.18, 0.55 },
+				{ 0.22, 0.75 },
+				{ 0.36, 0.87 },
+				{ 0.64, 0.87 },
+				{ 0.78, 0.75 },
+				{ 0.82, 0.55 },
+				{ 0.7, 0.27 },
+				{ 0.5, 0.1 },
+			},
+			{ { 0.48, 0.35 }, { 0.4, 0.5 }, { 0.53, 0.58 }, { 0.45, 0.72 } },
+		},
+		brain = {
+			{
+				{ 0.49, 0.22 },
+				{ 0.35, 0.14 },
+				{ 0.2, 0.22 },
+				{ 0.18, 0.37 },
+				{ 0.1, 0.48 },
+				{ 0.16, 0.62 },
+				{ 0.18, 0.78 },
+				{ 0.36, 0.86 },
+				{ 0.49, 0.76 },
+				{ 0.51, 0.22 },
+				{ 0.65, 0.14 },
+				{ 0.8, 0.22 },
+				{ 0.82, 0.37 },
+				{ 0.9, 0.48 },
+				{ 0.84, 0.62 },
+				{ 0.82, 0.78 },
+				{ 0.64, 0.86 },
+				{ 0.51, 0.76 },
+			},
+			{ { 0.22, 0.38 }, { 0.34, 0.44 }, { 0.28, 0.59 } },
+			{ { 0.78, 0.38 }, { 0.66, 0.44 }, { 0.72, 0.59 } },
+		},
+		download = {
+			{ { 0.5, 0.12 }, { 0.5, 0.64 } },
+			{ { 0.3, 0.45 }, { 0.5, 0.65 }, { 0.7, 0.45 } },
+			{ { 0.15, 0.65 }, { 0.15, 0.85 }, { 0.85, 0.85 }, { 0.85, 0.65 } },
+		},
+		bolt = {
+			{
+				{ 0.57, 0.1 },
+				{ 0.2, 0.56 },
+				{ 0.48, 0.56 },
+				{ 0.41, 0.9 },
+				{ 0.8, 0.4 },
+				{ 0.53, 0.4 },
+				{ 0.57, 0.1 },
+			},
+		},
+		info = {
+			{ { 0.5, 0.28 }, { 0.5, 0.3 } },
+			{ { 0.5, 0.45 }, { 0.5, 0.76 } },
+			{
+				{ 0.18, 0.18 },
+				{ 0.82, 0.18 },
+				{ 0.82, 0.82 },
+				{ 0.18, 0.82 },
+				{
+					0.18,
+					0.18,
+				},
+			},
+		},
+	}
+	for name, paths in pairs(brandPaths) do
+		Icons.Vectors[name] = function(box, token)
+			local size = box.Size.X.Offset
+			for _, path in ipairs(paths) do
+				for index = 2, #path do
+					local a, b = path[index - 1], path[index]
+					local dx, dy = (b[1] - a[1]) * size, (b[2] - a[2]) * size
+					DrawVectorLine(
+						box,
+						UDim2.fromScale((a[1] + b[1]) / 2, (a[2] + b[2]) / 2),
+						UDim2.fromOffset(
+							math.sqrt(dx * dx + dy * dy),
+							math.max(1.6, size / 12)
+						),
+						math.deg(math.atan2(dy, dx)),
+						token or "Text"
+					)
+				end
+			end
+		end
+	end
+	for alias, target in pairs({
+		house = "home",
+		main = "home",
+		workspace = "home",
+		scripts = "code",
+		terminal = "code",
+		package = "layers",
+		inventory = "layers",
+		player = "user",
+		players = "user",
+		character = "user",
+		visuals = "eye",
+		esp = "eye",
+		servers = "server",
+		stealer = "brain",
+		stealabrainrot = "brain",
+		bot = "bolt",
+		automation = "bolt",
+		zap = "bolt",
+		["sliders_horizontal"] = "settings",
+		save = "download",
+		upload = "download",
+		globe = "server",
+		teleport = "layers",
+		map = "layers",
+		helper = "settings",
+		misc = "settings",
+	}) do
+		Icons.Vectors[alias] = Icons.Vectors[target]
+	end
+
+	for alias, target in pairs({
+		castle = "home",
+		pipe = "layers",
+		qblock = "info",
+		gear = "settings",
+		star = "bolt",
+		flower = "bolt",
+		boo = "eye",
+		mushroom = "home",
+		coin = "layers",
+		shell = "layers",
+		stealer = "brain",
+		loot = "layers",
+	}) do
+		Icons.Vectors[alias] = Icons.Vectors[target]
+	end
+
 	function Icons.NormalizeKey(rawName)
 		if type(rawName) ~= "string" then
 			return ""
@@ -3037,8 +3295,10 @@ local function createNullx11UI(scope)
 		local text = Lang.SearchText(titleSpec)
 		if text ~= "" then
 			for _, rule in ipairs(Icons.Rules) do
-				if text:find(rule[1]) then
-					return rule[2]
+				for word in rule[1]:gmatch("[^|]+") do
+					if text:find(word, 1, true) then
+						return rule[2]
+					end
 				end
 			end
 		end
@@ -3091,6 +3351,11 @@ local function createNullx11UI(scope)
 			return img
 		end
 		local key = Icons.NormalizeKey(iconSpec)
+		if key == "" then
+			key = Icons.NormalizeKey(
+				Icons.FromTitle(fallbackTitle or iconSpec, "info")
+			)
+		end
 		if Icons.Vectors[key] then
 			return Icons.Vector(parent, key, size, colorToken)
 		end
@@ -9509,7 +9774,7 @@ local function createNullx11UI(scope)
 		tab.Page.Position = UDim2.fromOffset(0, 18)
 		Anim.Tween(tab.Page, { Position = UDim2.new() }, Config.Tween.Slide)
 		tab:RenderButton()
-		Anim.Bump(tab.IconSlot, 6)
+		-- Restore and navigation artwork stays still; animate the content, not the icon.
 		Lang.Bind(self.HeaderTitle, tab.Name)
 		Lang.Bind(self.HeaderDesc, tab.Description or "")
 		local titleY = self.HeaderDesc.Visible and 10 or 11
@@ -9518,7 +9783,7 @@ local function createNullx11UI(scope)
 			self.HeaderTitle,
 			{ Position = UDim2.fromOffset(16, titleY) },
 			Config.Tween.Slide,
-			"Back"
+			"Out"
 		)
 		if (tab.FilteredQuery or "") ~= self.Query then
 			self:ApplyFilter()
@@ -12636,9 +12901,7 @@ local function createNullx11UI(scope)
 			Height = 4,
 			NoSave = true,
 		})
-		local autoload = group:AddLabel(
-			Lang.Format("Autoload", Configs.GetAutoload() or Lang.Get("None"))
-		)
+		group:AddLabel("Manual profiles / no automatic startup execution")
 		local function Selected()
 			local typed = nameInput.Value:gsub("^%s+", ""):gsub("%s+$", "")
 			return typed ~= "" and typed or list.Value
@@ -12705,19 +12968,6 @@ local function createNullx11UI(scope)
 					list:SetValues(Configs.List())
 				end,
 			})
-		group:AddButton({
-			Text = Lang.Strings.SetAutoload,
-			Style = "Warning",
-			Func = function()
-				Run("SetAutoload", function(name)
-					local ok, reason = Configs.SetAutoload(name)
-					if ok then
-						autoload:SetText(Lang.Format("Autoload", name))
-					end
-					return ok, reason
-				end)
-			end,
-		})
 	end
 
 	function Window:AddSettingsTab()
@@ -12814,6 +13064,259 @@ local function createNullx11UI(scope)
 			tab:AddRightGroupbox(Lang.Strings.Configs, "qblock")
 		)
 		return tab
+	end
+
+	local makeExecutionState = (function()
+		-- Observable, monotonic execution stages. No time-based/fabricated percentages.
+		return function(render)
+			local model = {
+				PhaseIndex = 1,
+				Completed = 0,
+				Status = "running",
+				Detail = "Requesting repository source. Cancel prevents startup; the executor network request may still finish.",
+				Started = false,
+				Hidden = false,
+			}
+			function model:Phase(index, detail)
+				if self.Status ~= "running" then
+					return false
+				end
+				assert(
+					index >= self.PhaseIndex and index <= 4 and index % 1 == 0,
+					"Invalid execution stage"
+				)
+				self.PhaseIndex, self.Completed = index, index - 1
+				self.Detail = tostring(detail or "")
+				self.Started = index == 4
+				render(self)
+				return true
+			end
+			function model:Finish()
+				if self.Status ~= "running" then
+					return
+				end
+				self.Completed, self.Status = 4, "complete"
+				self.Detail =
+					"The client chunk returned. Check the game window for compatibility and feature status."
+				render(self)
+			end
+			function model:Fail(reason)
+				if self.Status ~= "running" then
+					return
+				end
+				self.Status, self.Detail =
+					"failed", string.sub(tostring(reason), 1, 700)
+				render(self)
+			end
+			function model:Dismiss()
+				self.Hidden = true
+				if self.Status == "running" and not self.Started then
+					self.Status = "cancelled"
+				end
+				render(self)
+			end
+			function model:CanContinue()
+				return self.Status == "running"
+			end
+			render(model)
+			return model
+		end
+	end)()
+	-- Injected into the shared UI factory: responsive, event-driven execution sheet.
+	function Library:BeginExecution(title)
+		if self.Unloaded then
+			return nil
+		end
+		if self.Execution then
+			self.Execution:Close()
+		end
+		local shade = Draw.New("TextButton", {
+			Name = "ExecutionLoading",
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 0.36,
+			Size = UDim2.fromScale(1, 1),
+			ZIndex = 72,
+			Parent = State.Gui,
+		})
+		local card = Draw.Box("CanvasGroup", {
+			Name = "ExecutionCard",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, -32, 1, -32),
+			GroupTransparency = 1,
+			ZIndex = 73,
+			Parent = shade,
+		}, "Panel", "Outline", 20, 1)
+		Draw.New(
+			"UISizeConstraint",
+			{ MaxSize = Vector2.new(520, 420), Parent = card }
+		)
+		local scroll = Draw.New("ScrollingFrame", {
+			Name = "ExecutionContent",
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.fromScale(1, 1),
+			CanvasSize = UDim2.fromOffset(0, 402),
+			ScrollBarThickness = 3,
+			Parent = card,
+		})
+		local emblem = Draw.Emblem(scroll, 48)
+		emblem.Position = UDim2.fromOffset(24, 22)
+		local function text(name, value, x, y, height, size, token)
+			return Draw.Text({
+				Name = name,
+				Text = value,
+				Position = UDim2.fromOffset(x, y),
+				Size = UDim2.new(1, -x - 24, 0, height),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Center,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				Parent = scroll,
+			}, "Body", size, token or "Text")
+		end
+		text("Developer", "NULLX11 / GAB", 86, 22, 18, 14, "Muted")
+		text("ScriptName", title, 86, 44, 26, 19)
+		local status =
+			text("ExecutionStatus", "Preparing execution", 24, 90, 26, 18)
+		local detail = text("ExecutionDetail", "", 24, 120, 62, 14, "SubText")
+		detail.TextWrapped, detail.TextTruncate = true, Enum.TextTruncate.None
+		local track = Draw.Box("Frame", {
+			Name = "ExecutionTrack",
+			Position = UDim2.fromOffset(24, 198),
+			Size = UDim2.new(1, -48, 0, 5),
+			Parent = scroll,
+		}, "Track", nil, 3)
+		local fill = Draw.Box("Frame", {
+			Name = "ExecutionProgress",
+			Size = UDim2.fromScale(0, 1),
+			Parent = track,
+		}, "Accent", nil, 3)
+		Draw.New("UIGradient", {
+			Color = ColorSequence.new(
+				Color3.fromRGB(164, 143, 255),
+				Color3.fromRGB(96, 220, 224)
+			),
+			Parent = fill,
+		})
+		local labels, marks = {}, {}
+		for index, name in ipairs({
+			"Download",
+			"Validate source",
+			"Compile Luau",
+			"Initialize script",
+		}) do
+			marks[index] = Draw.Box("Frame", {
+				Position = UDim2.fromOffset(26, 221 + (index - 1) * 27),
+				Size = UDim2.fromOffset(7, 7),
+				Parent = scroll,
+			}, "Muted", nil, 4)
+			labels[index] = text(
+				"ExecutionStage" .. index,
+				name,
+				44,
+				214 + (index - 1) * 27,
+				22,
+				14,
+				"SubText"
+			)
+		end
+		local close = Draw.Box("TextButton", {
+			Name = "ExecutionDismiss",
+			Text = "Cancel download",
+			AutoButtonColor = false,
+			Position = UDim2.fromOffset(24, 342),
+			Size = UDim2.new(1, -48, 0, 40),
+			Parent = scroll,
+		}, "Element", "Outline", 10, 1)
+		close.Font, close.TextSize = Enum.Font.GothamMedium, 14
+		Theme.Bind(close, { TextColor3 = "Text" })
+		local job = { Closed = false }
+		local function render(model)
+			if job.Closed or not shade.Parent then
+				return
+			end
+			local names = {
+				"Downloading source",
+				"Validating response",
+				"Compiling Luau",
+				"Initializing script",
+			}
+			status.Text = model.Status == "failed" and "Execution failed"
+				or model.Status == "complete" and "Client initialization returned"
+				or names[model.PhaseIndex]
+			detail.Text = model.Detail
+			close.Text = model.Status ~= "running" and "Close"
+				or model.Started and "Hide / keep script running"
+				or "Cancel execution"
+			Anim.Tween(
+				fill,
+				{ Size = UDim2.fromScale(model.Completed / 4, 1) },
+				0.22,
+				"Out"
+			)
+			for index, label in ipairs(labels) do
+				label.Text = (
+					index <= model.Completed and "Done / "
+					or index == model.PhaseIndex and "Current / "
+					or "Next / "
+				)
+					.. ({
+						"Download",
+						"Validate source",
+						"Compile Luau",
+						"Initialize script",
+					})[index]
+				Theme.Bind(marks[index], {
+					BackgroundColor3 = index <= model.Completed and "Accent"
+						or "Muted",
+				})
+			end
+		end
+		job.Model = makeExecutionState(render)
+		function job:Phase(index, message)
+			return self.Model:Phase(index, message)
+		end
+		function job:CanContinue()
+			return not self.Closed and self.Model:CanContinue()
+		end
+		function job:Close()
+			if self.Closed then
+				return
+			end
+			self.Model:Dismiss()
+			self.Closed = true
+			shade:Destroy()
+			if Library.Execution == self then
+				Library.Execution = nil
+			end
+		end
+		function job:Finish()
+			self.Model:Finish()
+			task.delay(1.2, function()
+				if not self.Closed then
+					self:Close()
+				end
+			end)
+		end
+		function job:Fail(reason)
+			self.Model:Fail(reason)
+		end
+		close.Activated:Connect(function()
+			job:Close()
+		end)
+		Library.Execution = job
+		if not Library.ExecutionCleanupInstalled then
+			Library.ExecutionCleanupInstalled = true
+			Library:OnUnload(function()
+				if Library.Execution then
+					Library.Execution:Close()
+				end
+			end)
+		end
+		Anim.Tween(card, { GroupTransparency = 0 }, 0.22, "Out")
+		return job
 	end
 
 	function Library:CreateWindow(options)
@@ -12993,6 +13496,11 @@ local function createNullx11UI(scope)
 		for group in pairs(Anim.Loops) do
 			Anim.SetGroupActive(group, not enabled)
 		end
+	end
+
+	function Library:GetGuiParent()
+		assert(State.Gui and State.Gui.Parent, "Nullx11 GUI is not initialized")
+		return State.Gui.Parent
 	end
 
 	function Library:GetFPS()
@@ -13704,7 +14212,7 @@ local function runGame(context)
 		ReloadSource = [[
 if not game:IsLoaded() then game.Loaded:Wait() end
 if game.PlaceId ~= 118805555015549 then return end
-local body = game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/Nullx11-Forge.luau", true)
+local body = game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/Nullx11-Forge.luau", true)
 assert(type(body) == "string" and #body <= 2097152, "Invalid selected game bundle")
 local run, reason = loadstring(body, "Nullx11Forge")
 assert(run, reason)
@@ -22235,7 +22743,7 @@ if game.PlaceId ~= entry.GamePlaceId then
 	wrongPlace(
 		library,
 		entry,
-		"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/Nullx11-Forge.luau"
+		"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/Nullx11-Forge.luau"
 	)
 	return
 end

@@ -5,8 +5,12 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const read = (file) => readFileSync(resolve(root, file), 'utf8').trimEnd();
 const check = process.argv.includes('--check');
-const ui = read('src/ui/Nullx11UI.luau');
+const ui = read('src/ui/Nullx11UI.luau')
+  .replace('-- @NULLX11_BRAND_ICONS', read('src/ui/BrandIcons.luau'))
+  .replace('-- @NULLX11_EXECUTION_VIEW', `local makeExecutionState = (function()\n${read('src/ui/ExecutionState.luau')}\nend)()\n${read('src/ui/ExecutionView.luau')}`);
 const adapter = read('src/ui/Gen2Adapter.luau');
+const chilli = read('src/ui/ChilliAdapter.luau');
+const ownedRuntime = read('src/games/OwnedRuntime.luau');
 const wind = read('src/ui/WindAdapter.luau');
 const session = read('src/games/Context.luau');
 const launcher = read('src/games/BundleLauncher.luau');
@@ -48,7 +52,7 @@ let main = read('src/loader.luau')
   .replace('-- @NULLX11_WORKSPACE', read('src/ui/Workspace.luau'));
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
-  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg'})[entry.Id];
+  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot'})[entry.Id];
   if (!name) {
     // Other reviewed repository scripts can participate without being generated.
     if (!/^[\w/.-]+\.luau$/.test(entry.File) || entry.File.includes('..') || entry.File.startsWith('/')) throw new Error('Invalid external script path');
@@ -61,6 +65,7 @@ ${factory}
 ${module('makeAdapter', adapter)}
 ${module('makeSession', session)}
 ${entry.Id === 'egg' ? module('makeWindAdapter', wind) : ''}
+${entry.Id === 'stealabrainrot' ? module('makeOwnedRuntime', ownedRuntime) + '\n' + module('makeChilliAdapter', chilli) : ''}
 ${module('wrongPlace', launcher)}
 local function runGame(context)
 ${controller}
@@ -69,7 +74,15 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 local entry=${lua(entry)}
 local environment=type(getgenv)=="function" and getgenv() or _G
 local library=createNullx11UI({Id=${quote(name)},ReducedMotion=environment.Nullx11ReducedMotion==true})
-${entry.Id === 'egg' ? `local function compatible()
+${entry.Id === 'stealabrainrot' ? `local function compatible()
+local storage=game:GetService("ReplicatedStorage")
+local datas=storage:FindFirstChild("Datas")
+local packages=storage:FindFirstChild("Packages")
+local animals=datas and datas:FindFirstChild("Animals")
+local mouse=packages and packages:FindFirstChild("PlayerMouse")
+return animals and animals:IsA("ModuleScript") and mouse and mouse:IsA("ModuleScript") and workspace:FindFirstChild("Plots")~=nil
+end
+if not compatible() then` : entry.Id === 'egg' ? `local function compatible()
 local storage=game:GetService("ReplicatedStorage")
 for _,path in ipairs({"Shared.Remotes","Shared.Save","Client.EggState","Client.PlotState","Client.AssetRoster","Data.Assets","Data.Rarity"}) do
 local node=storage
@@ -79,12 +92,13 @@ end
 return true
 end
 if not compatible() then` : 'if game.PlaceId~=entry.GamePlaceId then'}
-wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/' + entry.File)})
+wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/' + entry.File)})
 return
 end
 local context=makeSession(entry.Id,library)
 context.Adapter=makeAdapter(library,entry.Name,"Nullx11 "..${quote(name)})
 ${entry.Id === 'egg' ? 'context.WindAdapter=makeWindAdapter(library,context.Adapter)' : ''}
+${entry.Id === 'stealabrainrot' ? 'context.Runtime=makeOwnedRuntime(context)\ncontext.ChilliAdapter=makeChilliAdapter(library,context.Runtime)' : ''}
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
 if not ok then
 library:Unload()

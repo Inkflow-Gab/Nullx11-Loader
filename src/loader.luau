@@ -16,7 +16,7 @@ local CONFIG = {
 	ReducedMotion = false,
 	StartupAnimation = true,
 	EnhancedWorkspace = true,
-	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/",
+	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/",
 }
 
 -- External runtimes may not provide the LocalScript instance.
@@ -6890,6 +6890,8 @@ do
 		catalog.Busy = true
 		button.Text = "Downloading…"
 		catalog.Message("Fetching scripts/" .. entry.File)
+		local progress = playerToolsBridge.BeginExecution
+			and playerToolsBridge.BeginExecution(entry.Name)
 		task.spawn(function()
 			local ok, reason = pcall(function()
 				assert(
@@ -6898,6 +6900,19 @@ do
 				)
 				local source =
 					game:HttpGet(CONFIG.ScriptBaseURL .. entry.File, true)
+				if progress then
+					if not progress:CanContinue() then
+						return
+					end
+					progress:Phase(
+						2,
+						"HTTP response received / "
+							.. tostring(
+								type(source) == "string" and #source or 0
+							)
+							.. " bytes"
+					)
+				end
 				assert(
 					type(source) == "string"
 						and #source > 0
@@ -6907,23 +6922,60 @@ do
 				if not alive then
 					return
 				end
+				if progress then
+					progress:Phase(
+						3,
+						"Compiling the selected source locally; no game feature is enabled by the loader."
+					)
+				end
+				-- Let the stage render once; this is not a timed/fake progress animation.
+				if progress then
+					task.wait()
+				end
+				if not alive or (progress and not progress:CanContinue()) then
+					return
+				end
 				local execute, compileError =
 					loadstring(source, "Nullx11Library/" .. entry.File)
 				assert(execute, compileError or "Script compilation failed")
 				if not alive then
 					return
 				end
+				if progress then
+					if not progress:CanContinue() then
+						return
+					end
+					progress:Phase(
+						4,
+						"Opening the selected game UI. Hiding this screen will not stop an initialized script."
+					)
+				end
 				button.Text = "Running…"
 				execute()
 			end)
 			catalog.Busy = false
+			if progress then
+				if not ok then
+					progress:Fail(reason)
+				elseif progress:CanContinue() then
+					progress:Finish()
+				end
+			end
 			if not alive or not button.Parent then
 				return
 			end
 			button.Text = if entry.GamePlaceId
 				then "Execute game script"
 				else "Run / " .. entry.Name
-			if ok then
+			if
+				progress
+				and progress.Model
+				and progress.Model.Status == "cancelled"
+			then
+				catalog.Message(
+					"Cancelled before initialization. The selected script was not started."
+				)
+			elseif ok then
 				catalog.Message(
 					"Client call returned: "
 						.. entry.Name
@@ -7075,6 +7127,13 @@ do
 				)
 			end)
 			catalog.Busy = false
+			if progress then
+				if not ok then
+					progress:Fail(reason)
+				elseif progress:CanContinue() then
+					progress:Finish()
+				end
+			end
 			if not alive then
 				return
 			end

@@ -47,6 +47,12 @@
       "source": "User upload Main.luau.txt",
       "sha256": "89aab6560361ffeb28d0b34539ecc709d4cf51bae1cc1b27630e2919aced7e8f",
       "bytes": 199482
+    },
+    "stealabrainrot-recovered.lua": {
+      "source": "User upload StealB.deobfuscated.lua.txt",
+      "sha256": "d909b9c86eaa02d8a6746f21d723f068dcb10a90b1564284c0208112f21c0d5d",
+      "bytes": 463283,
+      "note": "Recovered artifact; bootstrap, telemetry/config exfiltration, arrival loader and unconditional BlockTools listener removed before adaptation was published."
     }
   },
   "Updated": "2026-10-31"

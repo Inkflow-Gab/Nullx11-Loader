@@ -31,6 +31,13 @@
       "Description": "Egg farming, inventory, event, navigation and character tools from the supplied source. All jobs start off. Game-module compatibility is checked before startup.",
       "File": "Nullx11-StealAnEgg.luau",
       "Author": "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained."
+    },
+    {
+      "Id": "stealabrainrot",
+      "Name": "stealabrainrot",
+      "Description": "Supplied Chilli controller adapted to Nullx11 controls: stealer, helper, player, ESP and server tools. Automation starts off; required game modules are checked first.",
+      "File": "Nullx11-StealABrainrot.luau",
+      "Author": "Developed by Gab; adapted from user-supplied recovered Chilli source; original attribution retained."
     }
   ]
 }
