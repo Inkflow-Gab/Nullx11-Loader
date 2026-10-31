@@ -34,7 +34,7 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by Gab",
-					Content = "Shared +1 interface, native player tools and five separate game workspaces. Nothing plays or farms until you enable it.",
+					Content = "One Nullx11 interface, native player tools and seven independent game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()
@@ -95,62 +95,26 @@ do
 				local scriptsTab = window:AddTab(
 					"Scripts",
 					"code",
-					"Open a game workspace; no ON/OFF navigation"
+					"Find your game. Open your own workspace."
 				)
 				local catalog = playerToolsBridge.Catalog
-				for _, entry in ipairs(catalog.Entries) do
-					local group = scriptsTab:AddLeftGroupbox(entry.Name, "play")
-					group:AddParagraph({
-						Title = entry.GamePlaceId and ("Place " .. tostring(
-							entry.GamePlaceId
-						)) or "Game-module compatibility check",
-						Content = entry.Description,
-					})
-					group:AddLabel(entry.Author)
-					group:AddButton({
-						Text = "Open game launch window",
-						Func = function()
-							-- Resolve again: a refreshed manifest can remove or replace an entry.
-							local selected
-							for _, current in ipairs(catalog.Entries) do
-								if current.Id == entry.Id then
-									selected = current
-									break
-								end
-							end
-							if not selected then
-								library:Notify(
-									"Scripts",
-									"This entry changed. Open the refreshed Scripts library.",
-									5,
-									"Warning"
-								)
-								return
-							end
-							secondary(function()
-								catalog.OpenGame(selected)
-							end)
-						end,
-					})
-				end
-				local more = scriptsTab:AddRightGroupbox(
-					"Repository library",
-					"settings"
-				)
-				more:AddParagraph({
-					Title = "Separate game windows",
-					Content = "No teleport questions or automatic game joins. Unsupported games show a compatibility message. Executed game windows keep running when this loader is unloaded.",
-				})
-				more:AddButton({
-					Text = "Browse / refresh GitHub library",
-					Func = function()
-						secondary(playerToolsBridge.OpenScripts)
+				local browser = library:CreateScriptBrowser(scriptsTab, {
+					Entries = function()
+						return catalog.Entries
+					end,
+					Refresh = catalog.Refresh,
+					Open = function(entry)
+						secondary(function()
+							catalog.OpenGame(entry)
+						end)
 					end,
 				})
-				more:AddParagraph({
-					Title = "Runtime requirements",
-					Content = "Game execution needs client loadstring and HTTP. Delta capabilities vary by build. If unavailable, a visible error replaces execution; no simulated gameplay is substituted.",
-				})
+				catalog.WorkspaceBrowser = browser
+				library:OnUnload(function()
+					if catalog.WorkspaceBrowser == browser then
+						catalog.WorkspaceBrowser = nil
+					end
+				end)
 
 				local toolsTab = window:AddTab(
 					"Session tools",

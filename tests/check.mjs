@@ -43,13 +43,13 @@ try {
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 5);
+  assert.equal(manifest.Scripts.length, 7);
   assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
-    assert.ok(bundle.includes(['egg', 'stealabrainrot'].includes(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
+    assert.ok(bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money'].includes(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
     assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
     assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');
     assert.ok(Buffer.byteLength(bundle, 'utf8') < 2097152, 'bundle fits reviewed source size budget');
@@ -87,8 +87,24 @@ try {
     .replace('-- @EGG_HELPERS', helpers)
     .replace('-- @EGG_COMPATIBLE', between(read('scripts/Nullx11-StealAnEgg.luau'), 'local function compatible()', 'if not compatible() then'));
   console.log(...await state.loadstring(eggChecks, 'egg-idle-contracts', true)());
+  const browserChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/script-browser.luau')
+    .replace('-- @BROWSER_MODEL', 'makeScriptLibraryModel=(function()\n'+read('src/ui/ScriptLibraryModel.luau')+'\nend)()')
+    .replace('-- @BROWSER_VIEW',read('src/ui/ScriptBrowser.luau'));
+  console.log(...await state.loadstring(browserChecks,'script-browser',true)());
+  const ttkSource=read('src/games/TTKTesting.luau');
+  assert.ok(!/hookfunction|newcclosure|SessionTelemetry|HttpGet|loadstring|WaitForChild|task\.spawn/.test(ttkSource), 'TTK has no telemetry hijack, remote UI or startup discovery worker');
+  assert.equal((ttkSource.match(/context\.Connect\(/g)||[]).length,6,'all TTK source subscriptions are session-owned');
+  const moneySource=read('src/games/MoneyPerClick.luau');
+  assert.equal((moneySource.match(/task\.spawn\(/g)||[]).length,2,'at most one route worker and one dispatcher');
+  assert.ok(!/HttpGet|loadstring|WaitForChild|while true/.test(moneySource),'no upstream UI, indefinite dependency wait or immortal worker');
+  const newPorts = read('tests/game-port-contracts.luau').split('-- Insert the actual modules')[0]
+    + read('tests/new-game-ports.luau')
+      .replace('-- @MODULES', [module('makeAdapter','src/ui/Gen2Adapter.luau'), module('makeSession','src/games/Context.luau'), module('makePatches','src/games/OwnedPatches.luau'), module('makeMoneyData','src/games/MoneyData.luau').replace('local makeMoneyData=', 'local moneyData=' ) + '\nlocal function makeMoneyData() return moneyData end', between(read('scripts/Nullx11-TTKTesting.luau'),'local function compatible()', 'if not compatible() then').replace('function compatible()', 'function ttkCompatible()'), between(read('scripts/Nullx11-MoneyPerClick.luau'),'local function compatible()', 'if not compatible() then').replace('function compatible()', 'function moneyCompatible()')].join('\n'))
+      .replace('-- @TTK',read('src/games/TTKTesting.luau'))
+      .replace('-- @MONEY',read('src/games/MoneyPerClick.luau'));
+  console.log(...await state.loadstring(newPorts,'new-game-ports',true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: five actual controllers, place/module gates, source/default-state/budget/size, static icon and font license checks');
+  console.log('PASS: seven actual controllers, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),

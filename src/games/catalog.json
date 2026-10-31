@@ -7,7 +7,9 @@
       "Description": "Note tracking, configurable hit/hold timing, input release and gameplay rescan. Autoplay starts off.",
       "File": "Nullx11-Rosu.luau",
       "GamePlaceId": 9051087354,
-      "Author": "Developed by Gab; Nullx11 adaptation; original Yvetzal / Wyrizon / Infernum. Not for resale."
+      "Author": "Developed by Gab; Nullx11 adaptation; original Yvetzal / Wyrizon / Infernum. Not for resale.",
+      "Category": "Rhythm",
+      "Icon": "rhythm"
     },
     {
       "Id": "huss",
@@ -15,7 +17,9 @@
       "Description": "Runner routing, catcher assistance, progression tools and live status. Automation starts off; configurable per feature.",
       "File": "Nullx11-Huss.luau",
       "GamePlaceId": 107535308163741,
-      "Author": "Developed by Gab; Nullx11 adaptation; original Wyrizon and Yvetzal Team."
+      "Author": "Developed by Gab; Nullx11 adaptation; original Wyrizon and Yvetzal Team.",
+      "Category": "Adventure",
+      "Icon": "target"
     },
     {
       "Id": "forge",
@@ -23,21 +27,45 @@
       "Description": "Forge, gear, pets, stages, tower, rewards and session tools on the full shared +1 UI. Bounded workers; automation starts off.",
       "File": "Nullx11-Forge.luau",
       "GamePlaceId": 118805555015549,
-      "Author": "Developed by Gab; Nullx11 adaptation; original xDTaraZ controller and UI."
+      "Author": "Developed by Gab; Nullx11 adaptation; original xDTaraZ controller and UI.",
+      "Category": "Simulator",
+      "Icon": "anvil"
     },
     {
       "Id": "egg",
       "Name": "Nullx11 - Steal An Egg",
       "Description": "Egg farming, inventory, event, navigation and character tools from the supplied source. All jobs start off. Game-module compatibility is checked before startup.",
       "File": "Nullx11-StealAnEgg.luau",
-      "Author": "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained."
+      "Author": "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained.",
+      "Category": "Simulator",
+      "Icon": "egg"
     },
     {
       "Id": "stealabrainrot",
       "Name": "stealabrainrot",
       "Description": "Supplied Chilli controller adapted to Nullx11 controls: stealer, helper, player, ESP and server tools. Automation starts off; required game modules are checked first.",
       "File": "Nullx11-StealABrainrot.luau",
-      "Author": "Developed by Gab; adapted from user-supplied recovered Chilli source; original attribution retained."
+      "Author": "Developed by Gab; adapted from user-supplied recovered Chilli source; original attribution retained.",
+      "Category": "Adventure",
+      "Icon": "brain"
+    },
+    {
+      "Id": "ttk",
+      "Name": "TTK Testing",
+      "Description": "Merc hitbox visuals, centered aim, guarded weapon controls and explicit discovery. Features start off; Drawing overlays require executor support.",
+      "File": "Nullx11-TTKTesting.luau",
+      "Author": "Developed by Gab; adapted from user-supplied TTK source (original author unspecified).",
+      "Category": "Shooter",
+      "Icon": "target"
+    },
+    {
+      "Id": "money",
+      "Name": "+1 Money per Click",
+      "Description": "Worlds 1\u20134 smart Rebirth/Cash routing, money, evolution and 16 egg choices. Default-off jobs, exclusive movement modes and bounded requests.",
+      "File": "Nullx11-MoneyPerClick.luau",
+      "Author": "Developed by Gab; original smart-farming source by VoidScripts / VoidScriptsDK.",
+      "Category": "Simulator",
+      "Icon": "coin"
     }
   ]
 }

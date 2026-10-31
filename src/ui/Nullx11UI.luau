@@ -9352,6 +9352,13 @@ function Window:SelectTab(tab)
 end
 
 function Window:ApplyFilter()
+	if self.ActiveTab and self.ActiveTab.ApplyLibraryFilter then
+		if self.EmptyState then
+			self.EmptyState.Visible = false
+		end
+		self.ActiveTab.ApplyLibraryFilter(self.Query)
+		return
+	end
 	local tab = self.ActiveTab
 	if not tab then
 		return
@@ -12536,6 +12543,7 @@ function Window:AddSettingsTab()
 	return tab
 end
 
+-- @NULLX11_SCRIPT_BROWSER
 -- @NULLX11_EXECUTION_VIEW
 
 function Library:CreateWindow(options)

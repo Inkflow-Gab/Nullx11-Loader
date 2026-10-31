@@ -3053,6 +3053,52 @@ local function createNullx11UI(scope)
 	-- Original neutral line assets, drawn at native resolution. No emoji, character
 	-- imagery, remote image fetch, particle loop or per-frame redraw.
 	local brandPaths = {
+		coin = {
+			{
+				{ 0.3, 0.12 },
+				{ 0.7, 0.12 },
+				{ 0.88, 0.3 },
+				{ 0.88, 0.7 },
+				{ 0.7, 0.88 },
+				{ 0.3, 0.88 },
+				{ 0.12, 0.7 },
+				{ 0.12, 0.3 },
+				{ 0.3, 0.12 },
+			},
+			{
+				{ 0.6, 0.3 },
+				{ 0.4, 0.3 },
+				{ 0.35, 0.5 },
+				{ 0.65, 0.5 },
+				{ 0.6, 0.7 },
+				{
+					0.4,
+					0.7,
+				},
+			},
+			{ { 0.5, 0.2 }, { 0.5, 0.8 } },
+		},
+		rhythm = {
+			{ { 0.18, 0.65 }, { 0.18, 0.35 } },
+			{ { 0.39, 0.85 }, { 0.39, 0.15 } },
+			{ { 0.61, 0.72 }, { 0.61, 0.28 } },
+			{ { 0.82, 0.58 }, { 0.82, 0.42 } },
+		},
+		anvil = {
+			{
+				{ 0.12, 0.3 },
+				{ 0.88, 0.3 },
+				{ 0.73, 0.5 },
+				{ 0.53, 0.5 },
+				{ 0.53, 0.7 },
+				{ 0.72, 0.8 },
+				{ 0.25, 0.8 },
+				{ 0.42, 0.7 },
+				{ 0.42, 0.5 },
+				{ 0.22, 0.5 },
+				{ 0.12, 0.3 },
+			},
+		},
 		home = {
 			{ { 0.15, 0.43 }, { 0.5, 0.14 }, { 0.85, 0.43 } },
 			{ { 0.24, 0.42 }, { 0.24, 0.84 }, { 0.76, 0.84 }, { 0.76, 0.42 } },
@@ -3275,7 +3321,7 @@ local function createNullx11UI(scope)
 		flower = "bolt",
 		boo = "eye",
 		mushroom = "home",
-		coin = "layers",
+
 		shell = "layers",
 		stealer = "brain",
 		loot = "layers",
@@ -9804,6 +9850,13 @@ local function createNullx11UI(scope)
 	end
 
 	function Window:ApplyFilter()
+		if self.ActiveTab and self.ActiveTab.ApplyLibraryFilter then
+			if self.EmptyState then
+				self.EmptyState.Visible = false
+			end
+			self.ActiveTab.ApplyLibraryFilter(self.Query)
+			return
+		end
 		local tab = self.ActiveTab
 		if not tab then
 			return
@@ -13070,6 +13123,346 @@ local function createNullx11UI(scope)
 		return tab
 	end
 
+	local makeScriptLibraryModel = (function()
+		-- Pure browsing policy for the native workspace game-card browser.
+		local model = {}
+		function model.Category(entry)
+			return entry.Category or "Community"
+		end
+		function model.Badge(entry, place)
+			if not entry.GamePlaceId then
+				return "MODULE CHECK ON LAUNCH"
+			end
+			return entry.GamePlaceId == place and "PLACE MATCH" or "OTHER PLACE"
+		end
+		function model.Match(entry, query, category, onlyPlace, place)
+			if
+				category
+				and category ~= "All games"
+				and model.Category(entry) ~= category
+			then
+				return false
+			end
+			if
+				onlyPlace
+				and (not entry.GamePlaceId or entry.GamePlaceId ~= place)
+			then
+				return false
+			end
+			local haystack = string.lower(table.concat({
+				entry.Name or "",
+				entry.Description or "",
+				entry.Author or "",
+				entry.File or "",
+				model.Category(entry),
+			}, " "))
+			for word in string.lower(query or ""):gmatch("%S+") do
+				if not haystack:find(word, 1, true) then
+					return false
+				end
+			end
+			return true
+		end
+		function model.Categories(entries)
+			local seen, list = {}, {}
+			for _, entry in ipairs(entries) do
+				local category = model.Category(entry)
+				if not seen[category] then
+					seen[category] = true
+					table.insert(list, category)
+				end
+			end
+			table.sort(list)
+			table.insert(list, 1, "All games")
+			return list
+		end
+		function model.Resolve(entries, id)
+			for _, entry in ipairs(entries) do
+				if entry.Id == id then
+					return entry
+				end
+			end
+			return nil
+		end
+		return model
+	end)()
+	-- A real native browser, not a screenshot or a second upstream UI.
+	-- Cards are reused on search; refresh removes obsolete instances/subscriptions.
+	function Library:CreateScriptBrowser(tab, options)
+		local model = makeScriptLibraryModel
+		local browser = {
+			Query = "",
+			GlobalQuery = "",
+			Category = "All games",
+			OnlyPlace = false,
+			Cards = {},
+			Matches = {},
+		}
+		local controls =
+			tab:AddLeftGroupbox("Scripts / curated library", "layers")
+		local summary = controls:AddLabel("Loading library", true)
+		local grid = Draw.New(
+			"Frame",
+			{ Name = "ScriptCardGrid", BackgroundTransparency = 1 }
+		)
+		local empty = Draw.Text({
+			Name = "ScriptsEmptyState",
+			Text = "No games match. Clear search or choose All games.",
+			TextWrapped = true,
+			Size = UDim2.new(1, -24, 0, 70),
+			Position = UDim2.fromOffset(12, 12),
+			Parent = grid,
+		}, "Body", 16, "SubText")
+		local function copy(parent, name, text, y, height, size, token)
+			return Draw.Text({
+				Name = name,
+				Text = text,
+				Position = UDim2.fromOffset(16, y),
+				Size = UDim2.new(1, -32, 0, height),
+				TextWrapped = true,
+				TextYAlignment = Enum.TextYAlignment.Top,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				Parent = parent,
+			}, "Body", size, token)
+		end
+		local function latest()
+			return options.Entries()
+		end
+		local function layout(width)
+			local columns = width >= 610 and 2 or 1
+			local cardWidth =
+				math.max(0, (width - (columns - 1) * 12) / columns)
+			for index, card in ipairs(browser.Matches) do
+				card.Frame.Position = UDim2.fromOffset(
+					(index - 1) % columns * (cardWidth + 12),
+					math.floor((index - 1) / columns) * 260
+				)
+				card.Frame.Size = UDim2.fromOffset(cardWidth, 248)
+			end
+		end
+		local gridItem = tab.Left:Add(grid, {
+			Height = function(width)
+				local count = #browser.Matches
+				return count == 0 and 90
+					or math.ceil(count / (width >= 610 and 2 or 1))
+							* 260
+						- 12
+			end,
+			OnLayout = layout,
+		})
+		function browser:Filter()
+			table.clear(self.Matches)
+			local total = 0
+			for _, entry in ipairs(latest()) do
+				total += 1
+				local card = self.Cards[entry.Id]
+				if card then
+					local show = model.Match(
+						entry,
+						self.Query .. " " .. self.GlobalQuery,
+						self.Category,
+						self.OnlyPlace,
+						game.PlaceId
+					)
+					card.Frame.Visible = show
+					if show then
+						table.insert(self.Matches, card)
+					end
+				end
+			end
+			empty.Visible = #self.Matches == 0
+			summary:SetText(
+				string.format(
+					"%d of %d games / Nullx11 by Gab",
+					#self.Matches,
+					total
+				)
+			)
+			tab.Left:MarkDirty()
+			tab:ApplyColumns()
+		end
+		local category
+		function browser:Refresh()
+			local present = {}
+			for _, entry in ipairs(latest()) do
+				present[entry.Id] = true
+				local card = self.Cards[entry.Id]
+				if not card then
+					local frame = Draw.Box(
+						"Frame",
+						{ Name = "ScriptCard_" .. entry.Id, Parent = grid },
+						"Panel",
+						"Outline",
+						14,
+						1
+					)
+					local accent = Draw.Box("Frame", {
+						Size = UDim2.new(1, -32, 0, 3),
+						Position = UDim2.fromOffset(16, 0),
+						Parent = frame,
+					}, "Accent", nil, 2)
+					local icon = Icons.Create(
+						frame,
+						entry.Icon or "code",
+						30,
+						"Accent",
+						entry.Name
+					)
+					icon.Position = UDim2.fromOffset(16, 18)
+					local genre = copy(
+						frame,
+						"Category",
+						model.Category(entry):upper(),
+						19,
+						20,
+						14,
+						"Muted"
+					)
+					genre.Position = UDim2.fromOffset(58, 23)
+					genre.Size = UDim2.new(1, -74, 0, 20)
+					local title =
+						copy(frame, "GameName", entry.Name, 59, 46, 19, "Text")
+					local description = copy(
+						frame,
+						"GameDescription",
+						entry.Description,
+						112,
+						57,
+						14,
+						"SubText"
+					)
+					local badge = copy(
+						frame,
+						"Compatibility",
+						model.Badge(entry, game.PlaceId),
+						177,
+						18,
+						12,
+						"Muted"
+					)
+					local button = Draw.Box("TextButton", {
+						Name = "OpenScript_" .. entry.Id,
+						Position = UDim2.fromOffset(14, 204),
+						Size = UDim2.new(1, -28, 0, 32),
+						Parent = frame,
+					}, "Element", "Outline", 8, 1)
+					copy(
+						button,
+						"OpenLabel",
+						"View details & launch",
+						6,
+						20,
+						14,
+						"Text"
+					)
+					local id = entry.Id
+					local connection = button.Activated:Connect(function()
+						local selected = model.Resolve(latest(), id)
+						if not selected then
+							self:Refresh()
+							return
+						end
+						options.Open(selected)
+					end)
+					card = {
+						Frame = frame,
+						Title = title,
+						Description = description,
+						Genre = genre,
+						Badge = badge,
+						Connection = connection,
+						Accent = accent,
+					}
+					self.Cards[entry.Id] = card
+				end
+				card.Title.Text = entry.Name
+				card.Description.Text = entry.Description
+				card.Genre.Text = model.Category(entry):upper()
+				card.Badge.Text = model.Badge(entry, game.PlaceId)
+			end
+			local removed = {}
+			for id, card in pairs(self.Cards) do
+				if not present[id] then
+					table.insert(removed, id)
+					card.Connection:Disconnect()
+					Theme.UnbindTree(card.Frame)
+					card.Frame:Destroy()
+				end
+			end
+			for _, id in ipairs(removed) do
+				self.Cards[id] = nil
+			end
+			if category then
+				local values = model.Categories(latest())
+				category:SetValues(values)
+				if not table.find(values, self.Category) then
+					self.Category = "All games"
+					category:SetValue("All games")
+				end
+			end
+			self:Filter()
+		end
+		controls:AddInput("ScriptLibrarySearch", {
+			Text = "Search library",
+			Placeholder = "Game, feature or creator",
+			Finished = false,
+			Default = "",
+			NoSave = true,
+			Callback = function(value)
+				browser.Query = value
+				browser:Filter()
+			end,
+		})
+		category = controls:AddDropdown("ScriptLibraryCategory", {
+			Text = "Category",
+			Values = model.Categories(latest()),
+			Default = "All games",
+			NoSave = true,
+			Callback = function(value)
+				browser.Category = value
+				browser:Filter()
+			end,
+		})
+		controls:AddToggle("ScriptLibraryPlace", {
+			Text = "Known place matches only",
+			Default = false,
+			NoSave = true,
+			Callback = function(value)
+				browser.OnlyPlace = value
+				browser:Filter()
+			end,
+		})
+		controls:AddButton({
+			Text = "Refresh repository manifest",
+			Func = options.Refresh,
+		})
+		local help = tab:AddLeftGroupbox("Read before launching", "info")
+		help:AddParagraph({
+			Title = "Browse first. Launch deliberately.",
+			Content = "Cards open the existing details and confirmation window. Nothing auto-runs or joins a game. A place match is not proof of server compatibility; module-gated games are checked by their bundle before startup.",
+		})
+		help:AddParagraph({
+			Title = "Independent workspaces",
+			Content = "Executed game windows survive loader unload. Stop features or unload each game's own workspace to clean up its jobs, overlays and owned changes.",
+		})
+		help:AddParagraph({
+			Title = "Source credits",
+			Content = "Gab develops Nullx11's interface and integration. Original controller authors and source restrictions remain visible in each game's details and repository provenance.",
+		})
+		tab.ApplyLibraryFilter = function(query)
+			browser.GlobalQuery = query or ""
+			browser:Filter()
+		end
+		self:OnUnload(function()
+			for _, card in pairs(browser.Cards) do
+				card.Connection:Disconnect()
+			end
+			table.clear(browser.Cards)
+			table.clear(browser.Matches)
+		end)
+		browser:Refresh()
+		return browser
+	end
 	local makeExecutionState = (function()
 		-- Observable, monotonic execution stages. No time-based/fabricated percentages.
 		return function(render)
@@ -20378,6 +20771,20 @@ do
 					"Invalid source credit"
 				)
 			end
+			if entry.Category ~= nil then
+				assert(
+					type(entry.Category) == "string" and #entry.Category <= 40,
+					"Invalid category"
+				)
+			end
+			if entry.Icon ~= nil then
+				assert(
+					type(entry.Icon) == "string"
+						and entry.Icon:match("^[%w_%-]+$")
+						and #entry.Icon <= 32,
+					"Invalid icon"
+				)
+			end
 			local file = entry.File
 			assert(
 				type(file) == "string"
@@ -20413,6 +20820,8 @@ do
 			end
 			seen[entry.Id] = true
 			table.insert(clean, {
+				Category = entry.Category,
+				Icon = entry.Icon,
 				Id = entry.Id,
 				Name = entry.Name,
 				Description = entry.Description,
@@ -20435,6 +20844,8 @@ do
 					File = "Nullx11-Rosu.luau",
 					GamePlaceId = 9051087354,
 					Author = "Developed by Gab; Nullx11 adaptation; original Yvetzal / Wyrizon / Infernum. Not for resale.",
+					Category = "Rhythm",
+					Icon = "rhythm",
 				},
 				{
 					Id = "huss",
@@ -20443,6 +20854,8 @@ do
 					File = "Nullx11-Huss.luau",
 					GamePlaceId = 107535308163741,
 					Author = "Developed by Gab; Nullx11 adaptation; original Wyrizon and Yvetzal Team.",
+					Category = "Adventure",
+					Icon = "target",
 				},
 				{
 					Id = "forge",
@@ -20451,6 +20864,8 @@ do
 					File = "Nullx11-Forge.luau",
 					GamePlaceId = 118805555015549,
 					Author = "Developed by Gab; Nullx11 adaptation; original xDTaraZ controller and UI.",
+					Category = "Simulator",
+					Icon = "anvil",
 				},
 				{
 					Id = "egg",
@@ -20458,6 +20873,8 @@ do
 					Description = "Egg farming, inventory, event, navigation and character tools from the supplied source. All jobs start off. Game-module compatibility is checked before startup.",
 					File = "Nullx11-StealAnEgg.luau",
 					Author = "Developed by Gab; adapted from Henrik / xyzhenrik (Silence). Original provenance retained.",
+					Category = "Simulator",
+					Icon = "egg",
 				},
 				{
 					Id = "stealabrainrot",
@@ -20465,6 +20882,26 @@ do
 					Description = "Supplied Chilli controller adapted to Nullx11 controls: stealer, helper, player, ESP and server tools. Automation starts off; required game modules are checked first.",
 					File = "Nullx11-StealABrainrot.luau",
 					Author = "Developed by Gab; adapted from user-supplied recovered Chilli source; original attribution retained.",
+					Category = "Adventure",
+					Icon = "brain",
+				},
+				{
+					Id = "ttk",
+					Name = "TTK Testing",
+					Description = "Merc hitbox visuals, centered aim, guarded weapon controls and explicit discovery. Features start off; Drawing overlays require executor support.",
+					File = "Nullx11-TTKTesting.luau",
+					Author = "Developed by Gab; adapted from user-supplied TTK source (original author unspecified).",
+					Category = "Shooter",
+					Icon = "target",
+				},
+				{
+					Id = "money",
+					Name = "+1 Money per Click",
+					Description = "Worlds 1–4 smart Rebirth/Cash routing, money, evolution and 16 egg choices. Default-off jobs, exclusive movement modes and bounded requests.",
+					File = "Nullx11-MoneyPerClick.luau",
+					Author = "Developed by Gab; original smart-farming source by VoidScripts / VoidScriptsDK.",
+					Category = "Simulator",
+					Icon = "coin",
 				},
 			},
 		})
@@ -20738,6 +21175,10 @@ do
 							.. entry.Description
 							.. " "
 							.. entry.File
+							.. " "
+							.. (entry.Author or "")
+							.. " "
+							.. (entry.Category or "Community")
 					),
 					query,
 					1,
@@ -20751,47 +21192,70 @@ do
 				BackgroundColor3 = colors.Surface,
 				BorderSizePixel = 0,
 				Position = UDim2.fromOffset(0, cursor),
-				Size = UDim2.new(1, -4, 0, 156),
+				Size = UDim2.new(1, -4, 0, 202),
 			}, window.Body)
 			corner(row, 12)
 			table.insert(catalog.Rows, row)
+			drawIcon(row, CONFIG.Accent, UDim2.fromOffset(14, 43), 30)
 			local heading = label(row, entry.Name, 18, colors.Text)
-			heading.Position = UDim2.fromOffset(12, 8)
-			heading.Size = UDim2.new(1, -24, 0, 24)
+			heading.Position = UDim2.fromOffset(56, 38)
+			heading.Size = UDim2.new(1, -70, 0, 46)
+			heading.TextWrapped = true
 			heading.TextTruncate = Enum.TextTruncate.AtEnd
 			local description = label(row, entry.Description, 14, colors.Muted)
-			description.Position = UDim2.fromOffset(12, 36)
+			description.Position = UDim2.fromOffset(14, 88)
 			description.Size = UDim2.new(1, -24, 0, 40)
 			description.TextWrapped = true
-			local path = label(row, "scripts/" .. entry.File, 14, CONFIG.Accent)
-			path.Position = UDim2.fromOffset(12, 78)
+			local path = label(
+				row,
+				(entry.Category or "Community"):upper()
+					.. " / "
+					.. (
+						entry.GamePlaceId
+							and (entry.GamePlaceId == game.PlaceId and "PLACE MATCH" or "OTHER PLACE")
+						or "MODULE CHECK ON LAUNCH"
+					),
+				12,
+				CONFIG.Accent
+			)
+			path.Position = UDim2.fromOffset(14, 12)
 			path.Size = UDim2.new(1, -24, 0, 22)
 			path.TextTruncate = Enum.TextTruncate.AtEnd
 			local run = create("TextButton", {
 				Name = "RunScript_" .. entry.Id,
 				Text = if entry.GamePlaceId
-					then "Open game window"
+						or entry.Id == "ttk"
+						or entry.Id == "money"
+						or entry.Id == "egg"
+						or entry.Id == "stealabrainrot"
+					then "View details & launch"
 					else "Run / " .. entry.Name,
 				TextSize = 15,
 				Font = Enum.Font.GothamMedium,
 				TextColor3 = colors.Panel,
 				BackgroundColor3 = CONFIG.Accent,
 				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(10, 104),
+				Position = UDim2.fromOffset(10, 146),
 				Size = UDim2.new(1, -20, 0, 44),
 			}, row)
 			corner(run, 9)
 			table.insert(
 				catalog.RowConnections,
 				run.Activated:Connect(function()
-					if entry.GamePlaceId then
+					if
+						entry.GamePlaceId
+						or entry.Id == "ttk"
+						or entry.Id == "money"
+						or entry.Id == "egg"
+						or entry.Id == "stealabrainrot"
+					then
 						catalog.OpenGame(entry)
 					else
 						catalog.Run(entry, run)
 					end
 				end)
 			)
-			cursor += 166
+			cursor += 214
 			count += 1
 		end
 		if count == 0 then
@@ -20857,6 +21321,9 @@ do
 				catalog.Entries = result
 				catalog.Loaded = true
 				catalog.Render()
+				if catalog.WorkspaceBrowser then
+					catalog.WorkspaceBrowser:Refresh()
+				end
 				catalog.Message(
 					string.format(
 						"GitHub manifest loaded / %d published scripts.",
@@ -20887,7 +21354,7 @@ do
 		catalog.Search = create("TextBox", {
 			Name = "ScriptsSearch",
 			Text = "",
-			PlaceholderText = "Search published scripts…",
+			PlaceholderText = "Search games, features or creators…",
 			ClearTextOnFocus = false,
 			MultiLine = false,
 			Font = Enum.Font.Gotham,
@@ -21493,7 +21960,7 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by Gab",
-					Content = "Shared +1 interface, native player tools and five separate game workspaces. Nothing plays or farms until you enable it.",
+					Content = "One Nullx11 interface, native player tools and seven independent game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()
@@ -21554,62 +22021,26 @@ do
 				local scriptsTab = window:AddTab(
 					"Scripts",
 					"code",
-					"Open a game workspace; no ON/OFF navigation"
+					"Find your game. Open your own workspace."
 				)
 				local catalog = playerToolsBridge.Catalog
-				for _, entry in ipairs(catalog.Entries) do
-					local group = scriptsTab:AddLeftGroupbox(entry.Name, "play")
-					group:AddParagraph({
-						Title = entry.GamePlaceId and ("Place " .. tostring(
-							entry.GamePlaceId
-						)) or "Game-module compatibility check",
-						Content = entry.Description,
-					})
-					group:AddLabel(entry.Author)
-					group:AddButton({
-						Text = "Open game launch window",
-						Func = function()
-							-- Resolve again: a refreshed manifest can remove or replace an entry.
-							local selected
-							for _, current in ipairs(catalog.Entries) do
-								if current.Id == entry.Id then
-									selected = current
-									break
-								end
-							end
-							if not selected then
-								library:Notify(
-									"Scripts",
-									"This entry changed. Open the refreshed Scripts library.",
-									5,
-									"Warning"
-								)
-								return
-							end
-							secondary(function()
-								catalog.OpenGame(selected)
-							end)
-						end,
-					})
-				end
-				local more = scriptsTab:AddRightGroupbox(
-					"Repository library",
-					"settings"
-				)
-				more:AddParagraph({
-					Title = "Separate game windows",
-					Content = "No teleport questions or automatic game joins. Unsupported games show a compatibility message. Executed game windows keep running when this loader is unloaded.",
-				})
-				more:AddButton({
-					Text = "Browse / refresh GitHub library",
-					Func = function()
-						secondary(playerToolsBridge.OpenScripts)
+				local browser = library:CreateScriptBrowser(scriptsTab, {
+					Entries = function()
+						return catalog.Entries
+					end,
+					Refresh = catalog.Refresh,
+					Open = function(entry)
+						secondary(function()
+							catalog.OpenGame(entry)
+						end)
 					end,
 				})
-				more:AddParagraph({
-					Title = "Runtime requirements",
-					Content = "Game execution needs client loadstring and HTTP. Delta capabilities vary by build. If unavailable, a visible error replaces execution; no simulated gameplay is substituted.",
-				})
+				catalog.WorkspaceBrowser = browser
+				library:OnUnload(function()
+					if catalog.WorkspaceBrowser == browser then
+						catalog.WorkspaceBrowser = nil
+					end
+				end)
 
 				local toolsTab = window:AddTab(
 					"Session tools",

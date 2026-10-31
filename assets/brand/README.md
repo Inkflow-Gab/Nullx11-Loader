@@ -8,3 +8,5 @@ Original geometric prism and brain-circuit design references for the Gab-develop
 - `Draw.DrawnEmblem` in `src/ui/Nullx11UI.luau`: actual native restore/header/loading insignia.
 
 Roblox does not natively use these SVG files as ImageLabels. The interface draws their geometric design language with Frames/UIStrokes/UIGradients; it does **not** fetch or attempt to load the SVGs at runtime. Native line thickness scales with icon size, colors bind to the theme, and icon rendering has no heartbeat/particle loop. The SVGs are reference/export assets, not a claim of a Roblox-rendered screenshot.
+
+`coin.svg`, `rhythm.svg` and `anvil.svg` are original static export references for the added native semantic line assets. The renderer draws these paths directly; it does not fetch SVGs or animate restore icons.

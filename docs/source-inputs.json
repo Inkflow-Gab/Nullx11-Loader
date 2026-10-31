@@ -53,6 +53,18 @@
       "sha256": "d909b9c86eaa02d8a6746f21d723f068dcb10a90b1564284c0208112f21c0d5d",
       "bytes": 463283,
       "note": "Recovered artifact; bootstrap, telemetry/config exfiltration, arrival loader and unconditional BlockTools listener removed before adaptation was published."
+    },
+    "ttk-testing-original.lua": {
+      "source": "User upload dollaropen-sourcedollar-ttk-testing-inf-ammo-no-recoil-rapid-fire-max_1793372509440_zi8bj2WeI6.txt",
+      "sha256": "6b882a6901fed1a2f1e76b0c01704368f1bea05d115b13d26c24e5ff2426e91e",
+      "bytes": 18027,
+      "note": "VibeUI and unconditional game-telemetry suppression removed; explicit discovery and owned reversible edits; irreversible ADS left unavailable."
+    },
+    "money-per-click-original.lua": {
+      "source": "User upload smart-farmingopen-source_1793302893383_MCFPAlb4zl.txt",
+      "sha256": "f4f2b3515ffc9f78a47024dbcc6144bcf9a22370e4af3c7897f5f18036fb2243",
+      "bytes": 19482,
+      "note": "VoidScripts attribution retained; Rayfield removed; exclusive routes and bounded default-off workers."
     }
   },
   "Updated": "2026-10-31"

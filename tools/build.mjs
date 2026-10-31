@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, '..');
 const read = (file) => readFileSync(resolve(root, file), 'utf8').trimEnd();
 const check = process.argv.includes('--check');
 const ui = read('src/ui/Nullx11UI.luau')
+  .replace('-- @NULLX11_SCRIPT_BROWSER', `local makeScriptLibraryModel=(function()\n${read('src/ui/ScriptLibraryModel.luau')}\nend)()\n${read('src/ui/ScriptBrowser.luau')}`)
   .replace('-- @NULLX11_BRAND_ICONS', read('src/ui/BrandIcons.luau'))
   .replace('-- @NULLX11_EXECUTION_VIEW', `local makeExecutionState = (function()\n${read('src/ui/ExecutionState.luau')}\nend)()\n${read('src/ui/ExecutionView.luau')}`);
 const adapter = read('src/ui/Gen2Adapter.luau');
@@ -52,7 +53,7 @@ let main = read('src/loader.luau')
   .replace('-- @NULLX11_WORKSPACE', read('src/ui/Workspace.luau'));
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
-  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot'})[entry.Id];
+  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick'})[entry.Id];
   if (!name) {
     // Other reviewed repository scripts can participate without being generated.
     if (!/^[\w/.-]+\.luau$/.test(entry.File) || entry.File.includes('..') || entry.File.startsWith('/')) throw new Error('Invalid external script path');
@@ -66,6 +67,8 @@ ${module('makeAdapter', adapter)}
 ${module('makeSession', session)}
 ${entry.Id === 'egg' ? module('makeWindAdapter', wind) : ''}
 ${entry.Id === 'stealabrainrot' ? module('makeOwnedRuntime', ownedRuntime) + '\n' + module('makeChilliAdapter', chilli) : ''}
+${entry.Id === 'ttk' ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
+${entry.Id === 'money' ? module('makeMoneyData', 'return function()\n'+read('src/games/MoneyData.luau')+'\nend') : ''}
 ${module('wrongPlace', launcher)}
 local function runGame(context)
 ${controller}
@@ -74,7 +77,25 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 local entry=${lua(entry)}
 local environment=type(getgenv)=="function" and getgenv() or _G
 local library=createNullx11UI({Id=${quote(name)},ReducedMotion=environment.Nullx11ReducedMotion==true})
-${entry.Id === 'stealabrainrot' ? `local function compatible()
+${entry.Id === 'ttk' ? `local function compatible()
+local controllers=game:GetService("ReplicatedStorage"):FindFirstChild("Modules")
+for _,name in ipairs({"Client","Controllers"}) do controllers=controllers and controllers:FindFirstChild(name) end
+for _,name in ipairs({"GunController","CameraController"}) do
+local node=controllers and controllers:FindFirstChild(name)
+if not node or not node:IsA("ModuleScript") then return false end
+end
+return workspace:FindFirstChild("MercPlayers")~=nil
+end
+if not compatible() then` : entry.Id === 'money' ? `local function compatible()
+local storage=game:GetService("ReplicatedStorage")
+for _,spec in ipairs({{"Remotes.ClickToEarn","RemoteEvent"},{"RebirthRemote","RemoteEvent"},{"EvolveRemote","RemoteEvent"},{"Events.CanOpenEgg","RemoteFunction"}}) do
+local node=storage
+for part in spec[1]:gmatch("[^.]+") do node=node and node:FindFirstChild(part) end
+if not node or not node:IsA(spec[2]) then return false end
+end
+return true
+end
+if not compatible() then` : entry.Id === 'stealabrainrot' ? `local function compatible()
 local storage=game:GetService("ReplicatedStorage")
 local datas=storage:FindFirstChild("Datas")
 local packages=storage:FindFirstChild("Packages")
@@ -99,6 +120,8 @@ local context=makeSession(entry.Id,library)
 context.Adapter=makeAdapter(library,entry.Name,"Nullx11 "..${quote(name)})
 ${entry.Id === 'egg' ? 'context.WindAdapter=makeWindAdapter(library,context.Adapter)' : ''}
 ${entry.Id === 'stealabrainrot' ? 'context.Runtime=makeOwnedRuntime(context)\ncontext.ChilliAdapter=makeChilliAdapter(library,context.Runtime)' : ''}
+${entry.Id === 'ttk' ? 'context.Patches=makePatches()' : ''}
+${entry.Id === 'money' ? 'context.MoneyData=makeMoneyData()' : ''}
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
 if not ok then
 library:Unload()

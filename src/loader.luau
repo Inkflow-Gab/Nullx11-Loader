@@ -6713,6 +6713,20 @@ do
 					"Invalid source credit"
 				)
 			end
+			if entry.Category ~= nil then
+				assert(
+					type(entry.Category) == "string" and #entry.Category <= 40,
+					"Invalid category"
+				)
+			end
+			if entry.Icon ~= nil then
+				assert(
+					type(entry.Icon) == "string"
+						and entry.Icon:match("^[%w_%-]+$")
+						and #entry.Icon <= 32,
+					"Invalid icon"
+				)
+			end
 			local file = entry.File
 			assert(
 				type(file) == "string"
@@ -6748,6 +6762,8 @@ do
 			end
 			seen[entry.Id] = true
 			table.insert(clean, {
+				Category = entry.Category,
+				Icon = entry.Icon,
 				Id = entry.Id,
 				Name = entry.Name,
 				Description = entry.Description,
@@ -7028,6 +7044,10 @@ do
 							.. entry.Description
 							.. " "
 							.. entry.File
+							.. " "
+							.. (entry.Author or "")
+							.. " "
+							.. (entry.Category or "Community")
 					),
 					query,
 					1,
@@ -7041,47 +7061,70 @@ do
 				BackgroundColor3 = colors.Surface,
 				BorderSizePixel = 0,
 				Position = UDim2.fromOffset(0, cursor),
-				Size = UDim2.new(1, -4, 0, 156),
+				Size = UDim2.new(1, -4, 0, 202),
 			}, window.Body)
 			corner(row, 12)
 			table.insert(catalog.Rows, row)
+			drawIcon(row, CONFIG.Accent, UDim2.fromOffset(14, 43), 30)
 			local heading = label(row, entry.Name, 18, colors.Text)
-			heading.Position = UDim2.fromOffset(12, 8)
-			heading.Size = UDim2.new(1, -24, 0, 24)
+			heading.Position = UDim2.fromOffset(56, 38)
+			heading.Size = UDim2.new(1, -70, 0, 46)
+			heading.TextWrapped = true
 			heading.TextTruncate = Enum.TextTruncate.AtEnd
 			local description = label(row, entry.Description, 14, colors.Muted)
-			description.Position = UDim2.fromOffset(12, 36)
+			description.Position = UDim2.fromOffset(14, 88)
 			description.Size = UDim2.new(1, -24, 0, 40)
 			description.TextWrapped = true
-			local path = label(row, "scripts/" .. entry.File, 14, CONFIG.Accent)
-			path.Position = UDim2.fromOffset(12, 78)
+			local path = label(
+				row,
+				(entry.Category or "Community"):upper()
+					.. " / "
+					.. (
+						entry.GamePlaceId
+							and (entry.GamePlaceId == game.PlaceId and "PLACE MATCH" or "OTHER PLACE")
+						or "MODULE CHECK ON LAUNCH"
+					),
+				12,
+				CONFIG.Accent
+			)
+			path.Position = UDim2.fromOffset(14, 12)
 			path.Size = UDim2.new(1, -24, 0, 22)
 			path.TextTruncate = Enum.TextTruncate.AtEnd
 			local run = create("TextButton", {
 				Name = "RunScript_" .. entry.Id,
 				Text = if entry.GamePlaceId
-					then "Open game window"
+						or entry.Id == "ttk"
+						or entry.Id == "money"
+						or entry.Id == "egg"
+						or entry.Id == "stealabrainrot"
+					then "View details & launch"
 					else "Run / " .. entry.Name,
 				TextSize = 15,
 				Font = Enum.Font.GothamMedium,
 				TextColor3 = colors.Panel,
 				BackgroundColor3 = CONFIG.Accent,
 				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(10, 104),
+				Position = UDim2.fromOffset(10, 146),
 				Size = UDim2.new(1, -20, 0, 44),
 			}, row)
 			corner(run, 9)
 			table.insert(
 				catalog.RowConnections,
 				run.Activated:Connect(function()
-					if entry.GamePlaceId then
+					if
+						entry.GamePlaceId
+						or entry.Id == "ttk"
+						or entry.Id == "money"
+						or entry.Id == "egg"
+						or entry.Id == "stealabrainrot"
+					then
 						catalog.OpenGame(entry)
 					else
 						catalog.Run(entry, run)
 					end
 				end)
 			)
-			cursor += 166
+			cursor += 214
 			count += 1
 		end
 		if count == 0 then
@@ -7147,6 +7190,9 @@ do
 				catalog.Entries = result
 				catalog.Loaded = true
 				catalog.Render()
+				if catalog.WorkspaceBrowser then
+					catalog.WorkspaceBrowser:Refresh()
+				end
 				catalog.Message(
 					string.format(
 						"GitHub manifest loaded / %d published scripts.",
@@ -7177,7 +7223,7 @@ do
 		catalog.Search = create("TextBox", {
 			Name = "ScriptsSearch",
 			Text = "",
-			PlaceholderText = "Search published scripts…",
+			PlaceholderText = "Search games, features or creators…",
 			ClearTextOnFocus = false,
 			MultiLine = false,
 			Font = Enum.Font.Gotham,

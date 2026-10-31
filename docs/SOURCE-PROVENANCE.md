@@ -16,6 +16,8 @@ On 2026-10-30 the user supplied the Rosu and +1 controller files and explicitly 
 | GitHub `xDTaraZz/Roblox-Scripts/ui.lua` | xDTaraZ's +1 UI library, source build 2026-10-14 | `src/ui/Nullx11UI.luau` |
 | User upload `Main.luau.txt` (2026-10-31) | Henrik / xyzhenrik, Silence Steal An Egg | `src/games/StealAnEgg.luau` |
 | User upload `StealB.deobfuscated.lua.txt` (2026-10-31) | Recovered Chilli controller; no recovery README/license grant supplied | `src/games/StealABrainrot.luau`; [review](BRAINROT-REVIEW.md) |
+| User upload `dollaropen-sourcedollar-ttk-testing-…txt` (2026-10-31) | Original author unspecified; upstream VibeUI replaced | `src/games/TTKTesting.luau`; [review](TTK-MONEY-REVIEW.md) |
+| User upload `smart-farmingopen-source_…txt` (2026-10-31) | VoidScripts / VoidScriptsDK | `src/games/MoneyPerClick.luau`, `MoneyData.luau`; [review](TTK-MONEY-REVIEW.md) |
 | `google/fonts/ofl/kanit/` | Kanit font authors; SIL Open Font License 1.1 | `assets/fonts/`; **retain `OFL.txt`** |
 
 Input hashes are recorded in `docs/source-inputs.json`. Historical source-logo hashes are retained for provenance only; those files and their runtime references were removed at the user's request. Nullx11 now uses a static geometric prism and neutral symbols, not Mario artwork or a letter monogram. Gab is credited as the Nullx11 developer; original controller/UI authorship remains credited, not reassigned. The Steal An Egg upload does not supply a separate blanket license; this adaptation does not invent one.
@@ -39,8 +41,12 @@ Generated `scripts/Nullx11-*.luau` files are self-contained derivatives. `Nullx1
 
 ## Reproduction
 
-Edit `src/`, then run `npm run format`, `npm run format:check`, and `npm test`. `tools/build.mjs` creates the main client, five bundles, and manifest deterministically. The project does not assign an unrestricted license to third-party-derived material merely by publishing generated files.
+Edit `src/`, then run `npm run format`, `npm run format:check`, and `npm test`. `tools/build.mjs` creates the main client, seven bundles, and manifest deterministically. The project does not assign an unrestricted license to third-party-derived material merely by publishing generated files.
 
 ## Original Nullx11 assets and execution UI
 
 Gab's Nullx11 integration now includes native semantic line icons (`src/ui/BrandIcons.luau`), static prism SVG references under `assets/brand/`, an event-driven execution view and a monotonic execution-stage model. These additions are distinct from the attributed supplied UI/controller implementations. There is no claim that an SVG design reference is a native Roblox screenshot or an unrestricted license to unrelated source material.
+
+## TTK / Money additions
+
+The two latest uploads are adapted onto the same Nullx11/Gab controls without VibeUI/Rayfield execution. Source credits remain in the catalog, controllers and review. TTK game telemetry suppression is removed; irreversible Instant ADS is explicitly unavailable. Money uses exclusive movement modes, source routing/egg data and bounded default-off jobs. Read [the detailed review and native validation limits](TTK-MONEY-REVIEW.md) before use or redistribution.

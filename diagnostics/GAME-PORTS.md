@@ -64,3 +64,30 @@ Record client version, device, place/version, steps and observed error text for 
 Follow [the recovered-source review and native checklist](../docs/BRAINROT-REVIEW.md). Validate the ModuleScript/Plots signature, off defaults, missing-source notices, real controls and per-game cleanup. Never infer live success from compilation.
 
 During confirmed launch inspect the new four-stage loading sheet on desktop/mobile. Slow HTTP should not invent byte progress. Cancel before initialization, then let the HTTP response return: the selected chunk must not execute. Induce download/size/compile/startup errors and verify visible errors. Hide during initialization: the executed script must keep running. Close/unload the loader while a game runs: only loader-owned presentation/tools should stop. Check Reduced motion, rapid reopen, short-screen scrolling and the static prism/navigation artwork. Observe real device FPS and note enabled features; no zero-drop guarantee is implied.
+
+## TTK Testing / +1 Money per Click
+
+- In the wrong experience, launch each standalone bundle: require a visible
+  signature mismatch notice, no module require, no game telemetry hook and no
+  teleport question. Retry manually once the target experience is fully loaded.
+- TTK: verify the defaults are off, RMB release and explicit Touch aim, centered
+  FOV after camera/orientation changes, newest Merc rig/team/death filtering,
+  and Drawing-unavailable behavior (native chams may still work). Equip a weapon,
+  run explicit discovery, and test each weapon toggle individually. Confirm
+  no repeated GC polling. Instant ADS must stay visibly unavailable.
+- TTK: change/disable weapon options and unload the game; compare original
+  fields/methods and verify all Drawing/Highlight objects and signals disappear.
+  Check conflicts with another owner without overwriting its replacements.
+- Money: verify the exact source Unicode Rebirth stat, suffix parsing, world
+  thresholds 14/29/50, respawn/missing-stat pauses, cash-pad dwell and route
+  exclusivity. Rapidly toggle modes; only one route should move the root.
+- Money: **use a disposable test account in an authorized environment** before
+  enabling paid eggs. Confirm server costs/arguments, client request rate,
+  fairness, unavailable remotes, stop-all controls and slow InvokeServer cleanup.
+  An in-flight request cannot be recalled; no guaranteed purchases/hatches.
+- Browse seven cards at portrait, narrow landscape and desktop sizes. Check
+  real text wrapping, category/creator searches, empty states and filter reset.
+  Refresh removes stale entries; detail/confirmation remains deliberate.
+- Profile native device FPS and memory with all jobs off, individual jobs on,
+  crowded ESP, hidden windows and after game/loader unload. No sandbox test
+  establishes zero FPS drops, Delta compatibility or server acceptance.

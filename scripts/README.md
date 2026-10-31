@@ -2,7 +2,7 @@
 
 This folder is connected to **Workspace → Scripts / Open Scripts library** in `Nullx11.client.luau` (also available through classic Tools).
 
-The manifest publishes the five adapted Rosu, Huss Valley, +1 Loot to Forge, Steal An Egg and stealabrainrot bundles. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
+The manifest publishes the seven adapted Rosu, Huss Valley, +1 Loot to Forge, Steal An Egg, stealabrainrot, TTK Testing and +1 Money per Click bundles. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
 
 ## Add a script later
 
@@ -70,7 +70,7 @@ Scripts is now an **Open library** action rather than an ON/OFF switch. To use t
 - Steal An Egg omits `GamePlaceId` because the uploaded source provides none. Its bundle validates core ModuleScript paths before initializing the actual controller. Do not fabricate a place ID.
 - Ordinary loader unload/rerun leaves executed scripts running. Stop a bundled game through its own Unload control, or the loader's separately confirmed stop-all-game-scripts action.
 
-See [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md) for all five implemented ports and the remaining native-runtime validation boundary.
+See [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md) for all seven implemented ports and the remaining native-runtime validation boundary.
 
 ## Build and cleanup
 
