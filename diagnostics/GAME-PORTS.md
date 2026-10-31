@@ -149,3 +149,32 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
   active session, no post-off queued request and no leftover constraints/light/
   overlay on unload. Profile frame time/memory on real devices under load; bounds
   are not a promise of zero FPS cost. Keep this checklist unverified until tested.
+
+## Auto Player / NULL local piano
+
+- Verify custom opening/loading transitions, reduced motion, portrait 390×640 and
+  short landscape 740×360, safe-area clamps, draggable panel/static piano dock,
+  keyboard search/input and touch transport. No native render result is implied
+  by the structural UI tests. Confirm every intended button is actually reachable.
+- Use actual Delta APIs on-device. Test the exact Android MIDI path, relative
+  MIDI fallback, custom roots, subfolders, empty/denied listing, Unicode/duplicate
+  filenames, corrupt/oversized/SMPTE/format-2 files and missing file APIs. No songs
+  should be invented, no entire-device scan or Lua preset execution should occur.
+- Check exact tempo-change timing with a known multi-track MIDI; same pitches in
+  different tracks/channels, repeated overlapping notes, CC64, note-off velocity
+  zero, gate/velocity/drum filters and independent track muting.
+- Input is initially disarmed. Test C4 in the actual target piano, then 61-key and
+  optional 88-key Ctrl extension, black keys, fast repeated notes and chords.
+  Verify whether Delta really permits each backend and the game accepts it.
+  Preview must be clearly labeled and never send game input. Do not infer success
+  from a key request's lack of an exception. Watch for other Ctrl-bound hub menus.
+- Test countdown cancellation, pause/stop/F7, typing focus, seek, speed/transpose,
+  A-B marks, queue completion/advance and local-file replacement mid-parse.
+  Keys/modifiers must release on every normal path; revoked permissions must show
+  failures, retain release ownership and allow F7 retry rather than fake success.
+- Close/rerun while reading/playing; verify no stale parse restart, held key,
+  connection/overlay/tween or another game session being unloaded. Loader close
+  must not stop an initialized player; its own Close must stop it.
+- Stress dense MIDI, sustained/shared physical keys, large directories, frame
+  stalls, hidden UI, maximum file/voice/event/bar bounds and slow native I/O.
+  Profile actual device FPS/memory/input timing; no zero-cost/zero-lag guarantee.

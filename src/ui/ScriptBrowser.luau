@@ -236,7 +236,13 @@ function Library:CreateScriptBrowser(tab, options)
 	})
 	controls:AddDropdown("ScriptLibraryCollection", {
 		Text = "Source collection",
-		Values = { "All collections", "Nullx11 originals", "YARHM", "Chaos" },
+		Values = {
+			"All collections",
+			"Nullx11 originals",
+			"YARHM",
+			"Chaos",
+			"NULL Studio",
+		},
 		Default = "All collections",
 		NoSave = true,
 		Callback = function(value)

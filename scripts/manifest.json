@@ -141,6 +141,17 @@
       "Author": "Owner: NULL. Nullx11 edition; required source notices retained in docs/SOURCE-PROVENANCE.md.",
       "Collection": "Chaos",
       "GamePlaceId": 4924922222
+    },
+    {
+      "Id": "autoplayer",
+      "Name": "Auto Player",
+      "File": "Nullx11-AutoPlayer.luau",
+      "Category": "Music",
+      "Icon": "rhythm",
+      "Universal": true,
+      "Collection": "NULL Studio",
+      "Author": "Owner: NULL. Local MIDI piano edition; source review retained in docs/MIDI-REVIEW.md.",
+      "Description": "Local Delta MIDI library, animated piano studio, tempo-aware playback, track mixer, speed/transpose, 61/88-key mapping, queue and A-B loops. Input starts disarmed; no remote presets."
     }
   ]
 }

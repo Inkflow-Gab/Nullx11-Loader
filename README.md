@@ -128,7 +128,7 @@ Set `CONFIG.StartupAnimation = false` to skip the decoration, or `CONFIG.Reduced
 
 ## Game ports / Scripts library
 
-**Workspace → Scripts** has all 14 entries (eight existing editions plus five YARHM game/tool entries and a separate Chaos Brookhaven edition) immediately. **Open Scripts library** is an ordinary action, not an ON/OFF toggle. A game's detail window shows its description, target and provenance. Opening it performs no download or execution.
+**Workspace → Scripts** has all 15 entries (eight earlier editions, five YARHM game/tool entries, a separate Chaos Brookhaven edition, and Auto Player) immediately. **Open Scripts library** is an ordinary action, not an ON/OFF toggle. A game's detail window shows its description, target and provenance. Opening it performs no download or execution.
 
 - Unsupported place: direct Execute is blocked for the three exact-place ports. Join the game manually; the launcher never asks to teleport, teleports automatically or queues arrival code.
 - Steal An Egg has no place ID in the uploaded source. Its standalone bundle checks seven core ModuleScript paths before initializing its controller, then validates every required game module. No destination ID is invented. Game updates can break this signature.
@@ -277,7 +277,7 @@ npm run format:check
 npm test
 ```
 
-The checks verify reproducible generated artifacts, all 14 bundles/place-or-universe-or-module gates/defaults/dependencies/size limits and font licensing; exercise actual shared reactive APIs and actual adapter/session/standalone launch modules with development fixtures; and compile the main, bootstrap, and native diagnostic Luau files (the native diagnostic is not executed here), parse the real repository manifest JSON, compile any published library scripts, and exercise deterministic development API doubles for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Player-tool tests cover separate/reused windows, team/visibility/death filters, bounding boxes/chams/tracers, editable numeric limits, FOV placement/color, smoothing versus strength-100 snap, hold/release and input guards, touch-pad input, camera replacement/loss, respawns, crowded-server ray/instance caps, emergency off, and teardown. New polish checks cover animation token lifetime/reversal/resize, native font choices/looks, Auto/Hold, root fallbacks, explicit camera override, play view, render fallback/error reporting, and library path validation/search/confirmation/refreshed-row cleanup. They do not prove rendered motion or real HTTP. Startup tests cover contraction/burst/reveal, actual readiness waiting, skip, short landscape positioning, reduced motion, rerun, and closing during animation. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
+The checks verify reproducible generated artifacts, all 15 bundles/place-or-universe-or-module gates/defaults/dependencies/size limits and font licensing; exercise actual shared reactive APIs and actual adapter/session/standalone launch modules with development fixtures; and compile the main, bootstrap, and native diagnostic Luau files (the native diagnostic is not executed here), parse the real repository manifest JSON, compile any published library scripts, and exercise deterministic development API doubles for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Player-tool tests cover separate/reused windows, team/visibility/death filters, bounding boxes/chams/tracers, editable numeric limits, FOV placement/color, smoothing versus strength-100 snap, hold/release and input guards, touch-pad input, camera replacement/loss, respawns, crowded-server ray/instance caps, emergency off, and teardown. New polish checks cover animation token lifetime/reversal/resize, native font choices/looks, Auto/Hold, root fallbacks, explicit camera override, play view, render fallback/error reporting, and library path validation/search/confirmation/refreshed-row cleanup. They do not prove rendered motion or real HTTP. Startup tests cover contraction/burst/reveal, actual readiness waiting, skip, short landscape positioning, reduced motion, rerun, and closing during animation. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
 
 These mocks do not emulate Roblox physics, rendering, real touch input, or Delta. Test in Studio's **Device Emulator**, your own game, and a real device. In particular, verify the startup effect, chams and box alignment, FOV centering, camera/game compatibility, real touch hold/release, short-landscape layouts, drag-vs-tap behavior on the restore icon, respawns, closing while initialization yields, and whether your game's server accepts the intended movement.
 
@@ -299,7 +299,7 @@ The generated standalone main is **22,264 lines**, exceeding the current **15,00
 - Do not hand-edit generated `Nullx11.client.luau` or `scripts/Nullx11-*.luau`.
 - Formatter/compiler/test packages are development-only and are not required by Delta or Roblox.
 
-The fourteen standalone bundles intentionally each include the shared UI so that **selected-script-only execution is self-contained**. They do not embed other game controllers or the main client. See [source provenance](docs/SOURCE-PROVENANCE.md) before redistribution; Rosu-derived material is not for resale.
+The fifteen standalone bundles intentionally each include the shared UI so that **selected-script-only execution is self-contained**. They do not embed other game controllers or the main client. See [source provenance](docs/SOURCE-PROVENANCE.md) before redistribution; Rosu-derived material is not for resale.
 
 ## TTK Testing / +1 Money per Click and Scripts refresh
 
@@ -341,3 +341,22 @@ are shared; native Roblox/Delta gameplay/touch/FPS still require validation.
 See the [feature/exclusion matrix](docs/HUB-COLLECTION-REVIEW.md),
 [integration status](scripts/INTEGRATION-STATUS.md) and
 [client checklist](diagnostics/GAME-PORTS.md).
+
+## Auto Player / NULL MIDI Studio
+
+**Scripts → NULL Studio → Auto Player** opens a new animated local-piano interface.
+It reads `.mid`/`.midi`/`.smf` files from
+`/storage/emulated/0/Delta/Workspace/MIDI/`, with a reported `MIDI` workspace-relative
+fallback if Delta blocks absolute listing. Custom folders are configurable; no
+filesystem restriction is bypassed and no demo songs are inserted.
+
+Features: searchable/paginated library, session queue/favorites, a pooled piano
+roll and live keyboard, tempo maps, track mixer, speed/transposition, 61/88-key
+mapping, sustain, gate/velocity filters, seek, A–B loops, countdown, focus-pause,
+F8 play/pause and F7 emergency stop/disarm. Input starts **disarmed**; explicit
+Preview only sends no game input. Opening/file-load stages animate, while the
+movable piano dock stays static. No raw hub, online presets or asset fetches run.
+
+Read the [setup/features guide](docs/AUTO-PLAYER.md) and
+[source/native-validation boundary](docs/MIDI-REVIEW.md). The phone path and game
+key acceptance still require testing in Delta on your actual device/piano.

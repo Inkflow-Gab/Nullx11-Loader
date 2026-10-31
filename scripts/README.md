@@ -91,3 +91,11 @@ StealAnEgg-CHILI is not a full VM recovery. See [recovery scope](../docs/CHILI-E
 
 Known-compatible filtering includes place/universe matches and Universal entries;
 module-gated entries without identity metadata remain unverified until launch.
+
+## Auto Player / NULL Studio
+
+The **15th** entry is `Nullx11-AutoPlayer.luau`, a lightweight standalone local
+MIDI piano edition with its own custom animated native GUI and the same independent
+session lifetime. It does not embed the whole generic game UI. See
+[Delta path/setup/features](../docs/AUTO-PLAYER.md) and
+[source review/test limits](../docs/MIDI-REVIEW.md).

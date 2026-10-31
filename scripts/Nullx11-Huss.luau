@@ -13462,6 +13462,7 @@ local function createNullx11UI(scope)
 				"Nullx11 originals",
 				"YARHM",
 				"Chaos",
+				"NULL Studio",
 			},
 			Default = "All collections",
 			NoSave = true,

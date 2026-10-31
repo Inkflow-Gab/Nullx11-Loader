@@ -74,3 +74,13 @@ See [the precise feature/exclusion matrix and test boundary](HUB-COLLECTION-REVI
 These are not independent clean-room copyright claims or a new blanket license.
 Optional runtime promotions are removed; Rosu/source restrictions and font OFL
 notices are retained. All previous game bundles remain available.
+
+## Local piano / Auto Player (2026-10-31)
+
+User upload `RoMidiFull.lua.txt` informed the virtual-piano mapping and local SMF
+workflow. Original explicit author/license unspecified in the upload; source repo
+references and implementation changes are recorded in [MIDI-REVIEW.md](MIDI-REVIEW.md).
+NULL is the edition/developer brand, not an invented copyright assignment of the
+upload or songs. New decoder/runtime/UI replace the raw hub; remote preset,
+announcement, asset and uploader systems are not executed. No MIDI is uploaded
+or written. [Setup and native limitations](AUTO-PLAYER.md).

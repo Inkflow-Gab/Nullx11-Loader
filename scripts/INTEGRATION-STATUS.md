@@ -1,6 +1,6 @@
 # Game integrations
 
-Fourteen editions are bundled: the eight prior editions (including a **partial recovered core**, not a full VM port), all five actual YARHM tool/game families, and a separate English Chaos Brookhaven reviewed subset. Game coverage is complete for YARHM; feature parity is not. NULL is the current visible owner brand. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
+Fifteen editions are bundled (including the new local MIDI Auto Player): the eight prior editions (including a **partial recovered core**, not a full VM port), all five actual YARHM tool/game families, and a separate English Chaos Brookhaven reviewed subset. Game coverage is complete for YARHM; feature parity is not. NULL is the current visible owner brand. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
 
 | Nullx11 workspace | Exact target place | Published file | Implementation status |
 | --- | --- | --- | --- |
@@ -23,7 +23,7 @@ Each game bundle contains this same shared library plus **only its selected game
 
 ## Launch / consent
 
-- Fourteen game/tool entries are available immediately; Refresh is optional.
+- Fifteen game/tool entries are available immediately; Refresh is optional.
 - Scripts/launch windows are opening actions, never ON/OFF navigation. Opening them runs no game code.
 - Wrong-place execution is blocked for the three known targets. Steal An Egg uses structural core-module detection and full required-module validation, not a fabricated place ID.
 - Launcher teleport questions, destination teleports and arrival queues have been removed. Standalone incompatibility UI offers only a notice and Close.
@@ -58,3 +58,13 @@ No ads, external source-loader execution or final ScriptBlox ingest. Read
 FTF's unavailable broken global anti-error hook and the omitted destructive/spam
 routines. Local contracts pass under doubles, not live Roblox validation.
 The library now has collection and universe/Universal-aware filters and badges.
+
+## Auto Player / NULL Studio
+
+`Nullx11-AutoPlayer.luau` is an explicit universal local-piano tool, not a specific
+game-remote port. Custom native opening/loading UI; Android/relative MIDI folder;
+bounded SMF decode; opt-in keyboard output; track/tempo/practice/queue tools.
+Input starts disarmed. File access/key simulation depend on Delta permissions and
+the game's actual mapping. [Guide](../docs/AUTO-PLAYER.md),
+[review](../docs/MIDI-REVIEW.md). Local contracts compile/pass under doubles;
+native visuals/gameplay/device filesystem/touch remain unverified.

@@ -54,6 +54,32 @@ let main = read('src/loader.luau')
   .replace('-- @NULLX11_WORKSPACE', read('src/ui/Workspace.luau'));
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
+  if (entry.Id === 'autoplayer') {
+    const modules = [module('makeSession',session), module('midiParser',read('src/games/MidiParser.luau')), module('midiFiles',read('src/games/MidiFiles.luau')), module('makeMidiOutput',read('src/games/MidiOutput.luau')), module('makeMidiTransport',read('src/games/MidiTransport.luau')), module('makeAutoPlayerView',read('src/ui/AutoPlayerView.luau'))].join('\n');
+    output(`scripts/${entry.File}`, `${banner}-- Auto Player / NULL. Local MIDI data only; see docs/MIDI-REVIEW.md.
+${modules}
+local function runGame(context)
+${read('src/games/AutoPlayer.luau')}
+end
+if not game:IsLoaded() then game.Loaded:Wait() end
+local library={Hooks={}}
+function library:OnUnload(callback) table.insert(self.Hooks,callback) end
+function library:Unload()
+if self.Unloaded then return end
+self.Unloaded=true
+for _,callback in ipairs(self.Hooks) do local ok,reason=pcall(callback);if not ok then warn("[NULL Auto Player cleanup] "..tostring(reason)) end end
+table.clear(self.Hooks)
+end
+local context=makeSession("autoplayer",library)
+local environment=type(getgenv)=="function" and getgenv() or _G
+context.ReducedMotion=environment.Nullx11ReducedMotion==true
+context.MidiParser=midiParser;context.MidiFiles=midiFiles;context.MakeMidiOutput=makeMidiOutput
+context.MakeMidiTransport=makeMidiTransport;context.MakeAutoPlayerView=makeAutoPlayerView
+local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
+if not ok then library:Unload();warn("[NULL Auto Player] "..tostring(result)) end
+`);
+    continue;
+  }
   const hub = hubControllers[entry.Id];
   const name = hub || ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick',eggchili:'StealAnEggChili'})[entry.Id];
   if (!name) {

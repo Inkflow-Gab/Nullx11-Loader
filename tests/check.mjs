@@ -43,14 +43,14 @@ try {
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 14);
+  assert.equal(manifest.Scripts.length, 15);
   assert.ok(source.includes('Universal = true'), 'generated embedded catalog serializes boolean values as booleans, not empty tables');
   assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549, 4924922222, 4924922222]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
-    assert.ok(bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) || /^(yarhm_|chaos_)/.test(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
+    assert.ok(entry.Id === 'autoplayer' || bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) || /^(yarhm_|chaos_)/.test(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
     assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
     assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');
     assert.ok(Buffer.byteLength(bundle, 'utf8') < 2097152, 'bundle fits reviewed source size budget');
@@ -65,6 +65,16 @@ try {
     .replace('-- @CATALOG_VALIDATE', read('src/loader.luau').slice(read('src/loader.luau').indexOf('function catalog.Validate('), read('src/loader.luau').indexOf('-- @NULLX11_CATALOG')))
     .replace('-- @HUB_MODULES', module('makePatches','src/games/OwnedPatches.luau') + '\n' + module('makeSession','src/games/Context.luau') + '\n' + hubModules.map(name => ['HubForsaken','HubMM2','HubFTF','HubBrookhaven','HubUniversal'].includes(name) ? `local ${name}=function(context)\n${read(`src/games/${name}.luau`)}\nend` : module(name, `src/games/${name}.luau`)).join('\n'));
   console.log(...await state.loadstring(hubChecks, 'actual-hub-collection-contracts', true)());
+  const midiModules = [['MidiParser','src/games/MidiParser.luau'],['MidiFiles','src/games/MidiFiles.luau'],['MakeMidiOutput','src/games/MidiOutput.luau'],['MakeMidiTransport','src/games/MidiTransport.luau']];
+  const midiChecks = read('tests/midi-contracts.luau')
+    .replace('-- @MIDI_MODULES',midiModules.map(([name,path])=>module(name,path)).join('\n'))
+    .replace('-- @MIDI_CONTROLLER',`local function runAutoPlayer(context)\n${read('src/games/AutoPlayer.luau')}\nend`);
+  console.log(...await state.loadstring(midiChecks,'actual-midi-contracts',true)());
+  const midiViewChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-view.luau').replace('-- @MIDI_VIEW',module('makeAutoPlayerView','src/ui/AutoPlayerView.luau'));
+  console.log(...await state.loadstring(midiViewChecks,'actual-midi-view',true)());
+  const midiBundle=read('scripts/Nullx11-AutoPlayer.luau');
+  assert.ok(!/HttpGet|loadstring|https?:\/\/|writefile|makefolder|BindToRenderStep/.test(midiBundle),'Auto Player executes local MIDI data only; no presets, writes or idle rendering worker');
+  assert.ok(!/while true/.test(read('src/ui/AutoPlayerView.luau')),'no immortal loading animation');
   const brainrot = read('src/games/StealABrainrot.luau');
   assert.ok(!/tienkhanh1|webhooks|request_|loadstring|queue_on_teleport|queueonteleport|ChilliLibrary\/configs|Default = true|BlockTools/.test(brainrot), 'no exfiltration, upstream loader, auto-enable defaults or startup tool-block bypass');
   assert.equal((brainrot.match(/:Connect\(/g) || []).length, 200);
@@ -146,7 +156,7 @@ connect(gui.Destroying,function() State.Gui:Destroy() end)`;
   const enhancedIntro=read('tests/roblox-mock.luau')+'\nlocal function runEnhancedLoader()\n'+enhancedSource+'\nend\nlocal function runEnhancedReducedLoader()\n'+enhancedSource.replace('ReducedMotion = false','ReducedMotion = true')+'\nend\n'+read('tests/enhanced-intro.luau');
   console.log(...await state.loadstring(enhancedIntro,'enhanced-startup-contracts',true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: fourteen published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
+  console.log('PASS: fifteen published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),

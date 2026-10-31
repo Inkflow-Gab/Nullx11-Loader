@@ -83,6 +83,12 @@
       "sha256": "982fcebaddcc35828141ce322155d91dee91704910f3b80355b892cc48cec114",
       "bytes": 408853,
       "note": "Statically reviewed only; raw upload never executed/distributed. Native reviewed-feature collection; no full feature-parity claim. See HUB-COLLECTION-REVIEW.md."
+    },
+    "romidi-local-piano-original.lua": {
+      "source": "User upload RoMidiFull.lua.txt",
+      "sha256": "b63831a1d0f2ad18c8eb57c0436c7b76cd441220c1acdfa5172703eea2073b36",
+      "bytes": 324741,
+      "note": "Static review only; raw hub not executed or distributed. Source-informed piano mapping, bounded replacement decoder/transport and custom local-only NULL GUI. See MIDI-REVIEW.md."
     }
   },
   "Updated": "2026-10-31"
