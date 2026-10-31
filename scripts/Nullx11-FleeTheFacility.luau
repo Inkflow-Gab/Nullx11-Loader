@@ -660,7 +660,62 @@ local function createNullx11UI(scope)
 	end
 	table.insert(Themes.Order, 1, "Nullx11")
 
+	local uiPerformance = (function()
+		-- UI-only budget policy. Hysteresis prevents one hitch from toggling effects or
+		-- repeatedly rebuilding UI. Never changes game graphics, physics, ESP or workers.
+		local policy = {}
+		function policy.New()
+			return { Mode = "Auto", LowPower = false, Slow = 0, Healthy = 0 }
+		end
+		function policy.SetMode(state, mode)
+			if
+				mode ~= "Auto"
+				and mode ~= "Balanced"
+				and mode ~= "Low power"
+			then
+				return false
+			end
+			if state.Mode == mode then
+				return false
+			end
+			state.Mode, state.Slow, state.Healthy = mode, 0, 0
+			state.LowPower = mode == "Low power"
+			return true
+		end
+		function policy.Step(state, delta, fps)
+			if
+				state.Mode ~= "Auto"
+				or delta <= 0
+				or delta ~= delta
+				or delta == math.huge
+			then
+				return false
+			end
+			-- A single multi-second stall counts as at most one second of evidence.
+			delta = math.min(delta, 1)
+			if fps < 35 then
+				state.Slow += delta
+				state.Healthy = 0
+			elseif fps > 50 then
+				state.Healthy += delta
+				state.Slow = 0
+			else
+				state.Slow, state.Healthy = 0, 0
+			end
+			local before = state.LowPower
+			if not before and state.Slow >= 2 then
+				state.LowPower, state.Slow = true, 0
+			elseif before and state.Healthy >= 8 then
+				state.LowPower, state.Healthy = false, 0
+			end
+			return state.LowPower ~= before
+		end
+		return policy
+	end)()
+
 	local State = {
+		Performance = uiPerformance.New(),
+		LowPower = false,
 		ReducedMotion = scope and scope.ReducedMotion == true,
 		Gui = nil,
 		Overlay = nil,
@@ -1262,6 +1317,7 @@ local function createNullx11UI(scope)
 
 	Anim.Loops = {}
 	Anim.GroupState = {}
+	Anim.GroupRequested = {}
 	Anim.NoopSignal = {
 		Once = function(_, fn)
 			if type(fn) == "function" then
@@ -1297,8 +1353,14 @@ local function createNullx11UI(scope)
 		reverses,
 		delay
 	)
+		-- A decorative round trip ends at its starting value; do not leave a
+		-- low-power control displaced at the first (outbound) goal.
+		if State.LowPower and (reverses or (repeatCount or 0) ~= 0) then
+			return Anim.NoopTween
+		end
 		if
 			State.ReducedMotion
+			or State.LowPower
 			or (duration == 0 and (repeatCount or 0) == 0 and (delay or 0) == 0)
 		then
 			for prop, val in pairs(goal) do
@@ -1335,7 +1397,7 @@ local function createNullx11UI(scope)
 			list = {}
 			Anim.Loops[group] = list
 		end
-		local active = Anim.GroupState[group] ~= false
+		local active = Anim.GroupState[group] ~= false and not State.LowPower
 		local entry = { Tween = tween, Inst = inst, Playing = active }
 		table.insert(list, entry)
 		if active then
@@ -1349,7 +1411,10 @@ local function createNullx11UI(scope)
 	end
 
 	function Anim.SetGroupActive(group, active)
-		active = active == true and not State.ReducedMotion
+		Anim.GroupRequested[group] = active == true
+		active = active == true
+			and not State.ReducedMotion
+			and not State.LowPower
 		if Anim.GroupState[group] == active then
 			return
 		end
@@ -1379,7 +1444,7 @@ local function createNullx11UI(scope)
 
 	--@param rise Vertical bounce height in px (short vertical bounce)
 	function Anim.Bump(frame, rise)
-		if State.ReducedMotion then
+		if State.ReducedMotion or State.LowPower then
 			return
 		end
 		if frame:GetAttribute("Bumping") then
@@ -1402,7 +1467,7 @@ local function createNullx11UI(scope)
 	end
 
 	function Anim.Shake(frame)
-		if State.ReducedMotion then
+		if State.ReducedMotion or State.LowPower then
 			return
 		end
 		local base = frame.Position
@@ -3537,7 +3602,7 @@ local function createNullx11UI(scope)
 	end
 
 	function Motion.Spring(inst, prop, target, speedKey, options)
-		if State.ReducedMotion then
+		if State.ReducedMotion or State.LowPower then
 			Motion.Set(inst, prop, target)
 			if options and options.OnDone then
 				options.OnDone()
@@ -3558,7 +3623,7 @@ local function createNullx11UI(scope)
 	end
 
 	function Motion.Impulse(inst, prop, velocity, speedKey, damping)
-		if State.ReducedMotion then
+		if State.ReducedMotion or State.LowPower then
 			return
 		end
 		local kind = typeof(inst[prop])
@@ -3692,7 +3757,12 @@ local function createNullx11UI(scope)
 	end
 
 	function Fx.Ripple(parent, screenPos, token)
-		if not parent or not parent.Parent then
+		if
+			State.LowPower
+			or State.ReducedMotion
+			or not parent
+			or not parent.Parent
+		then
 			return
 		end
 		local pointer = screenPos or UserInputService:GetMouseLocation()
@@ -3718,7 +3788,7 @@ local function createNullx11UI(scope)
 	end
 
 	function Fx.CountUp(owner, fromValue, toValue, duration, onTick)
-		if State.ReducedMotion then
+		if State.ReducedMotion or State.LowPower then
 			pcall(onTick, toValue, true)
 			return
 		end
@@ -8682,6 +8752,7 @@ local function createNullx11UI(scope)
 			Name = Config.GuiAttribute,
 			ResetOnSpawn = false,
 			IgnoreGuiInset = true,
+			ScreenInsets = Enum.ScreenInsets.None,
 			ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 			DisplayOrder = 100,
 			Parent = parent,
@@ -8763,6 +8834,9 @@ local function createNullx11UI(scope)
 	function Gui.OnHeartbeat(deltaTime)
 		if deltaTime > 0 then
 			State.Fps = State.Fps * 0.92 + (1 / deltaTime) * 0.08
+		end
+		if uiPerformance.Step(State.Performance, deltaTime, State.Fps) then
+			Library:ApplyPerformanceBudget()
 		end
 		for _, job in ipairs(State.Tasks) do
 			job.Elapsed += deltaTime
@@ -9263,7 +9337,7 @@ local function createNullx11UI(scope)
 	end
 
 	function Window:WaveTitle()
-		if not State.TitleGlitch then
+		if not State.TitleGlitch or State.LowPower then
 			return
 		end
 		if State.ReducedMotion then
@@ -9690,6 +9764,9 @@ local function createNullx11UI(scope)
 			math.floor(math.clamp(self.Desired.Y, minHeight, availH))
 		)
 		self:ApplyLayout()
+		if not self.Visible and self.UserPositioned and self.RestPosition then
+			self.Root.Position = self.RestPosition
+		end
 		if not self.UserPositioned then
 			self.Root.Position = UDim2.new(
 				0.5,
@@ -9701,6 +9778,9 @@ local function createNullx11UI(scope)
 			)
 		end
 		self:ClampPosition()
+		-- A hidden window can resize before its first reveal (or on rotation).
+		-- Keep the restore target in the same viewport, not the old hide/dock offset.
+		self.RestPosition = self.Root.Position
 		if Float.Clamp then
 			Float.Clamp()
 		end
@@ -9772,6 +9852,12 @@ local function createNullx11UI(scope)
 			UDim2.fromOffset(searchWidth, Util.Metric("Box"))
 		self.HeaderTitle.Size = UDim2.new(1, -(searchWidth + 44), 0, 26)
 		self.HeaderDesc.Size = UDim2.new(1, -(searchWidth + 44), 0, 16)
+		local libraryPage = self.ActiveTab and self.ActiveTab.LibraryBrowser
+		self.SearchField.Visible = not libraryPage
+		if libraryPage then
+			self.HeaderTitle.Size = UDim2.new(1, -32, 0, 26)
+			self.HeaderDesc.Size = UDim2.new(1, -32, 0, 16)
+		end
 		self.UserName.Visible = not self.Compact
 		self.UserTag.Visible = not self.Compact
 		self.Avatar.Position = UDim2.new(0, self.Compact and 10 or 12, 0.5, 0)
@@ -9826,6 +9912,7 @@ local function createNullx11UI(scope)
 		Popup.Close()
 		local previous = self.ActiveTab
 		self.ActiveTab = tab
+		self:ApplyChrome(self.Size.X, self.Size.Y)
 		if previous then
 			previous.Page.Visible = false
 			previous:RenderButton()
@@ -10677,6 +10764,8 @@ local function createNullx11UI(scope)
 	function Particles.Active()
 		local window = State.Window
 		return Particles.Enabled
+			and not State.LowPower
+			and not State.ReducedMotion
 			and window ~= nil
 			and window.Visible
 			and not window.Minimized
@@ -10728,7 +10817,7 @@ local function createNullx11UI(scope)
 	function Particles.SetEnabled(enabled)
 		Particles.Enabled = enabled and not State.ReducedMotion
 		if Particles.Layer then
-			Particles.Layer.Visible = enabled
+			Particles.Layer.Visible = enabled and not State.LowPower
 		end
 		if enabled then
 			Particles.Resume()
@@ -13231,300 +13320,558 @@ local function createNullx11UI(scope)
 		end
 		return model
 	end)()
-	-- A real native browser, not a screenshot or a second upstream UI.
-	-- Cards are reused on search; refresh removes obsolete instances/subscriptions.
+	-- Bounded native library: fixed row pool, viewport-sized pages, no catalog-sized
+	-- canvas. Opening a row still delegates to the existing details/confirmation gate.
 	function Library:CreateScriptBrowser(tab, options)
+		options = options or {}
 		local model = makeScriptLibraryModel
 		local browser = {
+			Entries = {},
+			Matches = {},
+			Cards = {},
+			Connections = {},
 			Query = "",
-			GlobalQuery = "",
 			Category = "All games",
 			Collection = "All collections",
-			OnlyPlace = false,
-			Cards = {},
-			Matches = {},
+			View = "All",
+			Sort = "Name",
+			Page = 1,
+			PageSize = 1,
+			Pages = 1,
+			Pinned = {},
+			Recent = {},
+			Visit = 0,
+			ShowFilters = false,
+			Width = 600,
+			Height = 400,
+			Closed = false,
 		}
-		local controls =
-			tab:AddLeftGroupbox("Scripts / curated library", "layers")
-		local summary = controls:AddLabel("Loading library", true)
-		local grid = Draw.New(
-			"Frame",
-			{ Name = "ScriptCardGrid", BackgroundTransparency = 1 }
-		)
-		local empty = Draw.Text({
-			Name = "ScriptsEmptyState",
-			Text = "No games match. Clear search or choose All games.",
-			TextWrapped = true,
-			Size = UDim2.new(1, -24, 0, 70),
-			Position = UDim2.fromOffset(12, 12),
-			Parent = grid,
-		}, "Body", 16, "SubText")
-		local function copy(parent, name, text, y, height, size, token)
+		local surface = Draw.New("Frame", {
+			Name = "ScriptLibrary",
+			BackgroundTransparency = 1,
+			Size = UDim2.fromScale(1, 1),
+			ClipsDescendants = true,
+		})
+		browser.Frame = surface
+		local function listen(signal, callback)
+			local connection = signal:Connect(callback)
+			table.insert(browser.Connections, connection)
+			return connection
+		end
+		local function text(name, parent, caption, y, height, size, token)
 			return Draw.Text({
 				Name = name,
-				Text = text,
-				Position = UDim2.fromOffset(16, y),
-				Size = UDim2.new(1, -32, 0, height),
-				TextWrapped = true,
-				TextYAlignment = Enum.TextYAlignment.Top,
+				Text = caption,
+				Position = UDim2.fromOffset(12, y),
+				Size = UDim2.new(1, -150, 0, height),
 				TextTruncate = Enum.TextTruncate.AtEnd,
 				Parent = parent,
-			}, "Body", size, token)
+			}, "Body", size or 12, token or "Text")
 		end
-		local function latest()
-			return options.Entries()
+		local function button(name, parent, caption, position, size, callback)
+			local control = Draw.Box("TextButton", {
+				Name = name,
+				Position = position,
+				Size = size,
+				Parent = parent,
+			}, "Element", "Outline", 7, 1)
+			control.Text, control.TextSize, control.Font =
+				caption, 12, Enum.Font.GothamMedium
+			control.TextTruncate = Enum.TextTruncate.AtEnd
+			Theme.Bind(control, { TextColor3 = "Text" })
+			listen(control.Activated, function()
+				if not browser.Closed then
+					callback()
+				end
+			end)
+			return control
 		end
-		local function layout(width)
-			local columns = width >= 610 and 2 or 1
-			local cardWidth =
-				math.max(0, (width - (columns - 1) * 12) / columns)
-			for index, card in ipairs(browser.Matches) do
-				card.Frame.Position = UDim2.fromOffset(
-					(index - 1) % columns * (cardWidth + 12),
-					math.floor((index - 1) / columns) * 260
-				)
-				card.Frame.Size = UDim2.fromOffset(cardWidth, 248)
+		local search = Draw.Box("TextBox", {
+			Name = "ScriptLibrarySearch",
+			Text = "",
+			PlaceholderText = "Search games, features, creators...",
+			ClearTextOnFocus = false,
+			MultiLine = false,
+			Font = Enum.Font.Gotham,
+			TextSize = 13,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Size = UDim2.new(1, -122, 0, 36),
+			Parent = surface,
+		}, "Element", "Outline", 7, 1)
+		Draw.Padding(search, 0, 10)
+		Theme.Bind(search, { TextColor3 = "Text", PlaceholderColor3 = "Muted" })
+		browser.Search = search
+		button(
+			"ScriptClear",
+			surface,
+			"Clear",
+			UDim2.new(1, -116, 0, 0),
+			UDim2.fromOffset(50, 36),
+			function()
+				browser:Reset()
 			end
+		)
+		button(
+			"ScriptRefresh",
+			surface,
+			"Refresh",
+			UDim2.new(1, -60, 0, 0),
+			UDim2.fromOffset(60, 36),
+			function()
+				if options.Refresh then
+					options.Refresh()
+				end
+			end
+		)
+		local viewButtons = {}
+		for index, view in ipairs({ "All", "This game", "Pinned", "Recent" }) do
+			viewButtons[view] = button(
+				"ScriptView" .. index,
+				surface,
+				view,
+				UDim2.new((index - 1) / 5, 0, 0, 44),
+				UDim2.new(1 / 5, -5, 0, 32),
+				function()
+					browser.View, browser.Page = view, 1
+					browser:Filter()
+				end
+			)
 		end
-		local gridItem = tab.Left:Add(grid, {
-			Height = function(width)
-				local count = #browser.Matches
-				return count == 0 and 90
-					or math.ceil(count / (width >= 610 and 2 or 1))
-							* 260
-						- 12
-			end,
-			OnLayout = layout,
+		local filterButton = button(
+			"ScriptFilters",
+			surface,
+			"Filters",
+			UDim2.new(0.8, 0, 0, 44),
+			UDim2.new(0.2, 0, 0, 32),
+			function()
+				browser.ShowFilters = not browser.ShowFilters
+				browser:Layout(browser.Width, browser.Height)
+			end
+		)
+		local filters = Draw.New("Frame", {
+			Name = "ScriptFilterRow",
+			BackgroundTransparency = 1,
+			Visible = false,
+			Position = UDim2.fromOffset(0, 84),
+			Size = UDim2.new(1, 0, 0, 32),
+			Parent = surface,
 		})
-		function browser:Filter()
-			table.clear(self.Matches)
-			local total = 0
-			for _, entry in ipairs(latest()) do
-				total += 1
-				local card = self.Cards[entry.Id]
-				if card then
-					local show = model.Match(
+		local function cycle(values, current)
+			return values[(table.find(values, current) or 0) % #values + 1]
+		end
+		local category = button(
+			"ScriptCategory",
+			filters,
+			"All games",
+			UDim2.fromOffset(0, 0),
+			UDim2.new(0.35, -5, 1, 0),
+			function()
+				browser.Category =
+					cycle(model.Categories(browser.Entries), browser.Category)
+				browser.Page = 1
+				browser:Filter()
+			end
+		)
+		local collection = button(
+			"ScriptCollection",
+			filters,
+			"All collections",
+			UDim2.fromScale(0.35, 0),
+			UDim2.new(0.4, -5, 1, 0),
+			function()
+				browser.Collection =
+					cycle(browser.Collections, browser.Collection)
+				browser.Page = 1
+				browser:Filter()
+			end
+		)
+		local sort = button(
+			"ScriptSort",
+			filters,
+			"Name A-Z",
+			UDim2.fromScale(0.75, 0),
+			UDim2.fromScale(0.25, 1),
+			function()
+				browser.Sort =
+					cycle({ "Name", "Collection", "Recent" }, browser.Sort)
+				browser.Page = 1
+				browser:Filter()
+			end
+		)
+		local rows = Draw.New("Frame", {
+			Name = "ScriptRows",
+			BackgroundTransparency = 1,
+			ClipsDescendants = true,
+			Parent = surface,
+		})
+		local empty = Draw.Text({
+			Name = "ScriptEmpty",
+			Text = "No matches. Clear filters or refresh the library.",
+			Position = UDim2.fromOffset(12, 4),
+			Size = UDim2.new(1, -24, 1, -8),
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Parent = rows,
+		}, "Body", 13, "Muted")
+		local footer = Draw.New("Frame", {
+			Name = "ScriptPagination",
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.fromScale(0, 1),
+			Size = UDim2.new(1, 0, 0, 36),
+			Parent = surface,
+		})
+		local previous = button(
+			"ScriptPrevious",
+			footer,
+			"Prev",
+			UDim2.fromOffset(0, 0),
+			UDim2.fromOffset(48, 36),
+			function()
+				browser:SetPage(browser.Page - 1)
+			end
+		)
+		local nextPage = button(
+			"ScriptNext",
+			footer,
+			"Next",
+			UDim2.new(1, -48, 0, 0),
+			UDim2.fromOffset(48, 36),
+			function()
+				browser:SetPage(browser.Page + 1)
+			end
+		)
+		local jump = Draw.Box("TextBox", {
+			Name = "ScriptPageJump",
+			Text = "1",
+			ClearTextOnFocus = false,
+			MultiLine = false,
+			Position = UDim2.fromOffset(54, 0),
+			Size = UDim2.fromOffset(38, 36),
+			TextSize = 13,
+			Font = Enum.Font.GothamMedium,
+			Parent = footer,
+		}, "Element", "Outline", 7, 1)
+		Theme.Bind(jump, { TextColor3 = "Text" })
+		local status = Draw.Text({
+			Name = "ScriptPageStatus",
+			Position = UDim2.fromOffset(98, 0),
+			Size = UDim2.new(1, -152, 1, 0),
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Parent = footer,
+		}, "Body", 11, "Muted")
+		listen(jump.FocusLost, function()
+			local requested = tonumber(jump.Text)
+			browser:SetPage(
+				if requested and requested == requested
+					then math.floor(requested)
+					else browser.Page
+			)
+		end)
+		-- Eight rows is a hard allocation bound, independent of catalog size. Hidden
+		-- slots have no animation, polling, or per-entry signal connections.
+		for index = 1, 8 do
+			local frame = Draw.Box("Frame", {
+				Name = "ScriptSlot" .. index,
+				Size = UDim2.new(1, 0, 0, 76),
+				Visible = false,
+				Parent = rows,
+			}, "Panel", "Outline", 8, 1)
+			local card = { Frame = frame }
+			card.Title = text("ScriptName", frame, "", 7, 22, 15)
+			card.Description =
+				text("ScriptDescription", frame, "", 30, 19, 12, "SubText")
+			card.Badge = text("ScriptBadge", frame, "", 51, 18, 11, "Muted")
+			card.Pin = button(
+				"ScriptPin" .. index,
+				frame,
+				"Pin",
+				UDim2.new(1, -128, 0, 18),
+				UDim2.fromOffset(48, 40),
+				function()
+					if card.Id then
+						browser.Pinned[card.Id] = not browser.Pinned[card.Id]
+							or nil
+						browser:Filter()
+					end
+				end
+			)
+			card.Open = button(
+				"ScriptOpen" .. index,
+				frame,
+				"Details",
+				UDim2.new(1, -74, 0, 18),
+				UDim2.fromOffset(64, 40),
+				function()
+					-- A refresh can replace metadata while this slot is visible. Resolve the
+					-- current entry, never a captured executable or an obsolete table.
+					local entry = model.Resolve(browser.Entries, card.Id)
+					if entry and options.Open then
+						browser.Visit += 1
+						browser.Recent[entry.Id] = browser.Visit
+						options.Open(entry)
+						if not browser.Closed then
+							browser:Filter()
+						end
+					end
+				end
+			)
+			browser.Cards[index] = card
+		end
+		function browser:Render()
+			if self.Closed then
+				return
+			end
+			self.Pages = math.max(1, math.ceil(#self.Matches / self.PageSize))
+			self.Page = math.clamp(self.Page, 1, self.Pages)
+			for index, card in ipairs(self.Cards) do
+				local entry = if index <= self.PageSize
+					then self.Matches[(self.Page - 1) * self.PageSize + index]
+					else nil
+				card.Id, card.Frame.Visible = entry and entry.Id, entry ~= nil
+				card.Frame.Position = UDim2.fromOffset(
+					0,
+					(index - 1) * ((self.RowHeight or 76) + 6)
+				)
+				card.Frame.Size = UDim2.new(1, 0, 0, self.RowHeight or 76)
+				card.Description.Visible = (self.RowHeight or 76) >= 64
+				card.Badge.Visible = (self.RowHeight or 76) >= 76
+				local actionY = math.max(0, ((self.RowHeight or 76) - 40) / 2)
+				local actionHeight = math.min(40, self.RowHeight or 76)
+				card.Pin.Position, card.Open.Position =
+					UDim2.new(1, -128, 0, actionY),
+					UDim2.new(1, -74, 0, actionY)
+				card.Pin.Size, card.Open.Size =
+					UDim2.fromOffset(48, actionHeight),
+					UDim2.fromOffset(64, actionHeight)
+				if self.Width < 360 and (self.RowHeight or 76) >= 76 then
+					card.Pin.Position, card.Open.Position =
+						UDim2.new(1, -74, 0, 40), UDim2.new(1, -74, 0, 4)
+					card.Pin.Size, card.Open.Size =
+						UDim2.fromOffset(64, 32), UDim2.fromOffset(64, 32)
+				end
+				local textInset = if self.Width < 360
+						and (self.RowHeight or 76) >= 76
+					then 96
+					else 150
+				card.Title.Size, card.Description.Size, card.Badge.Size =
+					UDim2.new(1, -textInset, 0, 22),
+					UDim2.new(1, -textInset, 0, 19),
+					UDim2.new(1, -textInset, 0, 18)
+				if entry then
+					card.Title.Text = entry.Name
+					card.Description.Text = entry.Description
+						or "Open details for compatibility and launch information."
+					card.Badge.Text = model.Badge(
 						entry,
-						self.Query .. " " .. self.GlobalQuery,
+						game.PlaceId,
+						game.GameId
+					) .. " / " .. (entry.Collection or "Nullx11 originals")
+					card.Pin.Text = if self.Pinned[entry.Id]
+						then "Unpin"
+						else "Pin"
+				end
+			end
+			for view, control in pairs(viewButtons) do
+				control.BackgroundTransparency = if self.View == view
+					then 0
+					else 0.65
+				control.Visible = not self.Compact
+			end
+			category.Text, collection.Text = self.Category, self.Collection
+			sort.Text = if self.Sort == "Name" then "Name A-Z" else self.Sort
+			filterButton.Text = if self.ShowFilters then "Less" else "Filters"
+			filterButton.Visible = not self.Compact
+			filters.Visible, empty.Visible =
+				self.ShowFilters and not self.Compact, #self.Matches == 0
+			jump.Text = tostring(self.Page)
+			status.Text =
+				string.format("of %d / %d scripts", self.Pages, #self.Matches)
+			previous.Active, nextPage.Active =
+				self.Page > 1, self.Page < self.Pages
+			previous.TextTransparency = if previous.Active then 0 else 0.6
+			nextPage.TextTransparency = if nextPage.Active then 0 else 0.6
+		end
+		function browser:SetPage(page)
+			if self.Closed then
+				return
+			end
+			self.Page = math.clamp(page, 1, self.Pages)
+			self:Render()
+		end
+		function browser:Layout(width, height)
+			if self.Closed then
+				return
+			end
+			self.Width, self.Height = width, height
+			self.Compact = height < 204
+			local top = if self.Compact
+				then 44
+				elseif self.ShowFilters then 124
+				else 84
+			local available = math.max(32, height - top - 44)
+			self.RowHeight = math.min(76, available)
+			rows.Position, rows.Size =
+				UDim2.fromOffset(0, top), UDim2.new(1, 0, 0, available)
+			local size = math.clamp(
+				math.floor((available + 6) / (self.RowHeight + 6)),
+				1,
+				8
+			)
+			-- Preserve the first visible result when resizing/rotating the viewport.
+			local first = (self.Page - 1) * self.PageSize
+			self.PageSize = size
+			self.Page = math.floor(first / size) + 1
+			self:Render()
+		end
+		function browser:Filter()
+			if self.Closed then
+				return
+			end
+			table.clear(self.Matches)
+			for _, entry in ipairs(self.Entries) do
+				if
+					model.Match(
+						entry,
+						self.Query,
 						self.Category,
-						self.OnlyPlace,
+						self.View == "This game",
 						game.PlaceId,
 						game.GameId,
 						self.Collection
 					)
-					card.Frame.Visible = show
-					if show then
-						table.insert(self.Matches, card)
+					and (self.View ~= "Pinned" or self.Pinned[entry.Id])
+					and (self.View ~= "Recent" or self.Recent[entry.Id])
+				then
+					table.insert(self.Matches, entry)
+				end
+			end
+			table.sort(self.Matches, function(a, b)
+				if self.View == "Recent" or self.Sort == "Recent" then
+					local ar, br =
+						self.Recent[a.Id] or 0, self.Recent[b.Id] or 0
+					if ar ~= br then
+						return ar > br
+					end
+				elseif self.Sort == "Collection" then
+					local ac, bc =
+						a.Collection or "Nullx11 originals",
+						b.Collection or "Nullx11 originals"
+					if ac ~= bc then
+						return ac < bc
 					end
 				end
-			end
-			empty.Visible = #self.Matches == 0
-			summary:SetText(
-				string.format(
-					"%d of %d games / Nullx11 by NULL",
-					#self.Matches,
-					total
-				)
-			)
-			tab.Left:MarkDirty()
-			tab:ApplyColumns()
+				local an, bn = string.lower(a.Name), string.lower(b.Name)
+				return if an == bn then a.Id < b.Id else an < bn
+			end)
+			self:Render()
 		end
-		local category
+		function browser:Reset()
+			if self.Closed then
+				return
+			end
+			self.Query, self.Category, self.Collection, self.View, self.Sort, self.Page =
+				"", "All games", "All collections", "All", "Name", 1
+			search.Text = ""
+			self:Filter()
+		end
 		function browser:Refresh()
-			local present = {}
-			for _, entry in ipairs(latest()) do
-				present[entry.Id] = true
-				local card = self.Cards[entry.Id]
-				if not card then
-					local frame = Draw.Box(
-						"Frame",
-						{ Name = "ScriptCard_" .. entry.Id, Parent = grid },
-						"Panel",
-						"Outline",
-						14,
-						1
-					)
-					local accent = Draw.Box("Frame", {
-						Size = UDim2.new(1, -32, 0, 3),
-						Position = UDim2.fromOffset(16, 0),
-						Parent = frame,
-					}, "Accent", nil, 2)
-					local icon = Icons.Create(
-						frame,
-						entry.Icon or "code",
-						30,
-						"Accent",
-						entry.Name
-					)
-					icon.Position = UDim2.fromOffset(16, 18)
-					local genre = copy(
-						frame,
-						"Category",
-						model.Category(entry):upper(),
-						19,
-						20,
-						14,
-						"Muted"
-					)
-					genre.Position = UDim2.fromOffset(58, 23)
-					genre.Size = UDim2.new(1, -74, 0, 20)
-					local title =
-						copy(frame, "GameName", entry.Name, 59, 46, 19, "Text")
-					local description = copy(
-						frame,
-						"GameDescription",
-						entry.Description,
-						112,
-						57,
-						14,
-						"SubText"
-					)
-					local badge = copy(
-						frame,
-						"Compatibility",
-						model.Badge(entry, game.PlaceId, game.GameId),
-						177,
-						18,
-						12,
-						"Muted"
-					)
-					local button = Draw.Box("TextButton", {
-						Name = "OpenScript_" .. entry.Id,
-						Position = UDim2.fromOffset(14, 204),
-						Size = UDim2.new(1, -28, 0, 32),
-						Parent = frame,
-					}, "Element", "Outline", 8, 1)
-					copy(
-						button,
-						"OpenLabel",
-						"View details & launch",
-						6,
-						20,
-						14,
-						"Text"
-					)
-					local id = entry.Id
-					local connection = button.Activated:Connect(function()
-						local selected = model.Resolve(latest(), id)
-						if not selected then
-							self:Refresh()
-							return
-						end
-						options.Open(selected)
-					end)
-					card = {
-						Frame = frame,
-						Title = title,
-						Description = description,
-						Genre = genre,
-						Badge = badge,
-						Connection = connection,
-						Accent = accent,
-					}
-					self.Cards[entry.Id] = card
-				end
-				card.Title.Text = entry.Name
-				card.Description.Text = entry.Description
-				card.Genre.Text = model.Category(entry):upper()
-				card.Badge.Text = model.Badge(entry, game.PlaceId, game.GameId)
+			if self.Closed then
+				return
 			end
-			local removed = {}
-			for id, card in pairs(self.Cards) do
-				if not present[id] then
-					table.insert(removed, id)
-					card.Connection:Disconnect()
-					Theme.UnbindTree(card.Frame)
-					card.Frame:Destroy()
+			self.Entries = options.Entries and options.Entries() or {}
+			local seen, collections = {}, { "All collections" }
+			for _, entry in ipairs(self.Entries) do
+				local value = entry.Collection or "Nullx11 originals"
+				if not seen[value] then
+					seen[value] = true
+					table.insert(collections, value)
 				end
 			end
-			for _, id in ipairs(removed) do
-				self.Cards[id] = nil
+			table.sort(collections)
+			self.Collections = collections
+			if
+				not table.find(model.Categories(self.Entries), self.Category)
+			then
+				self.Category = "All games"
 			end
-			if category then
-				local values = model.Categories(latest())
-				category:SetValues(values)
-				if not table.find(values, self.Category) then
-					self.Category = "All games"
-					category:SetValue("All games")
+			if not table.find(collections, self.Collection) then
+				self.Collection = "All collections"
+			end
+			-- Metadata and session history are bounded by currently published entries.
+			for _, history in ipairs({ self.Pinned, self.Recent }) do
+				for id in pairs(history) do
+					if not model.Resolve(self.Entries, id) then
+						history[id] = nil
+					end
 				end
 			end
 			self:Filter()
 		end
-		controls:AddInput("ScriptLibrarySearch", {
-			Text = "Search library",
-			Placeholder = "Game, feature or creator",
-			Finished = false,
-			Default = "",
-			NoSave = true,
-			Callback = function(value)
-				browser.Query = value
-				browser:Filter()
-			end,
-		})
-		category = controls:AddDropdown("ScriptLibraryCategory", {
-			Text = "Category",
-			Values = model.Categories(latest()),
-			Default = "All games",
-			NoSave = true,
-			Callback = function(value)
-				browser.Category = value
-				browser:Filter()
-			end,
-		})
-		controls:AddDropdown("ScriptLibraryCollection", {
-			Text = "Source collection",
-			Values = {
-				"All collections",
-				"Nullx11 originals",
-				"YARHM",
-				"Chaos",
-				"NULL Studio",
-			},
-			Default = "All collections",
-			NoSave = true,
-			Callback = function(value)
-				browser.Collection = value
-				browser:Filter()
-			end,
-		})
-		controls:AddToggle("ScriptLibraryPlace", {
-			Text = "Known compatible game or Universal",
-			Default = false,
-			NoSave = true,
-			Callback = function(value)
-				browser.OnlyPlace = value
-				browser:Filter()
-			end,
-		})
-		controls:AddButton({
-			Text = "Refresh repository manifest",
-			Func = options.Refresh,
-		})
-		local help = tab:AddLeftGroupbox("Read before launching", "info")
-		help:AddParagraph({
-			Title = "Browse first. Launch deliberately.",
-			Content = "Cards open the existing details and confirmation window. Nothing auto-runs or joins a game. A place match is not proof of server compatibility; module-gated games are checked by their bundle before startup.",
-		})
-		help:AddParagraph({
-			Title = "Independent workspaces",
-			Content = "Executed game windows survive loader unload. Stop features or unload each game's own workspace to clean up its jobs, overlays and owned changes.",
-		})
-		help:AddParagraph({
-			Title = "NULL ownership and source notices",
-			Content = "Owner: NULL. Native Nullx11 editions use one shared interface. Required source notices and restrictions are retained in the repository; optional promotional credits are not shown here.",
-		})
-		tab.ApplyLibraryFilter = function(query)
-			browser.GlobalQuery = query or ""
+		listen(search:GetPropertyChangedSignal("Text"), function()
+			if browser.Closed or browser.Query == search.Text then
+				return
+			end
+			browser.Query, browser.Page = search.Text, 1
+			browser:Filter()
+		end)
+		local applyQuery = function(query)
+			if browser.Closed then
+				return
+			end
+			tab.FilteredQuery = query or ""
+			browser.Query, browser.Page = query or "", 1
+			search.Text = query or ""
 			browser:Filter()
 		end
+		if tab.Window and tab.Window.PageHost then
+			listen(
+				tab.Window.PageHost:GetPropertyChangedSignal("AbsoluteSize"),
+				function()
+					if not browser.Closed then
+						tab.Left:MarkDirty()
+					end
+				end
+			)
+		end
+		tab.LibraryBrowser = true
+		tab.ApplyLibraryFilter = applyQuery
+		tab.Left:Add(surface, {
+			Height = function()
+				local host = tab.Window and tab.Window.PageHost
+				return math.clamp(
+					(host and host.AbsoluteSize.Y or 416) - 16,
+					120,
+					780
+				)
+			end,
+			OnLayout = function(width, height)
+				browser:Layout(width, height)
+			end,
+		})
 		self:OnUnload(function()
-			for _, card in pairs(browser.Cards) do
-				card.Connection:Disconnect()
+			browser.Closed = true
+			for _, connection in ipairs(browser.Connections) do
+				connection:Disconnect()
+			end
+			table.clear(browser.Connections)
+			Theme.UnbindTree(surface)
+			for _, card in ipairs(browser.Cards) do
+				card.Id = nil
 			end
 			table.clear(browser.Cards)
 			table.clear(browser.Matches)
+			browser.Entries = {}
+			table.clear(browser.Pinned)
+			table.clear(browser.Recent)
+			if tab.ApplyLibraryFilter == applyQuery then
+				tab.ApplyLibraryFilter = nil
+				tab.LibraryBrowser = nil
+			end
 		end)
 		browser:Refresh()
+		browser:Layout(600, 400)
 		return browser
 	end
 	local makeExecutionState = (function()
@@ -13596,6 +13943,7 @@ local function createNullx11UI(scope)
 			Name = "Nullx11ExecutionOverlay",
 			ResetOnSpawn = false,
 			IgnoreGuiInset = true,
+			ScreenInsets = Enum.ScreenInsets.None,
 			DisplayOrder = math.max(1000, State.Gui.DisplayOrder + 1),
 			ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 			Parent = State.Gui.Parent,
@@ -14007,8 +14355,57 @@ local function createNullx11UI(scope)
 			end
 		end
 		for group in pairs(Anim.Loops) do
-			Anim.SetGroupActive(group, not enabled)
+			Anim.SetGroupActive(group, Anim.GroupRequested[group] ~= false)
 		end
+	end
+
+	-- Apply only when the policy changes, not on every render. Preserve explicit
+	-- visibility requests so recovery cannot restart hidden decoration groups.
+	function Library:ApplyPerformanceBudget()
+		State.LowPower = State.Performance.LowPower
+		for group in pairs(Anim.Loops) do
+			Anim.SetGroupActive(group, Anim.GroupRequested[group] ~= false)
+		end
+		if State.LowPower then
+			for index = #Motion.Springs, 1, -1 do
+				local spring = Motion.Springs[index]
+				spring.Inst[spring.Prop] =
+					Motion.Unpack(spring.Kind, spring.Goal)
+				Motion.Remove(spring, true)
+			end
+		end
+		if Particles.Layer then
+			Particles.Layer.Visible = Particles.Enabled and not State.LowPower
+		end
+		if not State.LowPower then
+			Particles.Resume()
+		end
+	end
+
+	function Library:SetPerformanceMode(mode)
+		if uiPerformance.SetMode(State.Performance, mode) then
+			self:ApplyPerformanceBudget()
+		end
+	end
+
+	function Library:GetPerformanceStatus()
+		return State.Performance.Mode
+			.. " / "
+			.. (
+				State.ReducedMotion and "reduced motion"
+				or State.LowPower and "low UI work"
+				or "full UI motion"
+			)
+	end
+
+	function Library:CenterWindow()
+		local window = self.Window
+		if self.Unloaded or type(window) ~= "table" then
+			return false
+		end
+		window.UserPositioned = false
+		window:FitViewport()
+		return true
 	end
 
 	function Library:GetGuiParent()

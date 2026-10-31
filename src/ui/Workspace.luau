@@ -16,6 +16,7 @@ do
 				action()
 			end
 			local function build()
+				local scriptsTab, browser
 				window = library.Window
 				window.OnShow = function()
 					expanded = false
@@ -38,16 +39,21 @@ do
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()
-					if not alive or not window.Visible then
+					if
+						not alive
+						or not window.Visible
+						or window.ActiveTab ~= home
+					then
 						return
 					end
 					live:SetText(
 						string.format(
-							"%s / %d FPS / %d players / place %s",
+							"%s / %d FPS / %d players / place %s\n%s",
 							player.DisplayName,
 							library:GetFPS(),
 							#Players:GetPlayers(),
-							tostring(game.PlaceId)
+							tostring(game.PlaceId),
+							library:GetPerformanceStatus()
 						)
 					)
 				end)
@@ -92,13 +98,13 @@ do
 					Func = playerToolsBridge.Stop,
 				})
 
-				local scriptsTab = window:AddTab(
+				scriptsTab = window:AddTab(
 					"Scripts",
 					"code",
-					"Find your game. Open your own workspace."
+					"Search, filter and pin. Details first; launch stays manual."
 				)
 				local catalog = playerToolsBridge.Catalog
-				local browser = library:CreateScriptBrowser(scriptsTab, {
+				browser = library:CreateScriptBrowser(scriptsTab, {
 					Entries = function()
 						return catalog.Entries
 					end,
@@ -110,6 +116,27 @@ do
 					end,
 				})
 				catalog.WorkspaceBrowser = browser
+				welcomeGroup:AddButton({
+					Text = "Browse pinned / recent scripts",
+					Func = function()
+						window:SelectTab(scriptsTab)
+					end,
+				})
+				welcomeGroup:AddButton({
+					Text = "Scripts for this game",
+					Func = function()
+						window:SelectTab(scriptsTab)
+						browser:Reset()
+						browser.View = "This game"
+						browser:Filter()
+					end,
+				})
+				welcomeGroup:AddButton({
+					Text = "Center loader window",
+					Func = function()
+						library:CenterWindow()
+					end,
+				})
 				library:OnUnload(function()
 					if catalog.WorkspaceBrowser == browser then
 						catalog.WorkspaceBrowser = nil
@@ -130,6 +157,19 @@ do
 							setTeleportEnabled(true)
 						end)
 					end,
+				})
+				toolsGroup:AddDropdown("WorkspacePerformance", {
+					Text = "UI performance profile",
+					Values = { "Auto", "Balanced", "Low power" },
+					Default = "Auto",
+					NoSave = true,
+					Callback = function(value)
+						library:SetPerformanceMode(value)
+					end,
+				})
+				toolsGroup:AddParagraph({
+					Title = "Less UI work, not a graphics hack",
+					Content = "Auto reduces UI motion after sustained low FPS and restores it only after recovery. Low power keeps UI transitions instant and decorative particles paused. Gameplay and launched scripts are unchanged.",
 				})
 				toolsGroup:AddToggle("WorkspaceReducedMotion", {
 					Text = "Reduced motion",

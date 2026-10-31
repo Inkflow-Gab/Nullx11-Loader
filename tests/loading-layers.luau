@@ -47,6 +47,19 @@ assert(
 		and gui.Parent == State.Gui.Parent
 		and gui.DisplayOrder > State.Gui.DisplayOrder
 )
+local sheet = find("ExecutionCard")
+assert(
+	gui.IgnoreGuiInset and gui.ScreenInsets == Enum.ScreenInsets.None,
+	"execution and main UI use the same full viewport"
+)
+assert(
+	sheet.AnchorPoint.X == 0.5 and sheet.AnchorPoint.Y == 0.5,
+	"sheet anchors its center, not its top-left"
+)
+assert(
+	sheet.Position.X == 0.5 and sheet.Position.Y == 0.5,
+	"sheet uses viewport center coordinates"
+)
 local newGameGui =
 	Draw.New("ScreenGui", { DisplayOrder = 100, Parent = State.Gui.Parent })
 assert(

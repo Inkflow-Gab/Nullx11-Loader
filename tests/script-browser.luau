@@ -1,5 +1,6 @@
--- Actual native browser component with layout/widget API doubles, not a visual
--- rendering claim. The model and view are both the shipped implementations.
+-- Both shipped browser/model, with API doubles and scale-aware dimensions.
+-- These are bounded-layout/lifecycle contracts, not native rendering claims.
+local UDim2 = midiUDim2
 local Library = { Hooks = {} }
 function Library:OnUnload(callback)
 	table.insert(self.Hooks, callback)
@@ -18,13 +19,10 @@ end
 function Draw.Text(properties)
 	return Draw.New("TextLabel", properties)
 end
-local Icons = {
-	Create = function(parent)
-		return Draw.New("Frame", { Parent = parent })
-	end,
-}
+function Draw.Padding() end
 local unbound = 0
 local Theme = {
+	Bind = function() end,
 	UnbindTree = function()
 		unbound += 1
 	end,
@@ -32,51 +30,16 @@ local Theme = {
 local makeScriptLibraryModel
 -- @BROWSER_MODEL
 -- @BROWSER_VIEW
-local controls = {}
-local group = {}
-function group:AddLabel(text)
-	local label = { Text = text }
-	function label:SetText(value)
-		self.Text = value
-	end
-	return label
-end
-for _, method in ipairs({ "AddInput", "AddDropdown", "AddToggle" }) do
-	group[method] = function(_, id, spec)
-		local widget = { Spec = spec, Value = spec.Default }
-		function widget:SetValues(values)
-			self.Values = values
-		end
-		function widget:SetValue(value)
-			self.Value = value
-			spec.Callback(value)
-		end
-		controls[id] = widget
-		return widget
-	end
-end
-function group:AddButton(spec)
-	controls[spec.Text] = spec
-end
-function group:AddParagraph() end
-local tab = { Left = { Items = {} } }
+local tab =
+	{ Left = { Items = {} }, Window = { PageHost = Instance.new("Frame") } }
+tab.Window.PageHost.AbsoluteSize = Vector2.new(650, 416)
 function tab.Left:Add(frame, spec)
 	table.insert(self.Items, { Frame = frame, Spec = spec })
-	return self.Items[#self.Items]
 end
 function tab.Left:MarkDirty()
 	self.Dirty = true
 end
-function tab:ApplyColumns()
-	self.Changed = true
-end
-function tab:AddLeftGroupbox()
-	return group
-end
-function tab:AddRightGroupbox()
-	error("browser must use the full responsive page width")
-end
-game.PlaceId = 9991
+game.PlaceId, game.GameId = 9991, 77
 local entries = {
 	{
 		Id = "a",
@@ -97,6 +60,18 @@ local entries = {
 		File = "b.luau",
 		Category = "Shooter",
 	},
+	{
+		Id = "c",
+		Name = "Gamma",
+		Description = "Universal tools",
+		Universal = true,
+	},
+	{
+		Id = "d",
+		Name = "Delta",
+		Description = "Universe tools",
+		GameUniverseId = game.GameId,
+	},
 }
 local opened, refreshes = nil, 0
 local browser = Library:CreateScriptBrowser(tab, {
@@ -110,108 +85,167 @@ local browser = Library:CreateScriptBrowser(tab, {
 		refreshes += 1
 	end,
 })
+assert(#browser.Matches == 4 and #browser.Cards == 8 and opened == nil)
+assert(#tab.Left.Items == 1, "no stacked groupboxes or catalog-sized canvas")
+local layout = tab.Left.Items[1].Spec
+assert(layout.Height(650) == 400)
+layout.OnLayout(650, 400)
+assert(browser.PageSize == 3 and browser.Pages == 2)
+local first = browser.Cards[1]
+assert(first.Id == "a" and first.Description.Text == "Cash routing")
+local allocations, connections = #objects, #browser.Connections
+local function click(name)
+	find(name).Activated:Fire()
+end
+local function query(value)
+	browser.Search.Text = value
+	browser.Search:GetPropertyChangedSignal("Text"):Fire()
+end
+click("ScriptNext")
 assert(
-	#browser.Matches == 2 and opened == nil,
-	"browsing never starts game code"
+	browser.Page == 2
+		and browser.Cards[1].Id == "c"
+		and not browser.Cards[2].Frame.Visible
 )
-local a, b = browser.Cards.a, browser.Cards.b
-local grid = tab.Left.Items[1]
-assert(grid.Spec.Height(650) == 248 and grid.Spec.Height(320) == 508)
-grid.Spec.OnLayout(650, 248)
+click("ScriptPrevious")
+query("alice cash")
+assert(#browser.Matches == 1 and first.Id == "a")
+query("%[")
 assert(
-	a.Frame.Position.Y == b.Frame.Position.Y
-		and a.Frame.Position.X ~= b.Frame.Position.X,
-	"wide: two columns"
+	#browser.Matches == 0 and find("ScriptEmpty").Visible,
+	"literal search, not patterns"
 )
-grid.Spec.OnLayout(320, 508)
+click("ScriptClear")
+click("ScriptView2")
 assert(
-	a.Frame.Position.X == b.Frame.Position.X
-		and a.Frame.Position.Y ~= b.Frame.Position.Y,
-	"mobile: one column"
+	#browser.Matches == 3,
+	"this game includes matching place/universe/universal, not unknown modules"
 )
-controls.ScriptLibrarySearch:SetValue("CASH alice")
-assert(#browser.Matches == 1 and a.Frame.Visible and not b.Frame.Visible)
-controls.ScriptLibrarySearch:SetValue("[")
-assert(#browser.Matches == 0, "search is literal, not an injected pattern")
-controls.ScriptLibrarySearch:SetValue("")
-assert(browser.Cards.a == a, "search reuses cards and callbacks")
-controls.ScriptLibraryCategory:SetValue("Shooter")
-assert(#browser.Matches == 1 and browser.Matches[1] == b)
-controls.ScriptLibraryCategory:SetValue("All games")
-controls.ScriptLibraryPlace:SetValue(true)
-assert(#browser.Matches == 1 and browser.Matches[1] == a)
-controls.ScriptLibraryPlace:SetValue(false)
-tab.ApplyLibraryFilter("Beta")
-assert(#browser.Matches == 1 and browser.Matches[1] == b)
-tab.ApplyLibraryFilter("")
-controls.ScriptLibraryCollection:SetValue("YARHM")
-assert(#browser.Matches == 1 and browser.Matches[1] == a)
-controls.ScriptLibraryCollection:SetValue("Chaos")
-assert(#browser.Matches == 1 and browser.Matches[1] == b)
-controls.ScriptLibraryCollection:SetValue("All collections")
-local universeEntry = { GameUniverseId = 6331902150, Collection = "YARHM" }
+click("ScriptClear")
+click("ScriptPin1")
+click("ScriptView3")
+assert(#browser.Matches == 1 and first.Id == "a" and first.Pin.Text == "Unpin")
+click("ScriptPin1")
+assert(#browser.Matches == 0, "unpin clamps empty page immediately")
+click("ScriptView4")
+assert(#browser.Matches == 0 and opened == nil)
+click("ScriptClear")
+click("ScriptOpen1")
 assert(
-	makeScriptLibraryModel.Badge(universeEntry, game.PlaceId, 6331902150)
-		== "UNIVERSE MATCH"
+	opened == entries[1] and browser.Recent.a == 1,
+	"only explicit details action delegates"
 )
+click("ScriptView4")
+assert(#browser.Matches == 1 and first.Id == "a")
+click("ScriptClear")
+click("ScriptFilters")
+assert(browser.ShowFilters and find("ScriptFilterRow").Visible)
+click("ScriptCategory")
+assert(browser.Category == "Community" and #browser.Matches == 2)
+click("ScriptClear")
+click("ScriptCollection")
 assert(
-	makeScriptLibraryModel.Match(
-		universeEntry,
-		"yarhm",
-		"All games",
-		true,
-		game.PlaceId,
-		6331902150,
-		"YARHM"
-	)
+	browser.Collection == "Chaos" and #browser.Matches == 1 and first.Id == "b"
 )
-assert(
-	not makeScriptLibraryModel.Match(
-		universeEntry,
-		"",
-		"All games",
-		true,
-		game.PlaceId,
-		1
-	)
-)
-assert(
-	makeScriptLibraryModel.Match(
-		{ Universal = true },
-		"",
-		"All games",
-		true,
-		game.PlaceId,
-		0
-	)
-)
-local obsolete = a.Frame:FindFirstChild("OpenScript_a")
-local updated = {
+click("ScriptClear")
+-- Global header API still delegates; local search survives leaving/reentering an
+-- unchanged global query via the normal tab FilteredQuery contract.
+tab.ApplyLibraryFilter("beta")
+assert(#browser.Matches == 1 and tab.FilteredQuery == "beta")
+click("ScriptClear")
+-- Replacement metadata is resolved at click after refresh, never a stale closure.
+entries[1] = {
 	Id = "a",
-	Name = "Changed",
-	Description = "Updated source",
-	File = "new.luau",
-	Category = "Adventure",
+	Name = "Alpha revised",
+	Description = "Current metadata",
+	Category = "Updated",
 }
-entries = { updated }
 browser:Refresh()
-assert(browser.Cards.b == nil and unbound == 1 and not b.Connection.Connected)
-obsolete.Activated:Fire()
-assert(opened == updated, "resolve current manifest entry, never stale source")
+click("ScriptOpen1")
+assert(opened == entries[1] and opened.Name == "Alpha revised")
+if browser.ShowFilters then
+	click("ScriptFilters")
+end
+-- A larger catalog must not allocate any more GUI objects or callbacks.
+for index = 1, 500 do
+	table.insert(entries, {
+		Id = "extra" .. index,
+		Name = string.format("Row %03d", index),
+		Description = "Bounded library",
+	})
+end
+browser:Refresh()
+layout.OnLayout(650, 780)
+assert(browser.PageSize == 8 and browser.Pages == 63)
+for page = 1, browser.Pages do
+	browser:SetPage(page)
+end
+assert(
+	#objects == allocations and #browser.Connections == connections,
+	"paging/filter/refresh reuse the fixed pool"
+)
+local jump = find("ScriptPageJump")
+jump.Text = "99999"
+jump.FocusLost:Fire()
+assert(browser.Page == browser.Pages)
+jump.Text = "-99"
+jump.FocusLost:Fire()
+assert(browser.Page == 1)
+jump.Text = "not a number"
+jump.FocusLost:Fire()
+assert(browser.Page == 1)
+browser:SetPage(7)
+local firstIndex = (browser.Page - 1) * browser.PageSize
+layout.OnLayout(272, 400)
+assert(browser.PageSize == 3 and browser.Page == math.floor(firstIndex / 3) + 1)
+assert(
+	first.Pin.Position.Y.Offset == 40 and first.Pin.Size.Y.Offset == 32,
+	"portrait actions stack, giving titles more width"
+)
+-- Short landscape removes the secondary toolbar, never overlapping the pager.
+layout.OnLayout(600, 158)
+assert(
+	browser.PageSize == 1
+		and not find("ScriptView1").Visible
+		and not find("ScriptFilterRow").Visible
+)
+assert(
+	first.Frame.Position.Y.Offset + first.Frame.Size.Y.Offset <= 158 - 44 - 44
+)
+assert(first.Open.Size.Y.Offset >= 32)
+tab.Window.PageHost:GetPropertyChangedSignal("AbsoluteSize"):Fire()
+assert(
+	tab.Left.Dirty,
+	"height-only viewport changes remeasure the bounded page"
+)
+-- Removed entries prune session history, then empty library resets page and UI.
 entries = {}
 browser:Refresh()
-opened = nil
-obsolete.Activated:Fire()
-assert(opened == nil and not a.Connection.Connected)
 assert(
-	#browser.Matches == 0
-		and makeScriptLibraryModel.Badge(updated, game.PlaceId)
-			== "MODULE CHECK ON LAUNCH"
+	browser.Page == 1
+		and browser.Pages == 1
+		and #browser.Matches == 0
+		and not first.Frame.Visible
 )
-controls["Refresh repository manifest"].Func()
+assert(next(browser.Pinned) == nil and next(browser.Recent) == nil)
+click("ScriptRefresh")
 assert(refreshes == 1)
-for _, callback in ipairs(Library.Hooks) do
-	callback()
+local oldConnections = table.clone(browser.Connections)
+for _, hook in ipairs(Library.Hooks) do
+	hook()
 end
-assert(next(browser.Cards) == nil)
-return "PASS: shipped Scripts browser/model: literal multi-word creator/feature search, category/collection/place/universe/Universal filters, responsive layout, pooled cards, refresh invalidation/current-entry launch and owned callback disposal (development API doubles only)"
+for _, connection in ipairs(oldConnections) do
+	assert(not connection.Connected)
+end
+assert(
+	browser.Closed
+		and #browser.Cards == 0
+		and tab.ApplyLibraryFilter == nil
+		and unbound == 1
+)
+click("ScriptRefresh")
+assert(
+	refreshes == 1 and #entries == 0,
+	"disposed controls cannot invoke callbacks or mutate catalog"
+)
+return "PASS: shipped bounded browser: paging/jump/rotation/short landscape, search/category/collection/place/universe, pin/recent, latest-entry resolution, 504-entry constant UI allocations and disposal (API doubles)"

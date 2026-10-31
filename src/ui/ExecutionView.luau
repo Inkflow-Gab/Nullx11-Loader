@@ -11,6 +11,7 @@ function Library:BeginExecution(title)
 		Name = "Nullx11ExecutionOverlay",
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true,
+		ScreenInsets = Enum.ScreenInsets.None,
 		DisplayOrder = math.max(1000, State.Gui.DisplayOrder + 1),
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		Parent = State.Gui.Parent,

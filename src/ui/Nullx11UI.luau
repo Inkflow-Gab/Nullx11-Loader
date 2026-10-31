@@ -653,7 +653,11 @@ do
 end
 table.insert(Themes.Order, 1, "Nullx11")
 
+-- @NULLX11_PERFORMANCE_POLICY
+
 local State = {
+	Performance = uiPerformance.New(),
+	LowPower = false,
 	ReducedMotion = scope and scope.ReducedMotion == true,
 	Gui = nil,
 	Overlay = nil,
@@ -1247,6 +1251,7 @@ end
 
 Anim.Loops = {}
 Anim.GroupState = {}
+Anim.GroupRequested = {}
 Anim.NoopSignal = {
 	Once = function(_, fn)
 		if type(fn) == "function" then
@@ -1274,8 +1279,14 @@ function Anim.Info(duration, ease, repeatCount, reverses, delay)
 end
 
 function Anim.Tween(inst, goal, duration, ease, repeatCount, reverses, delay)
+	-- A decorative round trip ends at its starting value; do not leave a
+	-- low-power control displaced at the first (outbound) goal.
+	if State.LowPower and (reverses or (repeatCount or 0) ~= 0) then
+		return Anim.NoopTween
+	end
 	if
 		State.ReducedMotion
+		or State.LowPower
 		or (duration == 0 and (repeatCount or 0) == 0 and (delay or 0) == 0)
 	then
 		for prop, val in pairs(goal) do
@@ -1312,7 +1323,7 @@ function Anim.Loop(group, inst, goal, duration, ease, reverses, delay)
 		list = {}
 		Anim.Loops[group] = list
 	end
-	local active = Anim.GroupState[group] ~= false
+	local active = Anim.GroupState[group] ~= false and not State.LowPower
 	local entry = { Tween = tween, Inst = inst, Playing = active }
 	table.insert(list, entry)
 	if active then
@@ -1326,7 +1337,8 @@ function Anim.Loop(group, inst, goal, duration, ease, reverses, delay)
 end
 
 function Anim.SetGroupActive(group, active)
-	active = active == true and not State.ReducedMotion
+	Anim.GroupRequested[group] = active == true
+	active = active == true and not State.ReducedMotion and not State.LowPower
 	if Anim.GroupState[group] == active then
 		return
 	end
@@ -1356,7 +1368,7 @@ end
 
 --@param rise Vertical bounce height in px (short vertical bounce)
 function Anim.Bump(frame, rise)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		return
 	end
 	if frame:GetAttribute("Bumping") then
@@ -1379,7 +1391,7 @@ function Anim.Bump(frame, rise)
 end
 
 function Anim.Shake(frame)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		return
 	end
 	local base = frame.Position
@@ -3209,7 +3221,7 @@ function Motion.Wake()
 end
 
 function Motion.Spring(inst, prop, target, speedKey, options)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		Motion.Set(inst, prop, target)
 		if options and options.OnDone then
 			options.OnDone()
@@ -3230,7 +3242,7 @@ function Motion.Spring(inst, prop, target, speedKey, options)
 end
 
 function Motion.Impulse(inst, prop, velocity, speedKey, damping)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		return
 	end
 	local kind = typeof(inst[prop])
@@ -3363,7 +3375,12 @@ function Fx.Bump(frame, velocity)
 end
 
 function Fx.Ripple(parent, screenPos, token)
-	if not parent or not parent.Parent then
+	if
+		State.LowPower
+		or State.ReducedMotion
+		or not parent
+		or not parent.Parent
+	then
 		return
 	end
 	local pointer = screenPos or UserInputService:GetMouseLocation()
@@ -3390,7 +3407,7 @@ function Fx.Ripple(parent, screenPos, token)
 end
 
 function Fx.CountUp(owner, fromValue, toValue, duration, onTick)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		pcall(onTick, toValue, true)
 		return
 	end
@@ -8214,6 +8231,7 @@ function Gui.Setup()
 		Name = Config.GuiAttribute,
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true,
+		ScreenInsets = Enum.ScreenInsets.None,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		DisplayOrder = 100,
 		Parent = parent,
@@ -8293,6 +8311,9 @@ end
 function Gui.OnHeartbeat(deltaTime)
 	if deltaTime > 0 then
 		State.Fps = State.Fps * 0.92 + (1 / deltaTime) * 0.08
+	end
+	if uiPerformance.Step(State.Performance, deltaTime, State.Fps) then
+		Library:ApplyPerformanceBudget()
 	end
 	for _, job in ipairs(State.Tasks) do
 		job.Elapsed += deltaTime
@@ -8776,7 +8797,7 @@ function Window:BuildTitle(parent)
 end
 
 function Window:WaveTitle()
-	if not State.TitleGlitch then
+	if not State.TitleGlitch or State.LowPower then
 		return
 	end
 	if State.ReducedMotion then
@@ -9200,6 +9221,9 @@ function Window:FitViewport()
 		math.floor(math.clamp(self.Desired.Y, minHeight, availH))
 	)
 	self:ApplyLayout()
+	if not self.Visible and self.UserPositioned and self.RestPosition then
+		self.Root.Position = self.RestPosition
+	end
 	if not self.UserPositioned then
 		self.Root.Position = UDim2.new(
 			0.5,
@@ -9209,6 +9233,9 @@ function Window:FitViewport()
 		)
 	end
 	self:ClampPosition()
+	-- A hidden window can resize before its first reveal (or on rotation).
+	-- Keep the restore target in the same viewport, not the old hide/dock offset.
+	self.RestPosition = self.Root.Position
 	if Float.Clamp then
 		Float.Clamp()
 	end
@@ -9279,6 +9306,12 @@ function Window:ApplyChrome(width, height)
 	self.SearchField.Size = UDim2.fromOffset(searchWidth, Util.Metric("Box"))
 	self.HeaderTitle.Size = UDim2.new(1, -(searchWidth + 44), 0, 26)
 	self.HeaderDesc.Size = UDim2.new(1, -(searchWidth + 44), 0, 16)
+	local libraryPage = self.ActiveTab and self.ActiveTab.LibraryBrowser
+	self.SearchField.Visible = not libraryPage
+	if libraryPage then
+		self.HeaderTitle.Size = UDim2.new(1, -32, 0, 26)
+		self.HeaderDesc.Size = UDim2.new(1, -32, 0, 16)
+	end
 	self.UserName.Visible = not self.Compact
 	self.UserTag.Visible = not self.Compact
 	self.Avatar.Position = UDim2.new(0, self.Compact and 10 or 12, 0.5, 0)
@@ -9330,6 +9363,7 @@ function Window:SelectTab(tab)
 	Popup.Close()
 	local previous = self.ActiveTab
 	self.ActiveTab = tab
+	self:ApplyChrome(self.Size.X, self.Size.Y)
 	if previous then
 		previous.Page.Visible = false
 		previous:RenderButton()
@@ -10176,6 +10210,8 @@ end
 function Particles.Active()
 	local window = State.Window
 	return Particles.Enabled
+		and not State.LowPower
+		and not State.ReducedMotion
 		and window ~= nil
 		and window.Visible
 		and not window.Minimized
@@ -10227,7 +10263,7 @@ end
 function Particles.SetEnabled(enabled)
 	Particles.Enabled = enabled and not State.ReducedMotion
 	if Particles.Layer then
-		Particles.Layer.Visible = enabled
+		Particles.Layer.Visible = enabled and not State.LowPower
 	end
 	if enabled then
 		Particles.Resume()
@@ -12765,8 +12801,56 @@ function Library:SetReducedMotion(enabled)
 		end
 	end
 	for group in pairs(Anim.Loops) do
-		Anim.SetGroupActive(group, not enabled)
+		Anim.SetGroupActive(group, Anim.GroupRequested[group] ~= false)
 	end
+end
+
+-- Apply only when the policy changes, not on every render. Preserve explicit
+-- visibility requests so recovery cannot restart hidden decoration groups.
+function Library:ApplyPerformanceBudget()
+	State.LowPower = State.Performance.LowPower
+	for group in pairs(Anim.Loops) do
+		Anim.SetGroupActive(group, Anim.GroupRequested[group] ~= false)
+	end
+	if State.LowPower then
+		for index = #Motion.Springs, 1, -1 do
+			local spring = Motion.Springs[index]
+			spring.Inst[spring.Prop] = Motion.Unpack(spring.Kind, spring.Goal)
+			Motion.Remove(spring, true)
+		end
+	end
+	if Particles.Layer then
+		Particles.Layer.Visible = Particles.Enabled and not State.LowPower
+	end
+	if not State.LowPower then
+		Particles.Resume()
+	end
+end
+
+function Library:SetPerformanceMode(mode)
+	if uiPerformance.SetMode(State.Performance, mode) then
+		self:ApplyPerformanceBudget()
+	end
+end
+
+function Library:GetPerformanceStatus()
+	return State.Performance.Mode
+		.. " / "
+		.. (
+			State.ReducedMotion and "reduced motion"
+			or State.LowPower and "low UI work"
+			or "full UI motion"
+		)
+end
+
+function Library:CenterWindow()
+	local window = self.Window
+	if self.Unloaded or type(window) ~= "table" then
+		return false
+	end
+	window.UserPositioned = false
+	window:FitViewport()
+	return true
 end
 
 function Library:GetGuiParent()

@@ -213,3 +213,32 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
 - Check Arm on launch defaults, explicit opt-out, STOP staying disarmed within a
   session, missing input API, unavailable/corrupt/read-only JSON storage, Save and
   Center. Confirm actual phone rendering/input separately from development tests.
+
+## Main loader / paginated browser / UI budget
+
+- Check all fifteen entries in the workspace Scripts page and separate Scripts
+  window without a catalog-length scroll. Use Next/Prev, type a page number,
+  filter to an empty result, then Clear. Test literal multiword/name/file/creator/
+  collection searches, category/collection cycles, sort, This game, pins and
+  recently viewed details. Opening a row must still require explicit compatible
+  launch; no browsing action executes code, scans modules or teleports.
+- Refresh with removed/replaced entries while on the last page. The current page
+  clamps, removed history disappears and Details resolves current metadata. Pins
+  and recents are session-only; reopening the loader should not silently save them.
+- Test portrait and very short landscape. Search/result/pager remain accessible;
+  narrow portrait actions stack, advanced filters can be reached after rotation.
+  Count row instances across repeated paging/refresh: workspace pool stays at eight.
+- Check the physical center of startup, main and execution GUI. Inspect topbar/
+  notch/cutout overlap because all three now explicitly use the full viewport.
+  Minimize, rotate, restore before/after startup reveal, drag, rotate again, and
+  use Center loader window. Hidden windows must not restore at an old/dock offset.
+- Enable optional particles and compare Auto/Balanced/Low power UI profiles with
+  real frame-time captures. Auto uses sustained <35 FPS / recovery >50 FPS dwell;
+  no rapid flashing, hidden-animation recovery or re-enabling user-disabled
+  particles/reduced motion. Controls still reach final positions and callbacks.
+- On a high-refresh device, startup property updates are bounded around 30 Hz;
+  verify the 24/16-particle gravity effect still looks smooth, Skip works, and
+  reduced motion bypasses it. Re-execution/unload must remove the temporary loop.
+- UI budgeting must not pause enabled gameplay, ESP/aim or MIDI transport. Preserve
+  independent launched-script windows on loader unload. No native FPS or visual
+  result has been measured in the development environment.

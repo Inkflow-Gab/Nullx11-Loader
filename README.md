@@ -34,20 +34,22 @@ No external executor or `loadstring` is needed in Studio. With Rojo, map the `.c
 
 ## Shared workspace
 
-- **Workspace:** live session/FPS/player/place readout; actions to open Scripts, Visuals, Aim, Design Studio and the classic launcher.
-- **Scripts:** five bundled entries available without Refresh; separate game windows, compatibility notices and confirmed execution. No game-launch teleport questions or arrival queues.
-- **Session tools:** save/return window, floating FPS and coordinates, title glitch, reduced motion, and unloading registered game sessions.
+- **Workspace:** live session/FPS/player/place and UI-budget readout; quick access to pinned/recent and current-game scripts, Center loader window, Visuals, Aim, Design Studio and the classic launcher.
+- **Scripts:** all fifteen entries available without Refresh; bounded paginated rows, literal multiword search, category/collection filters, sort, session pins/recent details and page jumping. Separate game windows retain compatibility notices and confirmed execution. No game-launch teleports or arrival queues.
+- **Session tools:** save/return window, floating FPS and coordinates, title glitch, reduced motion, Auto/Balanced/Low power UI budgets, and unloading registered game sessions.
 - **Settings:** full +1-derived themes, scaling, language, menu key, floating icon, particles and configuration controls. The static geometric prism is drawn locally; no Mario logo or letter monogram is used. Seasonal decoration and ambient particles are off by default. Optional Thai fonts use vendored repository assets.
 - **Game windows:** the original controllers adapted to this same UI. Each selected bundle contains its own shared library and only its game controller, and does not depend on the main loader remaining open.
 
 Design Studio's detailed appearance profiles continue to style the **classic/native tool panels**; shared workspace skin/scale/language are controlled in its own Settings. Game controls have independent configurations. No automatic gameplay profile is loaded at startup.
 
+See [the loader/browser guide](docs/LOADER-UI.md) for paging, session pins/recent views, centering/hidden-restore fixes and UI performance policy. All loader layers now share full-viewport coordinates; native notch/touch/frame-time checks remain pending.
+
 ## Classic / native tool features
 
 | Control | Behavior |
 | --- | --- |
-| **Classic startup reveal** | In `EnhancedWorkspace = false` mode, a 48-particle gravity well with three orbital lenses contracts into the central N, expands into a shockwave, then throws the GUI out of the dock. Skip is always available; reduced-motion defaults bypass it. |
-| **Scripts window** | Separate searchable GitHub library. Explicit Refresh and two-tap Run confirmation; no scripts auto-run. |
+| **Classic startup reveal** | In `EnhancedWorkspace = false` mode, a 24-particle gravity well (16 on touch clients) with three orbital lenses contracts into the central N, expands into a shockwave, then throws the GUI out of the dock. Skip is always available; reduced-motion defaults bypass it. |
+| **Scripts window** | Separate paginated, searchable GitHub library with compact rows and counts. Explicit Refresh and two-tap Run confirmation; no scripts auto-run. |
 | **Pixel / Medieval / signature looks** | Quick choices on Style; native Arcade and GrenzeGotisch headings, readable modern body text, aurora-cyan or amber/gothic looks. |
 | **Visuals window / Aim window** | Separate draggable, scrollable settings panels under Tools. Effects are OFF until explicitly enabled. |
 | **Load** | Opens the built-in tools after the game is ready. Also initializes an optional Studio `App` module. |
@@ -122,7 +124,7 @@ Player-tool options are **session-only**, separate from Design Studio's appearan
 
 The default shared workspace uses the supplied library's decorative entrance and N-icon window transport. These are presentation animations, not network/gameplay progress measurements. `StartupAnimation = false` bypasses the entrance; Reduced motion suppresses transitions, title motion and particles. With `EnhancedWorkspace = false`, the preserved classic reveal is available:
 
-The decorative reveal uses **48 precreated particles, three rotating elliptical lenses, a central geometric prism, and a pixel wordmark**: approximately **1.25 seconds of inward spiral/implosion**, then a **0.7-second outward shockwave**, followed by a dock-to-window entrance. If `game:IsLoaded()` is false, it honestly says it is waiting; no fake percentage or asset progress is shown. Skip remains available while waiting. Completing, skipping, rerunning, or closing disconnects the temporary animation callback. Short landscape screens move labels away from the bottom skip button.
+Decorative writes are capped around 30 Hz while phase timing remains elapsed-time based. The decorative reveal uses **24 precreated particles (16 on touch-enabled clients), three rotating elliptical lenses, a central geometric prism, and a pixel wordmark**: approximately **1.25 seconds of inward spiral/implosion**, then a **0.7-second outward shockwave**, followed by a dock-to-window entrance. If `game:IsLoaded()` is false, it honestly says it is waiting; no fake percentage or asset progress is shown. Skip remains available while waiting. Completing, skipping, rerunning, or closing disconnects the temporary animation callback. Short landscape screens move labels away from the bottom skip button.
 
 Set `CONFIG.StartupAnimation = false` to skip the decoration, or `CONFIG.ReducedMotion = true` to bypass it and disable other motion by default. The animation plays once per execution, not whenever a window is reopened. It is independent of the optional App initializer invoked by Load.
 

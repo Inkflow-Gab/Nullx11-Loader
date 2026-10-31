@@ -71,7 +71,14 @@ assert(
 	"repeated action opens instead of toggling closed"
 )
 find("RefreshScripts").Activated:Fire()
-assert(find("RunScript_forge"), "game entries visible outside target places")
+find("ScriptsNext").Activated:Fire()
+find("ScriptsNext").Activated:Fire()
+assert(
+	find("RunScript_forge"),
+	"other-place entries are reachable by page without scrolling"
+)
+find("ScriptsPrevious").Activated:Fire()
+find("ScriptsPrevious").Activated:Fire()
 local before = #requests
 find("RunScript_rosu").Activated:Fire()
 assert(
@@ -94,6 +101,8 @@ assert(
 )
 assert(#teleports == 0 and #queued == 0)
 game.PlaceId = 118805555015549
+find("ScriptsSearch").Text = "Forge"
+find("ScriptsSearch"):GetPropertyChangedSignal("Text"):Fire()
 find("RunScript_forge").Activated:Fire()
 find("GameExecute").Activated:Fire()
 assert(ran == 0, "first execute tap confirms only")
@@ -104,6 +113,8 @@ assert(
 )
 -- Universe metadata is retained through the actual validator and blocks fetches
 -- even when the source has no root-place ID.
+find("ScriptsSearch").Text = ""
+find("ScriptsSearch"):GetPropertyChangedSignal("Text"):Fire()
 manifest.Scripts = {
 	{
 		Id = "universe",

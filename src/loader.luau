@@ -137,13 +137,14 @@ end
 local gui = create("ScreenGui", {
 	Name = "Nullx11Loader",
 	ResetOnSpawn = false,
-	IgnoreGuiInset = false,
-	ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
+	IgnoreGuiInset = true,
+	ScreenInsets = Enum.ScreenInsets.None,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	DisplayOrder = 100,
 }, playerGui)
 
--- This frame uses the device's safe area, not the entire screen/notch region.
+-- All loader layers share full-viewport coordinates; no topbar inset is added
+-- twice when handing off to the workspace or execution overlay.
 local root = create("Frame", {
 	Name = "SafeArea",
 	Size = UDim2.fromScale(1, 1),
@@ -6643,6 +6644,7 @@ do
 	local catalog: { [string]: any } =
 		{ Entries = {}, Loaded = false, Busy = false, Rows = {}, Confirm = nil }
 	catalog.RowConnections = {}
+	catalog.Page, catalog.PageSize, catalog.Pages = 1, 2, 1
 	function catalog.Message(message: string, failed: boolean?)
 		if catalog.GameWindow and catalog.GameWindow.Panel.Visible then
 			engine.Status("GameScript", message)
@@ -7067,8 +7069,9 @@ do
 		catalog.Confirm = nil
 		local window = catalog.Window
 		local query = string.lower(catalog.Search.Text)
-		local cursor = 116
+		local cursor = 154
 		local count = 0
+		local matches = {}
 		for _, entry in ipairs(catalog.Entries) do
 			local matchesPlace = entry.GamePlaceId ~= nil
 				or #entry.PlaceIds == 0
@@ -7099,25 +7102,47 @@ do
 			then
 				continue
 			end
+			table.insert(matches, entry)
+		end
+		-- Only a small viewport page is materialized in the separate Scripts window.
+		local bodyHeight = window.Body.AbsoluteSize.Y
+		if bodyHeight <= 0 then
+			bodyHeight = math.min(540, math.max(260, root.AbsoluteSize.Y - 24))
+				- 128
+		end
+		catalog.PageSize =
+			math.clamp(math.floor((bodyHeight - 154 + 10) / 100), 1, 4)
+		catalog.Pages = math.max(1, math.ceil(#matches / catalog.PageSize))
+		catalog.Page = math.clamp(catalog.Page, 1, catalog.Pages)
+		if catalog.PageStatus then
+			catalog.PageStatus.Text = string.format(
+				"%d / %d  /  %d scripts",
+				catalog.Page,
+				catalog.Pages,
+				#matches
+			)
+		end
+		for index = (catalog.Page - 1) * catalog.PageSize + 1, math.min(#matches, catalog.Page * catalog.PageSize) do
+			local entry = matches[index]
 			local row = create("Frame", {
 				Name = "ScriptEntry_" .. entry.Id,
 				BackgroundColor3 = colors.Surface,
 				BorderSizePixel = 0,
 				Position = UDim2.fromOffset(0, cursor),
-				Size = UDim2.new(1, -4, 0, 202),
+				Size = UDim2.new(1, -4, 0, 90),
 			}, window.Body)
 			corner(row, 12)
 			table.insert(catalog.Rows, row)
-			drawIcon(row, CONFIG.Accent, UDim2.fromOffset(14, 43), 30)
-			local heading = label(row, entry.Name, 18, colors.Text)
-			heading.Position = UDim2.fromOffset(56, 38)
-			heading.Size = UDim2.new(1, -70, 0, 46)
-			heading.TextWrapped = true
+			local heading = label(row, entry.Name, 15, colors.Text)
+			heading.Position = UDim2.fromOffset(12, 30)
+			heading.Size = UDim2.new(1, -112, 0, 24)
+			heading.TextWrapped = false
 			heading.TextTruncate = Enum.TextTruncate.AtEnd
 			local description = label(row, entry.Description, 14, colors.Muted)
-			description.Position = UDim2.fromOffset(14, 88)
-			description.Size = UDim2.new(1, -24, 0, 40)
-			description.TextWrapped = true
+			description.Position = UDim2.fromOffset(12, 59)
+			description.Size = UDim2.new(1, -24, 0, 20)
+			description.TextWrapped = false
+			description.TextTruncate = Enum.TextTruncate.AtEnd
 			local path = label(
 				row,
 				(entry.Category or "Community"):upper()
@@ -7131,8 +7156,8 @@ do
 				12,
 				CONFIG.Accent
 			)
-			path.Position = UDim2.fromOffset(14, 12)
-			path.Size = UDim2.new(1, -24, 0, 22)
+			path.Position = UDim2.fromOffset(12, 8)
+			path.Size = UDim2.new(1, -24, 0, 18)
 			path.TextTruncate = Enum.TextTruncate.AtEnd
 			local run = create("TextButton", {
 				Name = "RunScript_" .. entry.Id,
@@ -7144,15 +7169,15 @@ do
 						or entry.Id == "eggchili"
 						or entry.GameUniverseId
 						or entry.Universal
-					then "View details & launch"
-					else "Run / " .. entry.Name,
+					then "Details"
+					else "Run",
 				TextSize = 15,
 				Font = Enum.Font.GothamMedium,
 				TextColor3 = colors.Panel,
 				BackgroundColor3 = CONFIG.Accent,
 				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(10, 146),
-				Size = UDim2.new(1, -20, 0, 44),
+				Position = UDim2.new(1, -92, 0, 28),
+				Size = UDim2.fromOffset(80, 40),
 			}, row)
 			corner(run, 9)
 			table.insert(
@@ -7174,7 +7199,7 @@ do
 					end
 				end)
 			)
-			cursor += 214
+			cursor += 100
 			count += 1
 		end
 		if count == 0 then
@@ -7197,6 +7222,7 @@ do
 			cursor += 126
 		end
 		window.Body.CanvasSize = UDim2.fromOffset(0, cursor)
+		window.Body.CanvasPosition = Vector2.new(0, 0)
 		if studioBridge.RegisterUI then
 			studioBridge.RegisterUI()
 		end
@@ -7238,6 +7264,7 @@ do
 					portal.Play(catalog.GameWindow.Panel, false)
 				end
 				catalog.Entries = result
+				catalog.Page = 1
 				catalog.Loaded = true
 				catalog.Render()
 				if catalog.WorkspaceBrowser then
@@ -7286,7 +7313,42 @@ do
 			Size = UDim2.new(1, -4, 0, 44),
 		}, window.Body)
 		corner(catalog.Search, 10)
-		connect(catalog.Search:GetPropertyChangedSignal("Text"), catalog.Render)
+		local function pageButton(name, caption, x, direction)
+			local control = create("TextButton", {
+				Name = name,
+				Text = caption,
+				Font = Enum.Font.GothamMedium,
+				TextSize = 13,
+				TextColor3 = colors.Text,
+				BackgroundColor3 = colors.Surface,
+				BorderSizePixel = 0,
+				Position = x,
+				Size = UDim2.fromOffset(62, 36),
+			}, window.Body)
+			corner(control, 8)
+			connect(control.Activated, function()
+				local nextPage =
+					math.clamp(catalog.Page + direction, 1, catalog.Pages)
+				if nextPage ~= catalog.Page then
+					catalog.Page = nextPage
+					catalog.Render()
+				end
+			end)
+		end
+		pageButton("ScriptsPrevious", "Prev", UDim2.fromOffset(0, 110), -1)
+		pageButton("ScriptsNext", "Next", UDim2.new(1, -66, 0, 110), 1)
+		catalog.PageStatus = label(window.Body, "", 12, colors.Muted)
+		catalog.PageStatus.Name = "ScriptsPageStatus"
+		catalog.PageStatus.Position, catalog.PageStatus.Size =
+			UDim2.fromOffset(68, 110), UDim2.new(1, -140, 0, 36)
+		catalog.PageStatus.TextXAlignment = Enum.TextXAlignment.Center
+		connect(window.Body:GetPropertyChangedSignal("AbsoluteSize"), function()
+			catalog.Render()
+		end)
+		connect(catalog.Search:GetPropertyChangedSignal("Text"), function()
+			catalog.Page = 1
+			catalog.Render()
+		end)
 		catalog.Render()
 		catalog.Message(
 			if catalog.Loaded
@@ -7683,7 +7745,7 @@ do
 			table.insert(lenses, { Frame = lens, Stroke = outline })
 		end
 		local particles = {}
-		for index = 1, 48 do
+		for index = 1, (UserInputService.TouchEnabled and 16 or 24) do
 			local particle = create("Frame", {
 				Name = "WhirlpoolParticle" .. index,
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -7752,7 +7814,7 @@ do
 			ZIndex = 6,
 		}, intro)
 		corner(skip, 13)
-		local elapsed, rotation = 0, 0
+		local elapsed, rotation, drawElapsed = 0, 0, 0
 		local finished = false
 		local animation: RBXScriptConnection? = nil
 		local function finish(immediate: boolean?)
@@ -7787,6 +7849,17 @@ do
 			if finished or not alive then
 				return
 			end
+			if game:IsLoaded() then
+				elapsed += dt
+			end
+			drawElapsed += dt
+			-- Keep wall-clock phases exact while writing decorative properties at
+			-- most 30 times/second, including on high-refresh displays.
+			if drawElapsed < 1 / 30 and elapsed < 1.95 then
+				return
+			end
+			rotation += math.min(drawElapsed, 0.1) * 3.2
+			drawElapsed = 0
 			local viewport = intro.AbsoluteSize
 			if viewport.X <= 0 or viewport.Y <= 0 then
 				viewport = root.AbsoluteSize
@@ -7798,9 +7871,7 @@ do
 			caption.Position = if short
 				then UDim2.new(0.5, 0, 0, 62)
 				else UDim2.new(0.5, 0, 0.5, 166)
-			rotation += math.min(dt, 0.1) * 3.2
 			if game:IsLoaded() then
-				elapsed += dt
 				caption.Text = "GRAVITY CORE / OPENING WORKSPACE"
 			else
 				caption.Text = "Waiting for the game / Skip is available"

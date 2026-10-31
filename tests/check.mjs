@@ -25,6 +25,7 @@ try {
     state.loadstring(read(`scripts/${entry.File}`), `library/${entry.File}`, true);
   }
   console.log('PASS: repository manifest JSON and published-script compilation; native Roblox diagnostic compiles (not executed here)');
+  const between = (text, start, end) => text.slice(text.indexOf(start), text.indexOf(end, text.indexOf(start)));
   const module = (name, path) => `local ${name}=(function()\n${read(path)}\nend)()`;
   const portContracts = read('tests/game-port-contracts.luau')
     .replace('-- @PORT_MODULES', module('makeAdapter', 'src/ui/Gen2Adapter.luau') + '\n' + module('makeSession', 'src/games/Context.luau'))
@@ -39,8 +40,16 @@ try {
       .replace('-- @OWNED_RUNTIME', module('makeOwnedRuntime', 'src/games/OwnedRuntime.luau'))
       .replace('-- @EXECUTION_STATE', module('makeExecutionState', 'src/ui/ExecutionState.luau'));
   console.log(...await state.loadstring(brainrotChecks, 'brainrot-module-contracts', true)());
+  console.log(...await state.loadstring(module('policy','src/ui/PerformancePolicy.luau')+'\n'+read('tests/ui-performance.luau'),'ui-performance-policy',true)());
+  const budgetUi = read('src/ui/Nullx11UI.luau');
+  const budgetChecks = module('uiPerformance','src/ui/PerformancePolicy.luau')+'\n'+read('tests/ui-budget-runtime.luau')
+    .replace('-- @GROUP_GATE',between(budgetUi,'function Anim.SetGroupActive(group, active)','function Anim.Pop('))
+    .replace('-- @PARTICLES_GATE',between(budgetUi,'function Particles.Active()','function Particles.Launch('))
+    .replace('-- @BUDGET_METHODS',between(budgetUi,'function Library:SetReducedMotion(enabled)','function Library:GetGuiParent()'))
+    .replace('-- @TWEEN_GATE',between(budgetUi,'function Anim.Tween(inst, goal, duration, ease, repeatCount, reverses, delay)','-- Register a visibility-gated infinite tween'));
+  console.log(...await state.loadstring(budgetChecks,'ui-budget-runtime',true)());
   const coreChecks = read('tests/roblox-mock.luau') + '\n' + read('tests/player-tools-mock.luau') + '\n'
-    + read('tests/shared-ui-core.luau').replace('-- @SHARED_UI', `local function createNullx11UI(scope)\n${read('src/ui/Nullx11UI.luau')}\nend`);
+    + read('tests/shared-ui-core.luau').replace('-- @SHARED_UI', `local function createNullx11UI(scope)\n${read('src/ui/Nullx11UI.luau').replace('-- @NULLX11_PERFORMANCE_POLICY', module('uiPerformance','src/ui/PerformancePolicy.luau'))}\nend`);
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
@@ -104,7 +113,6 @@ try {
   const egg = read('src/games/StealAnEgg.luau');
   assert.ok(!egg.includes('SetAutoLoad') && egg.includes('context.RegisterCleanup'));
   assert.ok(egg.includes('runtime:Destroy()\n\terror('), 'failed module startup cleans up');
-  const between = (text, start, end) => text.slice(text.indexOf(start), text.indexOf(end, text.indexOf(start)));
   const helpers = between(egg, 'function utils.remember(', 'function utils.mark(')
     + between(egg, 'function utils.esp()', 'function utils.eggHolders()')
     + between(egg, 'function utils.applyCharacter()', 'function utils.antiTrap()');
@@ -112,7 +120,7 @@ try {
     .replace('-- @EGG_HELPERS', helpers)
     .replace('-- @EGG_COMPATIBLE', between(read('scripts/Nullx11-StealAnEgg.luau'), 'local function compatible()', 'if not compatible() then'));
   console.log(...await state.loadstring(eggChecks, 'egg-idle-contracts', true)());
-  const browserChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/script-browser.luau')
+  const browserChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-ui-runtime.luau')+'\n'+read('tests/script-browser.luau')
     .replace('-- @BROWSER_MODEL', 'makeScriptLibraryModel=(function()\n'+read('src/ui/ScriptLibraryModel.luau')+'\nend)()')
     .replace('-- @BROWSER_VIEW',read('src/ui/ScriptBrowser.luau'));
   console.log(...await state.loadstring(browserChecks,'script-browser',true)());
@@ -194,6 +202,7 @@ connect(gui.Destroying,function() State.Gui:Destroy() end)`;
   );
   const gameResults = await gameChecks();
   console.log(gameResults[0]);
+  console.log(...await state.loadstring(read('tests/roblox-mock.luau')+'\nlocal loadstring\nlocal function runLoader()\n'+logicSource+'\nend\n'+read('tests/classic-script-pages.luau'),'classic-script-pages',true)());
   const executionFlow = read('tests/roblox-mock.luau')
     + '\nlocal executionFactory, loadstring\n' + module('makeExecutionState', 'src/ui/ExecutionState.luau')
     + '\nlocal function runLoader()\n' + logicSource.replace('local progress = playerToolsBridge.BeginExecution\n\t\t\tand playerToolsBridge.BeginExecution(entry.Name)', 'local progress = executionFactory(entry.Name)')

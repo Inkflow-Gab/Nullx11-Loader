@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, '..');
 const read = (file) => readFileSync(resolve(root, file), 'utf8').trimEnd();
 const check = process.argv.includes('--check');
 const ui = read('src/ui/Nullx11UI.luau')
+  .replace('-- @NULLX11_PERFORMANCE_POLICY', `local uiPerformance=(function()\n${read('src/ui/PerformancePolicy.luau')}\nend)()`)
   .replace('-- @NULLX11_SCRIPT_BROWSER', `local makeScriptLibraryModel=(function()\n${read('src/ui/ScriptLibraryModel.luau')}\nend)()\n${read('src/ui/ScriptBrowser.luau')}`)
   .replace('-- @NULLX11_BRAND_ICONS', read('src/ui/BrandIcons.luau'))
   .replace('-- @NULLX11_EXECUTION_VIEW', `local makeExecutionState = (function()\n${read('src/ui/ExecutionState.luau')}\nend)()\n${read('src/ui/ExecutionView.luau')}`);

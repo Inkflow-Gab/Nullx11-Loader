@@ -40,7 +40,7 @@ Use [the game validation checklist](../diagnostics/GAME-PORTS.md) on an authoriz
 
 ## Latest additions and library
 
-See [TTK/Money review](../docs/TTK-MONEY-REVIEW.md) for preserved source data, removed telemetry hook, Instant ADS boundary, request limits and native test checklist. The main Scripts page now has responsive reusable game cards, category/place filters and game/feature/creator search; the separate browser has larger branded cards and clearer launch/compatibility labels.
+See [TTK/Money review](../docs/TTK-MONEY-REVIEW.md) for preserved source data, removed telemetry hook, Instant ADS boundary, request limits and native test checklist. The main Scripts page now uses a fixed eight-slot row pool and viewport-sized pagination, editable page jumping, category/collection/current-game filters, literal multiword search, sorting and session pins/recent details. The separate Scripts window also uses compact bounded pages. Full-viewport coordinate alignment, hidden restore-target correction and Auto/Balanced/Low power UI budgets are implemented; native layout/touch/FPS are still unverified. See [the loader UI guide](../docs/LOADER-UI.md).
 
 ## Chaos / YARHM additions
 
