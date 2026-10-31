@@ -11,6 +11,7 @@ local output = context.MakeMidiOutput(
 	game
 )
 local player = context.MakeMidiTransport(output, os.clock)
+context.MidiOutput = output
 local view = context.MakeAutoPlayerView(context)
 local library, queue, favorites = {}, {}, {}
 local selected, query, pageNumber = nil, "", 1
@@ -258,8 +259,75 @@ local function rebuild()
 	player.Rebuild()
 	render()
 end
+local testSerial = 0
+local function testNote(pitch)
+	assert(
+		not input:GetFocusedTextBox(),
+		"Leave the text field before testing piano keys"
+	)
+	assert(
+		player.Armed and not player.Preview,
+		"Arm real piano input before testing keys"
+	)
+	assert(
+		player.State ~= "Playing" and not countdown,
+		"Pause playback before testing input"
+	)
+	testSerial += 1
+	local id = "test/" .. testSerial
+	local binding = output.Map(pitch)
+	assert(binding, "Key is outside the selected mapping")
+	output.On(id, pitch)
+	task.delay(0.2, function()
+		if context.Alive then
+			local success, reason = pcall(output.Off, id)
+			if not success then
+				panic()
+				view.Message(reason, true)
+			end
+			render()
+		end
+	end)
+	view.Message(
+		binding.NoteName
+			.. " / "
+			.. binding.Binding
+			.. " requested via "
+			.. output.Backend
+			.. ". Listen to the game piano; API success is not confirmation."
+	)
+	render()
+end
 view.Actions = {
 	reveal = render,
+	backend = function(mode)
+		pause()
+		output.SelectBackend(mode)
+		view.Message(
+			"Selected "
+				.. output.Backend
+				.. ". Test white AND black keys; if silent, try another input backend."
+		)
+		render()
+	end,
+	profile61 = function()
+		pause()
+		assert(output.ReleaseAll(), "Retry STOP INPUT before changing keys")
+		output.Mode88 = false
+		player.Transpose = 0
+		view.Settings.mode88(false)
+		view.Keyboard(false)
+		if view.Profile61 then
+			view.Profile61()
+		end
+		view.Message(
+			"Screenshot 61-key layout: 1..m, Shift for black keys. Turn the game's CAPS off; keep the piano open. Test keys before Play."
+		)
+		render()
+	end,
+	testnote = function(pitch)
+		testNote(number(pitch, 36, 96, true))
+	end,
 	panic = panic,
 	unload = function()
 		context.Library:Unload()
@@ -464,27 +532,7 @@ view.Actions = {
 		cancelCountdown()
 	end,
 	test = function()
-		assert(
-			player.Armed and not player.Preview,
-			"Arm real piano input before testing C4"
-		)
-		assert(
-			player.State ~= "Playing" and not countdown,
-			"Pause playback before testing input"
-		)
-		output.On("test", 60)
-		task.delay(0.2, function()
-			if context.Alive then
-				local success, reason = pcall(output.Off, "test")
-				if not success then
-					panic()
-					view.Message(reason, true)
-				end
-			end
-		end)
-		view.Message(
-			"C4 key request dispatched. Confirm the game piano actually played it."
-		)
+		testNote(60)
 	end,
 }
 context.Connect(input.InputBegan, function(event, processed)

@@ -649,27 +649,93 @@ local makeMidiOutput = (function()
 		}) do
 			extensions[96 + index] = character
 		end
-		local send
-		if
-			type(environment.keypress) == "function"
+		-- Executor keypress APIs normally take Windows virtual-key codes, NOT
+		-- Roblox Enum.KeyCode.Value (T is 116 there but VK_T is 84).
+		local function virtualKey(key)
+			local name = type(key) == "string" and key:match("[^.]+$")
+				or key.Name
+			local special = {
+				LeftShift = 0x10,
+				LeftControl = 0x11,
+				Zero = 0x30,
+				One = 0x31,
+				Two = 0x32,
+				Three = 0x33,
+				Four = 0x34,
+				Five = 0x35,
+				Six = 0x36,
+				Seven = 0x37,
+				Eight = 0x38,
+				Nine = 0x39,
+			}
+			local code = special[name]
+				or (#name == 1 and string.byte(name:upper()))
+			assert(code, "No piano virtual-key code for " .. tostring(name))
+			return code
+		end
+		local okVim, vimSend = pcall(function()
+			return vim and vim.SendKeyEvent
+		end)
+		local hasVim = okVim and type(vimSend) == "function"
+		local hasExecutor = type(environment.keypress) == "function"
 			and type(environment.keyrelease) == "function"
-		then
-			output.Backend = "Executor keypress/keyrelease"
-			send = function(down, key)
-				if down then
-					environment.keypress(key.Value)
-				else
-					environment.keyrelease(key.Value)
-				end
+		local send
+		output.Preferred = "Auto"
+		output.Requests = 0
+		output.Errors = 0
+		function output.SelectBackend(mode)
+			assert(
+				mode == "Auto"
+					or mode == "VIM"
+					or mode == "VK"
+					or mode == "Enum",
+				"Unknown input backend"
+			)
+			local selected = mode == "Auto" and (hasVim and "VIM" or "VK")
+				or mode
+			assert(
+				(selected == "VIM" and hasVim)
+					or (selected ~= "VIM" and hasExecutor),
+				"That input API is unavailable. Try another backend or Preview only."
+			)
+			if send then
+				assert(
+					output.ReleaseAll(),
+					"Old input backend refused key release; retry STOP INPUT before switching"
+				)
 			end
-		elseif vim and type(vim.SendKeyEvent) == "function" then
-			output.Backend = "VirtualInputManager (unverified permission)"
+			output.Preferred = mode
+			output.Backend = selected == "VIM"
+					and "VIM / unverified game acceptance"
+				or selected == "VK" and "Executor / Windows VK"
+				or "Executor / Roblox enum compatibility"
 			send = function(down, key)
-				vim:SendKeyEvent(down, key, false, target)
+				output.Requests += 1
+				local ok, result = pcall(function()
+					if selected == "VIM" then
+						return vimSend(vim, down, key, false, target)
+					end
+					local code = selected == "VK" and virtualKey(key)
+						or key.Value
+					if down then
+						return environment.keypress(code)
+					else
+						return environment.keyrelease(code)
+					end
+				end)
+				if not ok or result == false then
+					output.Errors += 1
+					error("Input dispatch refused: " .. tostring(result))
+				end
 			end
 		end
 		function output.Available()
 			return send ~= nil
+		end
+		-- Selection is explicit after initialization. Never mix backends between a
+		-- key-down and key-up, or interpret a silent no-op as accepted piano input.
+		if hasVim or hasExecutor then
+			output.SelectBackend("Auto")
 		end
 		function output.Map(pitch)
 			local low, high =
@@ -700,6 +766,23 @@ local makeMidiOutput = (function()
 				Modifier = modifier,
 				Pitch = pitch,
 				Label = extended and "Ctrl+" .. character or character,
+				Binding = extended and "Ctrl+" .. character
+					or modifier and "Shift+" .. base
+					or base,
+				NoteName = ({
+					"C",
+					"C#",
+					"D",
+					"D#",
+					"E",
+					"F",
+					"F#",
+					"G",
+					"G#",
+					"A",
+					"A#",
+					"B",
+				})[pitch % 12 + 1] .. (math.floor(pitch / 12) - 1),
 			}
 		end
 		function output.ReleaseAll()
@@ -1034,6 +1117,7 @@ local makeAutoPlayerView = (function()
 			Rows = {},
 			Bars = {},
 			Keys = {},
+			KeyCaptions = {},
 			Page = "Library",
 			ReducedMotion = context.ReducedMotion,
 			Tweens = {},
@@ -1410,7 +1494,8 @@ local makeAutoPlayerView = (function()
 			pages[name] = page
 			return page
 		end
-		local mixer, settings = scrollPage("Mixer"), scrollPage("Settings")
+		local mixer, settings, keysPage =
+			scrollPage("Mixer"), scrollPage("Settings"), scrollPage("Keys")
 		local rowHeights = { Mixer = 12, Settings = 12 }
 		local function settingRow(page, heading, detail)
 			local y = rowHeights[page.Name]
@@ -1634,6 +1719,9 @@ local makeAutoPlayerView = (function()
 		corner(transpose, 7)
 		local speedTitle =
 			label(bottom, "SpeedCaption", "SPEED", 9, color.Muted)
+		view.Profile61 = function()
+			transpose.Text = "0"
+		end
 		local pitchTitle =
 			label(bottom, "TransposeCaption", "SEMITONES", 9, color.Muted)
 		context.Connect(speed.FocusLost, function()
@@ -1895,6 +1983,7 @@ local makeAutoPlayerView = (function()
 				key:Destroy()
 			end
 			table.clear(view.Keys)
+			table.clear(view.KeyCaptions)
 			view.KeyGeometry = {}
 			local low, high = mode88 and 21 or 36, mode88 and 108 or 96
 			local black =
@@ -1925,6 +2014,22 @@ local makeAutoPlayerView = (function()
 					ZIndex = dark and 3 or 2,
 				})
 				corner(key, 2)
+				local token = context.MidiOutput
+					and context.MidiOutput.Map(pitch)
+				if token then
+					local caption = label(
+						key,
+						"Binding",
+						token.Label,
+						8,
+						dark and color.Text or color.Background
+					)
+					caption.Position = UDim2.new(0, 0, 1, -12)
+					caption.Size = UDim2.new(1, 0, 0, 12)
+					caption.TextXAlignment = Enum.TextXAlignment.Center
+					caption.ZIndex = key.ZIndex + 1
+					view.KeyCaptions[pitch] = caption
+				end
 				view.KeyGeometry[pitch] = {
 					X = (offset - (dark and 0.29 or 0)) / whiteCount,
 					Width = (dark and 0.58 or 0.95) / whiteCount,
@@ -1957,6 +2062,9 @@ local makeAutoPlayerView = (function()
 				.. time(score.Duration)
 		end
 		function view.Snapshot(player, output)
+			if view.BackendStatus then
+				view.BackendStatus(output)
+			end
 			if not view.Visible then
 				return
 			end
@@ -1982,7 +2090,18 @@ local makeAutoPlayerView = (function()
 					pressed[token.Pitch] = true
 				end
 			end
+			for _, token in pairs(output.Held or {}) do
+				pressed[token.Pitch] = true
+			end
 			for pitch, key in pairs(view.Keys) do
+				local caption = view.KeyCaptions[pitch]
+				if caption then
+					caption.TextColor3 = (
+						pressed[pitch] or not key:GetAttribute("DarkKey")
+					)
+							and color.Background
+						or color.Text
+				end
 				key.BackgroundColor3 = pressed[pitch] and color.Cyan
 					or key:GetAttribute("DarkKey") and color.Background
 					or color.Text
@@ -2071,13 +2190,105 @@ local makeAutoPlayerView = (function()
 			end
 			view.Dispatch("tab", name)
 		end
-		for index, name in ipairs({ "Library", "Queue", "Mixer", "Settings" }) do
+		for index, name in ipairs({
+			"Library",
+			"Queue",
+			"Mixer",
+			"Keys",
+			"Settings",
+		}) do
 			local object = button(nav, name, name, function()
 				view.SetPage(name)
 			end)
-			object.Size = UDim2.new(0.25, -6, 1, 0)
-			object.Position = UDim2.new((index - 1) * 0.25, 0, 0, 0)
+			object.Size = UDim2.new(0.2, -4, 1, 0)
+			object.Position = UDim2.new((index - 1) * 0.2, 0, 0, 0)
 			navButtons[name] = object
+		end
+		local keyHelp = label(
+			keysPage,
+			"PianoKeyHelp",
+			"61-key layout from your screenshot. Keep the GAME piano open and its CAPS off. White keys: 1234567890qwertyuiopasdfghjklzxcvbnm. Black keys use Shift. Tap a note below while armed/paused; it sends real input, not local demo sound.",
+			12,
+			color.Text
+		)
+		keyHelp.Position = UDim2.fromOffset(12, 8)
+		keyHelp.Size = UDim2.new(1, -24, 0, 110)
+		keyHelp.TextWrapped = true
+		keyHelp.TextTruncate = Enum.TextTruncate.None
+		local backendInfo = label(
+			keysPage,
+			"PianoBackendStatus",
+			"Checking input APIs",
+			11,
+			color.Cyan
+		)
+		backendInfo.Position = UDim2.fromOffset(12, 120)
+		backendInfo.Size = UDim2.new(1, -24, 0, 46)
+		backendInfo.TextWrapped = true
+		backendInfo.TextTruncate = Enum.TextTruncate.None
+		local backendButtons = {}
+		for index, spec in ipairs({
+			{ "Auto", "Auto" },
+			{ "VIM", "VIM" },
+			{ "VK", "Keys / VK" },
+			{ "Enum", "Keys / Enum" },
+		}) do
+			local control = button(
+				keysPage,
+				"Backend" .. spec[1],
+				spec[2],
+				function()
+					view.Dispatch("backend", spec[1])
+				end
+			)
+			control.Position = UDim2.new((index - 1) * 0.25, 8, 0, 174)
+			control.Size = UDim2.new(0.25, -12, 0, 40)
+			control.TextSize = 11
+			backendButtons[spec[1]] = control
+		end
+		local profile = button(
+			keysPage,
+			"Screenshot61Profile",
+			"Use screenshot's 61 keys / reset transpose",
+			"profile61"
+		)
+		profile.Position = UDim2.fromOffset(12, 224)
+		profile.Size = UDim2.new(1, -24, 0, 40)
+		profile.TextSize = 11
+		for pitch = 36, 96 do
+			local token = context.MidiOutput and context.MidiOutput.Map(pitch)
+			local text = token and (token.NoteName .. " / " .. token.Binding)
+				or "MIDI " .. pitch
+			local control = button(
+				keysPage,
+				"TryPianoKey" .. pitch,
+				text,
+				function()
+					view.Dispatch("testnote", pitch)
+				end
+			)
+			local index = pitch - 36
+			control.Position = UDim2.new(
+				(index % 3) / 3,
+				8,
+				0,
+				278 + math.floor(index / 3) * 48
+			)
+			control.Size = UDim2.new(1 / 3, -12, 0, 40)
+			control.TextSize = 11
+		end
+		keysPage.CanvasSize = UDim2.fromOffset(0, 278 + 21 * 48 + 12)
+		view.BackendStatus = function(output)
+			backendInfo.Text = (output.Backend or "Unavailable")
+				.. " / "
+				.. (output.Requests or 0)
+				.. " API requests / "
+				.. (output.Errors or 0)
+				.. " errors. No sound? Try VIM, VK, then Enum."
+			for mode, control in pairs(backendButtons) do
+				control.TextColor3 = mode == output.Preferred and color.Cyan
+					or color.Text
+			end
 		end
 		local testRow = settingRow(
 			settings,
@@ -2391,6 +2602,7 @@ local function runGame(context)
 		game
 	)
 	local player = context.MakeMidiTransport(output, os.clock)
+	context.MidiOutput = output
 	local view = context.MakeAutoPlayerView(context)
 	local library, queue, favorites = {}, {}, {}
 	local selected, query, pageNumber = nil, "", 1
@@ -2647,8 +2859,75 @@ local function runGame(context)
 		player.Rebuild()
 		render()
 	end
+	local testSerial = 0
+	local function testNote(pitch)
+		assert(
+			not input:GetFocusedTextBox(),
+			"Leave the text field before testing piano keys"
+		)
+		assert(
+			player.Armed and not player.Preview,
+			"Arm real piano input before testing keys"
+		)
+		assert(
+			player.State ~= "Playing" and not countdown,
+			"Pause playback before testing input"
+		)
+		testSerial += 1
+		local id = "test/" .. testSerial
+		local binding = output.Map(pitch)
+		assert(binding, "Key is outside the selected mapping")
+		output.On(id, pitch)
+		task.delay(0.2, function()
+			if context.Alive then
+				local success, reason = pcall(output.Off, id)
+				if not success then
+					panic()
+					view.Message(reason, true)
+				end
+				render()
+			end
+		end)
+		view.Message(
+			binding.NoteName
+				.. " / "
+				.. binding.Binding
+				.. " requested via "
+				.. output.Backend
+				.. ". Listen to the game piano; API success is not confirmation."
+		)
+		render()
+	end
 	view.Actions = {
 		reveal = render,
+		backend = function(mode)
+			pause()
+			output.SelectBackend(mode)
+			view.Message(
+				"Selected "
+					.. output.Backend
+					.. ". Test white AND black keys; if silent, try another input backend."
+			)
+			render()
+		end,
+		profile61 = function()
+			pause()
+			assert(output.ReleaseAll(), "Retry STOP INPUT before changing keys")
+			output.Mode88 = false
+			player.Transpose = 0
+			view.Settings.mode88(false)
+			view.Keyboard(false)
+			if view.Profile61 then
+				view.Profile61()
+			end
+			view.Message(
+				"Screenshot 61-key layout: 1..m, Shift for black keys. Turn the game's CAPS off; keep the piano open. Test keys before Play."
+			)
+			render()
+		end,
+		testnote = function(pitch)
+			testNote(number(pitch, 36, 96, true))
+		end,
 		panic = panic,
 		unload = function()
 			context.Library:Unload()
@@ -2853,27 +3132,7 @@ local function runGame(context)
 			cancelCountdown()
 		end,
 		test = function()
-			assert(
-				player.Armed and not player.Preview,
-				"Arm real piano input before testing C4"
-			)
-			assert(
-				player.State ~= "Playing" and not countdown,
-				"Pause playback before testing input"
-			)
-			output.On("test", 60)
-			task.delay(0.2, function()
-				if context.Alive then
-					local success, reason = pcall(output.Off, "test")
-					if not success then
-						panic()
-						view.Message(reason, true)
-					end
-				end
-			end)
-			view.Message(
-				"C4 key request dispatched. Confirm the game piano actually played it."
-			)
+			testNote(60)
 		end,
 	}
 	context.Connect(input.InputBegan, function(event, processed)

@@ -198,7 +198,26 @@ assert(#limited == 512 and capped.Capped)
 -- recovery, and retained failed releases so a later panic can retry them.
 local keyCodes = setmetatable({}, {
 	__index = function(self, key)
-		local value = { Name = key, Value = key }
+		local realValues = {
+			LeftShift = 304,
+			LeftControl = 306,
+			Zero = 48,
+			One = 49,
+			Two = 50,
+			Three = 51,
+			Four = 52,
+			Five = 53,
+			Six = 54,
+			Seven = 55,
+			Eight = 56,
+			Nine = 57,
+		}
+		local value = {
+			Name = key,
+			Value = realValues[key]
+				or (#key == 1 and string.byte(key:lower()))
+				or key,
+		}
 		self[key] = value
 		return value
 	end,
@@ -234,12 +253,23 @@ assert(
 		and output.Map(108).Key == keyCodes.J
 )
 output.On(1, 60)
+assert(
+	keys[#keys].Key == 84 and keyCodes.T.Value == 116,
+	"executor takes VK_T=84, not Roblox T=116"
+)
 output.On(2, 60)
 output.Off(1)
 assert(output.References[keyCodes.T] == 1)
 output.Off(2)
 assert(next(output.References) == nil)
+local beforeBlack = #keys
 output.On(3, 37)
+assert(keys[beforeBlack + 1].Key == 16 and keys[beforeBlack + 1].Down)
+assert(keys[beforeBlack + 2].Key == 49 and keys[beforeBlack + 2].Down)
+assert(
+	keys[beforeBlack + 3].Key == 16 and not keys[beforeBlack + 3].Down,
+	"Shift+1 produces the screenshot's ! black key"
+)
 assert(next(output.Modifiers) == nil)
 output.ReleaseAll()
 assert(next(output.Held) == nil)
@@ -263,6 +293,79 @@ assert(
 )
 local unavailable = MakeMidiOutput({}, nil, keyCodes, {})
 assert(not unavailable.Available() and not pcall(unavailable.On, 1, 60))
+-- The screenshot's independent chromatic list, not a copy from the mapper.
+local screenshot =
+	"1 ! 2 @ 3 4 $ 5 % 6 ^ 7 8 * 9 ( 0 q Q w W e E r t T y Y u i I o O p P a s S d D f g G h H j J k l L z Z x c C v V b B n m"
+output.Mode88 = false
+local pitch = 36
+for label in screenshot:gmatch("%S+") do
+	local token = output.Map(pitch)
+	assert(token.Label == label, "screenshot key mismatch at MIDI " .. pitch)
+	assert(
+		token.Key ~= keyCodes.Space
+			and token.Key ~= keyCodes.Backspace
+			and token.Key ~= keyCodes.CapsLock
+	)
+	pitch += 1
+end
+assert(
+	pitch == 97
+		and output.Map(60).Binding == "t"
+		and output.Map(61).Binding == "Shift+t"
+)
+local vimKeys = {}
+local vim = {
+	SendKeyEvent = function(_, down, key)
+		table.insert(vimKeys, { Down = down, Key = key })
+	end,
+}
+local both = MakeMidiOutput(environment, vim, keyCodes, {})
+assert(
+	both.Backend:find("VIM", 1, true),
+	"Auto prefers native Enum input over uncertain executor conventions"
+)
+local beforeExecutor = #keys
+both.On("v", 60)
+assert(#keys == beforeExecutor and vimKeys[1].Key == keyCodes.T)
+both.SelectBackend("VK")
+assert(
+	not vimKeys[#vimKeys].Down and next(both.Held) == nil,
+	"switch releases through the OLD backend"
+)
+both.On("vk", 60)
+assert(keys[#keys].Key == 84)
+failUp = true
+assert(
+	not pcall(both.SelectBackend, "VIM") and both.Preferred == "VK",
+	"failed old releases block backend changes"
+)
+failUp = false
+both.SelectBackend("Enum")
+both.On("enum", 60)
+assert(
+	keys[#keys].Key == 116,
+	"explicit enum compatibility is distinct from VK"
+)
+both.ReleaseAll()
+local denied = MakeMidiOutput(
+	{},
+	setmetatable({}, {
+		__index = function()
+			error("service member denied")
+		end,
+	}),
+	keyCodes,
+	{}
+)
+assert(not denied.Available())
+assert(not pcall(denied.SelectBackend, "VK") and denied.Preferred == "Auto")
+local refused = MakeMidiOutput({
+	keypress = function()
+		return false
+	end,
+	keyrelease = function() end,
+}, nil, keyCodes, {})
+assert(not pcall(refused.On, 1, 60) and refused.Errors > 0)
 -- Transport: exact clock speed, release on pause/seek/stop, explicit arm/preview,
 -- gate/sustain, filters, A-B loop, lag skip/backpressure, no replay burst.
 local now = 0

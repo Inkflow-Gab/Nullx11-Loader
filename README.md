@@ -360,3 +360,11 @@ movable piano dock stays static. No raw hub, online presets or asset fetches run
 Read the [setup/features guide](docs/AUTO-PLAYER.md) and
 [source/native-validation boundary](docs/MIDI-REVIEW.md). The phone path and game
 key acceptance still require testing in Delta on your actual device/piano.
+
+### Auto Player piano keys
+
+For the supplied `1…m` piano layout, Auto Player's **Keys** tab now has 61 labeled
+real-input tests, a screenshot-layout profile and explicit VIM/VK/enum backends.
+Executor virtual-key values are no longer confused with Roblox enum numbers.
+Arm input and confirm white/black notes in the actual game before MIDI playback.
+See [the piano setup guide](docs/AUTO-PLAYER.md#matching-the-supplied-61-key-piano-screenshot).

@@ -128,27 +128,86 @@ return function(environment, vim, keyCodes, target)
 	}) do
 		extensions[96 + index] = character
 	end
-	local send
-	if
-		type(environment.keypress) == "function"
+	-- Executor keypress APIs normally take Windows virtual-key codes, NOT
+	-- Roblox Enum.KeyCode.Value (T is 116 there but VK_T is 84).
+	local function virtualKey(key)
+		local name = type(key) == "string" and key:match("[^.]+$") or key.Name
+		local special = {
+			LeftShift = 0x10,
+			LeftControl = 0x11,
+			Zero = 0x30,
+			One = 0x31,
+			Two = 0x32,
+			Three = 0x33,
+			Four = 0x34,
+			Five = 0x35,
+			Six = 0x36,
+			Seven = 0x37,
+			Eight = 0x38,
+			Nine = 0x39,
+		}
+		local code = special[name] or (#name == 1 and string.byte(name:upper()))
+		assert(code, "No piano virtual-key code for " .. tostring(name))
+		return code
+	end
+	local okVim, vimSend = pcall(function()
+		return vim and vim.SendKeyEvent
+	end)
+	local hasVim = okVim and type(vimSend) == "function"
+	local hasExecutor = type(environment.keypress) == "function"
 		and type(environment.keyrelease) == "function"
-	then
-		output.Backend = "Executor keypress/keyrelease"
-		send = function(down, key)
-			if down then
-				environment.keypress(key.Value)
-			else
-				environment.keyrelease(key.Value)
-			end
+	local send
+	output.Preferred = "Auto"
+	output.Requests = 0
+	output.Errors = 0
+	function output.SelectBackend(mode)
+		assert(
+			mode == "Auto" or mode == "VIM" or mode == "VK" or mode == "Enum",
+			"Unknown input backend"
+		)
+		local selected = mode == "Auto" and (hasVim and "VIM" or "VK") or mode
+		assert(
+			(selected == "VIM" and hasVim)
+				or (selected ~= "VIM" and hasExecutor),
+			"That input API is unavailable. Try another backend or Preview only."
+		)
+		if send then
+			assert(
+				output.ReleaseAll(),
+				"Old input backend refused key release; retry STOP INPUT before switching"
+			)
 		end
-	elseif vim and type(vim.SendKeyEvent) == "function" then
-		output.Backend = "VirtualInputManager (unverified permission)"
+		output.Preferred = mode
+		output.Backend = selected == "VIM"
+				and "VIM / unverified game acceptance"
+			or selected == "VK" and "Executor / Windows VK"
+			or "Executor / Roblox enum compatibility"
 		send = function(down, key)
-			vim:SendKeyEvent(down, key, false, target)
+			output.Requests += 1
+			local ok, result = pcall(function()
+				if selected == "VIM" then
+					return vimSend(vim, down, key, false, target)
+				end
+				local code = selected == "VK" and virtualKey(key) or key.Value
+				if down then
+					return environment.keypress(code)
+				else
+					return environment.keyrelease(code)
+				end
+			end)
+			if not ok or result == false then
+				output.Errors += 1
+				error("Input dispatch refused: " .. tostring(result))
+			end
 		end
 	end
 	function output.Available()
 		return send ~= nil
+	end
+	-- Selection is explicit after initialization. Never mix backends between a
+	-- key-down and key-up, or interpret a silent no-op as accepted piano input.
+	if hasVim or hasExecutor then
+		output.SelectBackend("Auto")
 	end
 	function output.Map(pitch)
 		local low, high =
@@ -179,6 +238,23 @@ return function(environment, vim, keyCodes, target)
 			Modifier = modifier,
 			Pitch = pitch,
 			Label = extended and "Ctrl+" .. character or character,
+			Binding = extended and "Ctrl+" .. character
+				or modifier and "Shift+" .. base
+				or base,
+			NoteName = ({
+				"C",
+				"C#",
+				"D",
+				"D#",
+				"E",
+				"F",
+				"F#",
+				"G",
+				"G#",
+				"A",
+				"A#",
+				"B",
+			})[pitch % 12 + 1] .. (math.floor(pitch / 12) - 1),
 		}
 	end
 	function output.ReleaseAll()

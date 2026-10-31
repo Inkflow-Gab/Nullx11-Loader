@@ -29,9 +29,25 @@ end
 function context.RegisterCleanup(callback)
 	table.insert(hooks, callback)
 end
+-- @MIDI_OUTPUT
+context.MidiOutput = makeViewOutput({}, nil, Enum.KeyCode, game)
 -- @MIDI_VIEW
 local view = makeAutoPlayerView(context)
 assert(view.Page == "Library" and #view.Bars == 72 and view.Settings.arm)
+assert(view.Keys[60]:FindFirstChild("Binding").Text == "t")
+assert(find("TryPianoKey37").Text == "C#2 / Shift+1")
+assert(find("TryPianoKey60").Text == "C4 / t")
+local testPitch, backend
+view.Actions.testnote = function(pitch)
+	testPitch = pitch
+end
+view.Actions.backend = function(mode)
+	backend = mode
+end
+find("TryPianoKey61").Activated:Fire()
+assert(testPitch == 61)
+find("BackendVK").Activated:Fire()
+assert(backend == "VK")
 local safe = find("SafeArea")
 safe.AbsoluteSize = Vector2.new(1000, 740)
 safe:GetPropertyChangedSignal("AbsoluteSize"):Fire()
@@ -72,6 +88,7 @@ assert(
 	#objects == count and find("Track1").Text == "MUTED",
 	"track rows reuse controls/connections"
 )
+context.MidiOutput.Mode88 = true
 view.Keyboard(true)
 local keyCount = 0
 for _ in pairs(view.Keys) do

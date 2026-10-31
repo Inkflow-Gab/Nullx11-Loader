@@ -11,6 +11,7 @@ return function(context)
 		Rows = {},
 		Bars = {},
 		Keys = {},
+		KeyCaptions = {},
 		Page = "Library",
 		ReducedMotion = context.ReducedMotion,
 		Tweens = {},
@@ -375,7 +376,8 @@ return function(context)
 		pages[name] = page
 		return page
 	end
-	local mixer, settings = scrollPage("Mixer"), scrollPage("Settings")
+	local mixer, settings, keysPage =
+		scrollPage("Mixer"), scrollPage("Settings"), scrollPage("Keys")
 	local rowHeights = { Mixer = 12, Settings = 12 }
 	local function settingRow(page, heading, detail)
 		local y = rowHeights[page.Name]
@@ -597,6 +599,9 @@ return function(context)
 	})
 	corner(transpose, 7)
 	local speedTitle = label(bottom, "SpeedCaption", "SPEED", 9, color.Muted)
+	view.Profile61 = function()
+		transpose.Text = "0"
+	end
 	local pitchTitle =
 		label(bottom, "TransposeCaption", "SEMITONES", 9, color.Muted)
 	context.Connect(speed.FocusLost, function()
@@ -852,6 +857,7 @@ return function(context)
 			key:Destroy()
 		end
 		table.clear(view.Keys)
+		table.clear(view.KeyCaptions)
 		view.KeyGeometry = {}
 		local low, high = mode88 and 21 or 36, mode88 and 108 or 96
 		local black =
@@ -882,6 +888,21 @@ return function(context)
 				ZIndex = dark and 3 or 2,
 			})
 			corner(key, 2)
+			local token = context.MidiOutput and context.MidiOutput.Map(pitch)
+			if token then
+				local caption = label(
+					key,
+					"Binding",
+					token.Label,
+					8,
+					dark and color.Text or color.Background
+				)
+				caption.Position = UDim2.new(0, 0, 1, -12)
+				caption.Size = UDim2.new(1, 0, 0, 12)
+				caption.TextXAlignment = Enum.TextXAlignment.Center
+				caption.ZIndex = key.ZIndex + 1
+				view.KeyCaptions[pitch] = caption
+			end
 			view.KeyGeometry[pitch] = {
 				X = (offset - (dark and 0.29 or 0)) / whiteCount,
 				Width = (dark and 0.58 or 0.95) / whiteCount,
@@ -914,6 +935,9 @@ return function(context)
 			.. time(score.Duration)
 	end
 	function view.Snapshot(player, output)
+		if view.BackendStatus then
+			view.BackendStatus(output)
+		end
 		if not view.Visible then
 			return
 		end
@@ -936,7 +960,18 @@ return function(context)
 				pressed[token.Pitch] = true
 			end
 		end
+		for _, token in pairs(output.Held or {}) do
+			pressed[token.Pitch] = true
+		end
 		for pitch, key in pairs(view.Keys) do
+			local caption = view.KeyCaptions[pitch]
+			if caption then
+				caption.TextColor3 = (
+					pressed[pitch] or not key:GetAttribute("DarkKey")
+				)
+						and color.Background
+					or color.Text
+			end
 			key.BackgroundColor3 = pressed[pitch] and color.Cyan
 				or key:GetAttribute("DarkKey") and color.Background
 				or color.Text
@@ -1024,13 +1059,101 @@ return function(context)
 		end
 		view.Dispatch("tab", name)
 	end
-	for index, name in ipairs({ "Library", "Queue", "Mixer", "Settings" }) do
+	for index, name in ipairs({
+		"Library",
+		"Queue",
+		"Mixer",
+		"Keys",
+		"Settings",
+	}) do
 		local object = button(nav, name, name, function()
 			view.SetPage(name)
 		end)
-		object.Size = UDim2.new(0.25, -6, 1, 0)
-		object.Position = UDim2.new((index - 1) * 0.25, 0, 0, 0)
+		object.Size = UDim2.new(0.2, -4, 1, 0)
+		object.Position = UDim2.new((index - 1) * 0.2, 0, 0, 0)
 		navButtons[name] = object
+	end
+	local keyHelp = label(
+		keysPage,
+		"PianoKeyHelp",
+		"61-key layout from your screenshot. Keep the GAME piano open and its CAPS off. White keys: 1234567890qwertyuiopasdfghjklzxcvbnm. Black keys use Shift. Tap a note below while armed/paused; it sends real input, not local demo sound.",
+		12,
+		color.Text
+	)
+	keyHelp.Position = UDim2.fromOffset(12, 8)
+	keyHelp.Size = UDim2.new(1, -24, 0, 110)
+	keyHelp.TextWrapped = true
+	keyHelp.TextTruncate = Enum.TextTruncate.None
+	local backendInfo = label(
+		keysPage,
+		"PianoBackendStatus",
+		"Checking input APIs",
+		11,
+		color.Cyan
+	)
+	backendInfo.Position = UDim2.fromOffset(12, 120)
+	backendInfo.Size = UDim2.new(1, -24, 0, 46)
+	backendInfo.TextWrapped = true
+	backendInfo.TextTruncate = Enum.TextTruncate.None
+	local backendButtons = {}
+	for index, spec in ipairs({
+		{ "Auto", "Auto" },
+		{ "VIM", "VIM" },
+		{ "VK", "Keys / VK" },
+		{ "Enum", "Keys / Enum" },
+	}) do
+		local control = button(
+			keysPage,
+			"Backend" .. spec[1],
+			spec[2],
+			function()
+				view.Dispatch("backend", spec[1])
+			end
+		)
+		control.Position = UDim2.new((index - 1) * 0.25, 8, 0, 174)
+		control.Size = UDim2.new(0.25, -12, 0, 40)
+		control.TextSize = 11
+		backendButtons[spec[1]] = control
+	end
+	local profile = button(
+		keysPage,
+		"Screenshot61Profile",
+		"Use screenshot's 61 keys / reset transpose",
+		"profile61"
+	)
+	profile.Position = UDim2.fromOffset(12, 224)
+	profile.Size = UDim2.new(1, -24, 0, 40)
+	profile.TextSize = 11
+	for pitch = 36, 96 do
+		local token = context.MidiOutput and context.MidiOutput.Map(pitch)
+		local text = token and (token.NoteName .. " / " .. token.Binding)
+			or "MIDI " .. pitch
+		local control = button(
+			keysPage,
+			"TryPianoKey" .. pitch,
+			text,
+			function()
+				view.Dispatch("testnote", pitch)
+			end
+		)
+		local index = pitch - 36
+		control.Position =
+			UDim2.new((index % 3) / 3, 8, 0, 278 + math.floor(index / 3) * 48)
+		control.Size = UDim2.new(1 / 3, -12, 0, 40)
+		control.TextSize = 11
+	end
+	keysPage.CanvasSize = UDim2.fromOffset(0, 278 + 21 * 48 + 12)
+	view.BackendStatus = function(output)
+		backendInfo.Text = (output.Backend or "Unavailable")
+			.. " / "
+			.. (output.Requests or 0)
+			.. " API requests / "
+			.. (output.Errors or 0)
+			.. " errors. No sound? Try VIM, VK, then Enum."
+		for mode, control in pairs(backendButtons) do
+			control.TextColor3 = mode == output.Preferred and color.Cyan
+				or color.Text
+		end
 	end
 	local testRow = settingRow(
 		settings,

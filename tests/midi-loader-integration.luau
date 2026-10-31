@@ -177,6 +177,30 @@ find("Track1").Activated:Fire()
 find("Settings").Activated:Fire()
 find("Arm piano inputToggle").Activated:Fire()
 assert(result.Transport.Armed and not result.Transport.Preview)
+find("Keys").Activated:Fire()
+assert(result.View.Page == "Keys" and find("TryPianoKey60").Text == "C4 / t")
+find("Screenshot61Profile").Activated:Fire()
+assert(
+	not result.Output.Mode88
+		and result.Transport.Transpose == 0
+		and find("Transpose").Text == "0"
+)
+find("BackendVIM").Activated:Fire()
+assert(result.Output.Preferred == "VIM")
+find("BackendVK").Activated:Fire()
+assert(
+	result.Output.Preferred == "VIM",
+	"an unavailable backend cannot replace the working one"
+)
+find("TryPianoKey36").Activated:Fire()
+find("TryPianoKey37").Activated:Fire()
+assert(next(result.Output.Held), "touch key tests send actual input")
+stepUI(0.21)
+assert(
+	next(result.Output.Held) == nil,
+	"rapid test notes have independent release identities"
+)
+find("Settings").Activated:Fire()
 find("TestInput").Activated:Fire()
 assert(#keys > 0 and keys[#keys].Down)
 stepUI(0.21)

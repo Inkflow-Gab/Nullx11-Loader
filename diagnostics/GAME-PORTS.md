@@ -190,3 +190,14 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
 - Check portrait/landscape, reduced motion, dragging/hide/restore, and Settings →
   STOP INPUT. Independently verify C4/game key acceptance and releases. Development
   queued-timer/generated-bundle tests are not native rendering/performance proof.
+
+### Screenshot piano / keyboard acceptance
+
+- Confirm the supplied game's `1..m` white keys and Shift black keys; keep its CAPS
+  off. Use Auto Player → Keys → screenshot 61-key profile, then arm in Settings.
+- Test C4/t and C#4/Shift+t on each available VIM/VK/Enum backend while paused.
+  Confirm actual game sound/release, not just the player's visualization/counters.
+- Verify MIDI playback only after successful manual keys. Check game chords,
+  physical typing, low FPS and Android app focus. If no backend works, record the
+  actual game link/place ID, Delta input API errors and white/black test results;
+  do not infer a compatible game remote from a screenshot.

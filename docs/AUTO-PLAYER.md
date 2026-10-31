@@ -18,9 +18,13 @@ remote song catalog, upload service, announcement, decal or font download runs.
 4. Search, then select a song. Selection **loads but does not play**. The loading
    overlay reports real file-read/decode phases; its sweeping accent is decorative,
    not a fabricated completion percentage.
-5. In a compatible virtual-piano game, open/focus its piano. In Auto Player's
-   **Settings**, enable **Arm piano input**. Use **Test C4** and verify the actual
-   piano responds. An available API is not proof that the game accepts key events.
+5. Open/focus the game piano first. In Auto Player's **Settings**, enable
+   **Arm piano input**. In **Keys**, choose the **61-key screenshot profile** for
+   the supplied `1…m` layout and leave the game's **CAPS off**. Test both
+   **C4 / t** and **C#4 / Shift+t**: the actual game must sound both notes.
+   API availability and the player's key highlights are not proof of game input.
+   If silent, choose **VIM**, **Keys / VK**, or **Keys / Enum** explicitly and test
+   again while paused. Do not start a MIDI until the game piano responds.
 6. Choose **Play**. The default two-second start delay gives you time to focus the
    game piano. Change Start delay to 0–10 seconds if necessary. Hiding the window
    leaves explicit playback running; opening text input or losing app focus
@@ -53,7 +57,7 @@ preview, never passed off as successful game input. This is not an audio synth.
   disabled. Different game bindings require a different mapping; none is guessed.
 - **Visuals:** animated opening and file-loading stage, cyan/violet piano roll,
   live key highlights/BPM, a static graphical piano dock, draggable window/dock,
-  dedicated Library/Queue/Mixer/Settings, compact portrait/landscape layouts and
+  dedicated Library/Queue/Mixer/Keys/Settings, compact portrait/landscape layouts and
   reduced-motion option. The dock icon has no idle animation or letter monogram.
 - **F8:** play/pause (ignored while typing or when the game consumes input).
 - **F7 / Settings → STOP INPUT:** emergency stop/disarm and retry owned key
@@ -110,3 +114,38 @@ Re-execute the **updated main loader**, then Scripts → NULL Studio → Auto Pl
 Old already-running code is not hot-patched. These paths have delayed-callback,
 failed-animation, parent-permission and real catalog-to-generated-bundle tests
 using development API doubles; on-device Delta rendering still needs checking.
+
+## Matching the supplied 61-key piano screenshot
+
+The screenshot's white-key labels are:
+`1 2 3 4 5 6 7 8 9 0 q w e r t y u i o p a s d f g h j k l z x c v b n m`.
+Black keys use Shift plus their base key (`!` = Shift+1, `T` = Shift+t, etc.).
+The supplied RoMidi C2–C7 mapping matches that character layout. The image alone
+does not establish the game's place ID, absolute tuning, or mobile input handler.
+The Keys profile selects 61-key mode and resets transpose to zero; it does not
+invent a game-specific remote or operate the game's Exit/Sheets/CAPS controls.
+
+**Keys** provides all 61 note-name/binding buttons for real armed, paused testing,
+plus mapping labels on the visual piano. Test buttons use independent release
+IDs and refuse to send keys while typing, playing, counting down or disarmed.
+They do not generate local demo audio. MIDI preview remains visual only.
+
+- **Auto** prefers VIM if its method exists, otherwise executor VK. This checks
+  API presence, not permission or game acceptance. It does not silently change
+  backends midway through a note.
+- **VIM** sends Roblox `Enum.KeyCode` objects through `SendKeyEvent`.
+- **Keys / VK** sends numeric virtual-key codes to `keypress`/`keyrelease`:
+  T = 84, M = 77, Shift = 16, Ctrl = 17. Roblox's T value 116 is **not** VK_T.
+- **Keys / Enum** is an explicit alternative for executors that expect Roblox
+  enum numbers instead. It is not presented as the same format as VK.
+
+Changing a backend pauses and releases owned keys through the old backend first.
+If that release fails, switching is blocked: use STOP INPUT; if permission is
+permanently denied, exit/reset the game piano and rerun the player, selecting a
+different backend **before** testing again. API request/error counters are
+provided; a zero-error request can still be ignored by an Android game.
+
+If every available backend remains silent, supply the **Roblox game link/place
+ID** and the observed white/black key test results. A screenshot is not enough to
+verify that game's input code; some mobile games do not accept injected keyboard
+input at all. No unreviewed remote calls or guessed UI-coordinate clicks are used.

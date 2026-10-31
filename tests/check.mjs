@@ -70,7 +70,7 @@ try {
     .replace('-- @MIDI_MODULES',midiModules.map(([name,path])=>module(name,path)).join('\n'))
     .replace('-- @MIDI_CONTROLLER',`local function runAutoPlayer(context)\n${read('src/games/AutoPlayer.luau')}\nend`);
   console.log(...await state.loadstring(midiChecks,'actual-midi-contracts',true)());
-  const midiViewChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-view.luau').replace('-- @MIDI_UI_RUNTIME',read('tests/midi-ui-runtime.luau')).replace('-- @MIDI_VIEW',module('makeAutoPlayerView','src/ui/AutoPlayerView.luau'));
+  const midiViewChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-view.luau').replace('-- @MIDI_UI_RUNTIME',read('tests/midi-ui-runtime.luau')).replace('-- @MIDI_OUTPUT',module('makeViewOutput','src/games/MidiOutput.luau')).replace('-- @MIDI_VIEW',module('makeAutoPlayerView','src/ui/AutoPlayerView.luau'));
   console.log(...await state.loadstring(midiViewChecks,'actual-midi-view',true)());
   const midiBundle=read('scripts/Nullx11-AutoPlayer.luau');
   assert.ok(!/HttpGet|loadstring|https?:\/\/|writefile|makefolder|BindToRenderStep/.test(midiBundle),'Auto Player executes local MIDI data only; no presets, writes or idle rendering worker');

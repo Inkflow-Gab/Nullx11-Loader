@@ -75,3 +75,21 @@ C4 release, touch panic, minimize/restore, parent fallback, startup failure/retr
 and independent loader unload. `midi-view.luau` now uses queued timers and checks
 stale operations, denied tweens and permanent blocker removal. These are not GPU,
 physical-touch, native executor or accepted-game-input proofs.
+
+### Follow-up: screenshot keyboard and executor code conventions
+
+Compared the user's 2026-10-31 piano screenshot with the 61-key character layout.
+The white/Shifted black labels match; the game's identity and input acceptance
+cannot be inferred from the image. Fixed the executor path's use of Roblox enum
+numbers as virtual-key codes (T: enum 116 versus VK 84). Added explicit Auto/VIM/
+VK/enum modes, protected method discovery, dispatch-refusal reporting and counters.
+Auto chooses VIM on method presence, otherwise VK; no partial-chord auto-fallback.
+Backend changes retain failed release ownership and cannot discard stuck keys.
+
+Added a Keys tab with all 61 actual-input test buttons, on-piano bindings, a 61-key/
+zero-transpose profile and CAPS-off guidance; test releases have independent IDs.
+No game identity, remote protocol, mobile acceptance or absolute tuning is claimed
+from the screenshot. Development tests now use realistic enum values, independently
+check every screenshot binding, verify Shift/VK numbers and native Enum dispatch,
+old-backend release ownership, failed switching, unsupported/refused APIs and the
+published chunk's actual Keys/profile/backend/manual-test controls.
