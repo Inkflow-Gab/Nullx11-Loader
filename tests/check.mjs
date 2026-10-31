@@ -43,13 +43,13 @@ try {
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 7);
+  assert.equal(manifest.Scripts.length, 8);
   assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
-    assert.ok(bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money'].includes(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
+    assert.ok(bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
     assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
     assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');
     assert.ok(Buffer.byteLength(bundle, 'utf8') < 2097152, 'bundle fits reviewed source size budget');
@@ -103,8 +103,39 @@ try {
       .replace('-- @TTK',read('src/games/TTKTesting.luau'))
       .replace('-- @MONEY',read('src/games/MoneyPerClick.luau'));
   console.log(...await state.loadstring(newPorts,'new-game-ports',true)());
+  const chiliSource=read('src/games/StealAnEggChili.luau');
+  assert.ok(!/loadstring|HttpGet|queue_on_teleport|queueonteleport|hookfunction|syn\.request|http_request|writefile|while true|chillihub\.pro|api\.luarmor/.test(chiliSource),'no raw VM, vendor API/bootstrap, queue, webhook or immortal worker in recovered core');
+  assert.equal((chiliSource.match(/task\.spawn\(/g)||[]).length,1,'one serialized recovered-core worker');
+  assert.ok(chiliSource.includes('Not recovered / intentionally unavailable'),'partial recovery boundary visible in actual GUI');
+  const chiliContracts=read('tests/game-port-contracts.luau').split('-- Insert the actual modules')[0]
+    + read('tests/chili-egg-contracts.luau')
+      .replace('-- @CHILI_MODULES', [module('makeAdapter','src/ui/Gen2Adapter.luau'),module('makeSession','src/games/Context.luau'),module('chiliPolicy','src/games/ChiliEggPolicy.luau'),between(read('scripts/Nullx11-StealAnEgg-CHILI.luau'),'local function compatible()','if not compatible() then')].join('\n'))
+      .replace('-- @CHILI_CONTROLLER',read('src/games/StealAnEggChili.luau'));
+  console.log(...await state.loadstring(chiliContracts,'chili-egg-core',true)());
+  const loadingLayers=read('tests/roblox-mock.luau')+'\n'+read('tests/loading-layers.luau')
+    .replace('-- @EXECUTION_MODEL',module('makeExecutionState','src/ui/ExecutionState.luau'))
+    .replace('-- @EXECUTION_VIEW',read('src/ui/ExecutionView.luau'));
+  console.log(...await state.loadstring(loadingLayers,'loading-layer-contracts',true)());
+  const openingMethods=between(read('src/ui/Nullx11UI.luau'),'function Library:SetOpening(opening)','function Library:CreateWindow(options)');
+  const enhancedBridge=`local State={Gui=Instance.new("ScreenGui")}
+State.Gui.Name="EnhancedIntroHost";State.Gui.Parent=gui.Parent;State.Gui.DisplayOrder=100
+local nativePanel=Instance.new("Frame");nativePanel.Name="EnhancedPanel";nativePanel.Visible=true;nativePanel.Parent=State.Gui
+local Float={Button=Instance.new("Frame")};Float.Button.Name="EnhancedDock";Float.Button.Parent=State.Gui;Float.Button.Visible=true
+Float.SetVisible=function(value) Float.Button.Visible=value end
+local Library={Window={Visible=true}}
+function Library.Window:SetVisible(value) self.Visible=value;nativePanel.Visible=value end
+${openingMethods}
+playerToolsBridge.StartupBegin=function() return Library:SetOpening(true) end
+playerToolsBridge.StartupEnd=function() Library:SetOpening(false) end
+playerToolsBridge.PrimaryActive=true;card.Visible=false;mini.Visible=false
+playerToolsBridge.UnloadPrimary=function() State.Gui:Destroy() end
+connect(gui.Destroying,function() State.Gui:Destroy() end)`;
+  const enhancedSource=read('src/loader.luau').replace('-- @NULLX11_WORKSPACE',enhancedBridge);
+  assert.ok(enhancedSource.indexOf('playerToolsBridge.StartupBegin=function')<enhancedSource.indexOf('-- Native-UI gravity well'), 'bridge installed before actual startup effect');
+  const enhancedIntro=read('tests/roblox-mock.luau')+'\nlocal function runEnhancedLoader()\n'+enhancedSource+'\nend\nlocal function runEnhancedReducedLoader()\n'+enhancedSource.replace('ReducedMotion = false','ReducedMotion = true')+'\nend\n'+read('tests/enhanced-intro.luau');
+  console.log(...await state.loadstring(enhancedIntro,'enhanced-startup-contracts',true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: seven actual controllers, place/module gates, source/default-state/budget/size, static icon and font license checks');
+  console.log('PASS: eight published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),

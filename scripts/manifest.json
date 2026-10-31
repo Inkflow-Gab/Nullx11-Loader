@@ -66,6 +66,15 @@
       "Author": "Developed by Gab; original smart-farming source by VoidScripts / VoidScriptsDK.",
       "Category": "Simulator",
       "Icon": "coin"
+    },
+    {
+      "Id": "eggchili",
+      "Name": "StealAnEgg-CHILI",
+      "Description": "Recovered core from partial Chilli SAE source: nearby carry, opt-in saved-point return, egg labels and basic progression. Default off. VM-dependent features remain unavailable.",
+      "File": "Nullx11-StealAnEgg-CHILI.luau",
+      "Author": "Developed by Gab; recovered-core adaptation of user-supplied Chilli SAE source; original authorship retained.",
+      "Category": "Simulator",
+      "Icon": "egg"
     }
   ]
 }

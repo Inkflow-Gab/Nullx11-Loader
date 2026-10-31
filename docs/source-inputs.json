@@ -65,6 +65,12 @@
       "sha256": "f4f2b3515ffc9f78a47024dbcc6144bcf9a22370e4af3c7897f5f18036fb2243",
       "bytes": 19482,
       "note": "VoidScripts attribution retained; Rayfield removed; exclusive routes and bounded default-off workers."
+    },
+    "stealanegg-chili-partial.lua": {
+      "source": "User upload steal.partial-decoded.lua.txt",
+      "sha256": "c198d8df2672e4f000c748818d6f624daadb593bf6ee3583841ab9d0d08ccdba",
+      "bytes": 1740136,
+      "note": "Partial static recovery with remaining VM. Never raw-executed or shipped. Only independently implemented readable core is published; full VM features unavailable. See CHILI-EGG-REVIEW.md."
     }
   },
   "Updated": "2026-10-31"

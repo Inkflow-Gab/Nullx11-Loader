@@ -2,7 +2,7 @@
 
 This folder is connected to **Workspace → Scripts / Open Scripts library** in `Nullx11.client.luau` (also available through classic Tools).
 
-The manifest publishes the seven adapted Rosu, Huss Valley, +1 Loot to Forge, Steal An Egg, stealabrainrot, TTK Testing and +1 Money per Click bundles. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
+The manifest publishes the seven prior adapted Rosu, Huss Valley, +1 Loot to Forge, Steal An Egg, stealabrainrot, TTK Testing and +1 Money per Click bundles plus the separate **StealAnEgg-CHILI recovered-core edition**. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
 
 ## Add a script later
 
@@ -79,3 +79,5 @@ See [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md) for all seven implemented por
 Each generated bundle has a separate UI identity and default **Left Control** shortcut. Controllers register with `Nullx11GameSessions`; their own Unload and the main workspace's registered-session cleanup stop them. UI hide/close-to-icon does not stop an enabled feature. Other externally added scripts are not assumed to support this registry.
 
 The built-in catalog is usable without a network Refresh. Refresh replaces it atomically and invalidates stale selected-game state. Optional theme/font downloads are data, not another executable UI library. Original source and redistribution restrictions are documented in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
+
+StealAnEgg-CHILI is not a full VM recovery. See [recovery scope](../docs/CHILI-EGG-REVIEW.md) for implemented nearby carry/progression/labels and explicit unavailable features. Original Steal An Egg remains intact.

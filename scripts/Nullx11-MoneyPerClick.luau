@@ -8714,6 +8714,9 @@ local function createNullx11UI(scope)
 	end
 
 	function Gui.OnInputBegan(input, processed)
+		if Library.Opening then
+			return
+		end
 		if State.Binding then
 			Keybinds.Capture(input)
 			return
@@ -13523,6 +13526,15 @@ local function createNullx11UI(scope)
 		if self.Execution then
 			self.Execution:Close()
 		end
+		-- Separate ScreenGui: a newly-created game UI must not cover initialization.
+		local executionGui = Draw.New("ScreenGui", {
+			Name = "Nullx11ExecutionOverlay",
+			ResetOnSpawn = false,
+			IgnoreGuiInset = true,
+			DisplayOrder = math.max(1000, State.Gui.DisplayOrder + 1),
+			ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+			Parent = State.Gui.Parent,
+		})
 		local shade = Draw.New("TextButton", {
 			Name = "ExecutionLoading",
 			Text = "",
@@ -13531,7 +13543,7 @@ local function createNullx11UI(scope)
 			BackgroundTransparency = 0.36,
 			Size = UDim2.fromScale(1, 1),
 			ZIndex = 72,
-			Parent = State.Gui,
+			Parent = executionGui,
 		})
 		local card = Draw.Box("CanvasGroup", {
 			Name = "ExecutionCard",
@@ -13680,7 +13692,8 @@ local function createNullx11UI(scope)
 			end
 			self.Model:Dismiss()
 			self.Closed = true
-			shade:Destroy()
+			Theme.UnbindTree(executionGui)
+			executionGui:Destroy()
 			if Library.Execution == self then
 				Library.Execution = nil
 			end
@@ -13710,6 +13723,42 @@ local function createNullx11UI(scope)
 		end
 		Anim.Tween(card, { GroupTransparency = 0 }, 0.22, "Out")
 		return job
+	end
+
+	-- The existing gravity-well intro is hosted in this GUI, above its own window.
+	-- Hide/restore the actual native window and static dock, not the classic panel.
+	function Library:GetOverlayHost()
+		return State.Gui
+	end
+
+	function Library:SetOpening(opening)
+		if self.Unloaded or not self.Window then
+			return nil
+		end
+		if opening then
+			if not self.Opening then
+				self.Opening = {
+					WindowVisible = self.Window.Visible,
+					FloatVisible = Float.Button and Float.Button.Visible,
+					DisplayOrder = State.Gui.DisplayOrder,
+				}
+				self.Window:SetVisible(false)
+				State.Gui.DisplayOrder = math.max(
+					1000,
+					(tonumber(State.Gui.DisplayOrder) or 100) + 1
+				)
+				Float.SetVisible(false)
+			end
+			return State.Gui
+		end
+		local previous = self.Opening
+		self.Opening = nil
+		if previous then
+			State.Gui.DisplayOrder = previous.DisplayOrder
+			self.Window:SetVisible(previous.WindowVisible)
+			Float.SetVisible(previous.FloatVisible == true)
+		end
+		return State.Gui
 	end
 
 	function Library:CreateWindow(options)
@@ -14356,6 +14405,22 @@ local makeSession = (function()
 			context.Sent += 1
 			return remote[method](remote, ...)
 		end
+		-- Revalidate feature/generation after pacing waits, before sending anything.
+		function context.SendWhen(predicate, remote, method, ...)
+			while
+				context.Alive
+				and predicate()
+				and os.clock() < context.NextSend
+			do
+				task.wait(math.min(0.125, context.NextSend - os.clock()))
+			end
+			if not context.Alive or not predicate() then
+				return nil, "cancelled"
+			end
+			context.NextSend = os.clock() + 0.125
+			context.Sent += 1
+			return remote[method](remote, ...)
+		end
 		function context.RegisterCleanup(callback)
 			library:OnUnload(function()
 				context.CleanupThread = coroutine.running() or context
@@ -14591,6 +14656,7 @@ local makeMoneyData = (function()
 		return data
 	end
 end)()
+
 local wrongPlace = (function()
 	-- Compatibility notice only. Never teleports, queues code or starts a controller.
 	return function(library, entry, _url)
@@ -14962,6 +15028,7 @@ context.Adapter =
 	makeAdapter(library, entry.Name, "Nullx11 " .. "MoneyPerClick")
 
 context.MoneyData = makeMoneyData()
+
 local ok, result = xpcall(function()
 	return runGame(context)
 end, debug.traceback)

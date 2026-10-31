@@ -1,6 +1,6 @@
 # Game integrations
 
-All seven supplied sources have been adapted and bundled. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
+Seven previous sources have been adapted and bundled; the eighth entry is a separately implemented **partial recovered core**, not a full VM port. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
 
 | Nullx11 workspace | Exact target place | Published file | Implementation status |
 | --- | --- | --- | --- |
@@ -13,6 +13,8 @@ All seven supplied sources have been adapted and bundled. They are **real contro
 | TTK Testing | MercPlayers / GunController + CameraController ModuleScript signature | [Nullx11-TTKTesting.luau](Nullx11-TTKTesting.luau) | Real visual/aim/weapon controls; explicit capped discovery; reversible owned patches. Drawing-dependent overlays; irreversible Instant ADS explicitly unavailable. |
 | +1 Money per Click | Source remote/class signature; no supplied place ID | [Nullx11-MoneyPerClick.luau](Nullx11-MoneyPerClick.luau) | World 1–4 exclusive smart routes; money/rebirth/evolve; all 16 eggs; bounded fair dispatcher and independent cleanup. |
 
+| StealAnEgg-CHILI | EggState / Save / Assets modules + Networking signature | [Nullx11-StealAnEgg-CHILI.luau](Nullx11-StealAnEgg-CHILI.luau) | **Recovered core only**: nearby carry/filter/labels, explicit saved-point return and basic progression. VM-dependent full steal/events/finder unavailable. [Recovery boundary](../docs/CHILI-EGG-REVIEW.md). |
+
 ## Shared foundation
 
 `src/ui/Nullx11UI.luau` contains the supplied +1 UI library adapted to Nullx11: responsive tabs/groupboxes, controls, themes, vector/pixel art, dialogs/sheets, reactive state, spring motion, floating restore icon, configuration and language support. The default main workspace **actually constructs and uses this library**. It is embedded once as an inline function, not an unused source string. Mario logo assets/character sprites were removed. Header/restore branding is a static native geometric prism, not an animated icon or letter. Kanit fonts retain their OFL license. Seasonal decoration and particles default off.
@@ -21,7 +23,7 @@ Each game bundle contains this same shared library plus **only its selected game
 
 ## Launch / consent
 
-- Seven game entries are available immediately; Refresh is optional.
+- Eight game entries are available immediately; Refresh is optional.
 - Scripts/launch windows are opening actions, never ON/OFF navigation. Opening them runs no game code.
 - Wrong-place execution is blocked for the three known targets. Steal An Egg uses structural core-module detection and full required-module validation, not a fabricated place ID.
 - Launcher teleport questions, destination teleports and arrival queues have been removed. Standalone incompatibility UI offers only a notice and Close.

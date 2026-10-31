@@ -6914,6 +6914,12 @@ do
 					type(loadstring) == "function",
 					"Client loadstring unavailable; run reviewed scripts as Studio LocalScripts instead"
 				)
+				if progress then
+					task.wait()
+				end
+				if not alive or (progress and not progress:CanContinue()) then
+					return
+				end
 				local source =
 					game:HttpGet(CONFIG.ScriptBaseURL .. entry.File, true)
 				if progress then
@@ -7097,6 +7103,7 @@ do
 						or entry.Id == "money"
 						or entry.Id == "egg"
 						or entry.Id == "stealabrainrot"
+						or entry.Id == "eggchili"
 					then "View details & launch"
 					else "Run / " .. entry.Name,
 				TextSize = 15,
@@ -7117,6 +7124,7 @@ do
 						or entry.Id == "money"
 						or entry.Id == "egg"
 						or entry.Id == "stealabrainrot"
+						or entry.Id == "eggchili"
 					then
 						catalog.OpenGame(entry)
 					else
@@ -7556,6 +7564,11 @@ end)
 
 connect(gui.Destroying, function()
 	alive = false
+	-- Dispose the primary GUI before disconnecting the listener that also owns it.
+	-- Event dispatch ordering must not leave the native host/intro behind.
+	if playerToolsBridge.UnloadPrimary then
+		pcall(playerToolsBridge.UnloadPrimary)
+	end
 	table.clear(portal.Jobs)
 	if playerToolsBridge.Destroy then
 		playerToolsBridge.Destroy()
@@ -7577,25 +7590,29 @@ connect(gui.Destroying, function()
 	table.clear(activeTweens)
 end)
 
+-- @NULLX11_WORKSPACE
+
 -- Native-UI gravity well: concentric lenses, orbital dust, implosion, shockwave.
 do
-	if
-		CONFIG.StartupAnimation
-		and not CONFIG.ReducedMotion
-		and not CONFIG.EnhancedWorkspace
-	then
+	if CONFIG.StartupAnimation and not CONFIG.ReducedMotion then
 		card.Visible = false
 		mini.Visible = false
+		local introHost = root
+		if
+			playerToolsBridge.PrimaryActive and playerToolsBridge.StartupBegin
+		then
+			introHost = playerToolsBridge.StartupBegin() or root
+		end
 		local intro = create("Frame", {
 			Name = "StartupWhirlpool",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundColor3 = Color3.fromRGB(8, 12, 24),
 			BackgroundTransparency = 0.03,
 			BorderSizePixel = 0,
-			ZIndex = 50,
+			ZIndex = 70,
 			Active = true,
 			ClipsDescendants = true,
-		}, root)
+		}, introHost)
 		create("UIGradient", {
 			Color = ColorSequence.new(
 				Color3.fromRGB(14, 18, 38),
@@ -7705,6 +7722,14 @@ do
 				animation:Disconnect()
 			end
 			intro:Destroy()
+			if
+				playerToolsBridge.PrimaryActive and playerToolsBridge.StartupEnd
+			then
+				playerToolsBridge.StartupEnd()
+				card.Visible = false
+				mini.Visible = false
+				return
+			end
 			mini.Visible = true
 			layout()
 			if immediate then
@@ -7720,7 +7745,10 @@ do
 			if finished or not alive then
 				return
 			end
-			local viewport = root.AbsoluteSize
+			local viewport = intro.AbsoluteSize
+			if viewport.X <= 0 or viewport.Y <= 0 then
+				viewport = root.AbsoluteSize
+			end
 			local short = viewport.Y > 0 and viewport.Y < 420
 			wordmark.Position = if short
 				then UDim2.new(0.5, 0, 0, 30)
@@ -7792,5 +7820,3 @@ do
 		end)
 	end
 end
-
--- @NULLX11_WORKSPACE

@@ -8718,6 +8718,9 @@ local function createNullx11UI(scope)
 	end
 
 	function Gui.OnInputBegan(input, processed)
+		if Library.Opening then
+			return
+		end
 		if State.Binding then
 			Keybinds.Capture(input)
 			return
@@ -13527,6 +13530,15 @@ local function createNullx11UI(scope)
 		if self.Execution then
 			self.Execution:Close()
 		end
+		-- Separate ScreenGui: a newly-created game UI must not cover initialization.
+		local executionGui = Draw.New("ScreenGui", {
+			Name = "Nullx11ExecutionOverlay",
+			ResetOnSpawn = false,
+			IgnoreGuiInset = true,
+			DisplayOrder = math.max(1000, State.Gui.DisplayOrder + 1),
+			ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+			Parent = State.Gui.Parent,
+		})
 		local shade = Draw.New("TextButton", {
 			Name = "ExecutionLoading",
 			Text = "",
@@ -13535,7 +13547,7 @@ local function createNullx11UI(scope)
 			BackgroundTransparency = 0.36,
 			Size = UDim2.fromScale(1, 1),
 			ZIndex = 72,
-			Parent = State.Gui,
+			Parent = executionGui,
 		})
 		local card = Draw.Box("CanvasGroup", {
 			Name = "ExecutionCard",
@@ -13684,7 +13696,8 @@ local function createNullx11UI(scope)
 			end
 			self.Model:Dismiss()
 			self.Closed = true
-			shade:Destroy()
+			Theme.UnbindTree(executionGui)
+			executionGui:Destroy()
 			if Library.Execution == self then
 				Library.Execution = nil
 			end
@@ -13714,6 +13727,42 @@ local function createNullx11UI(scope)
 		end
 		Anim.Tween(card, { GroupTransparency = 0 }, 0.22, "Out")
 		return job
+	end
+
+	-- The existing gravity-well intro is hosted in this GUI, above its own window.
+	-- Hide/restore the actual native window and static dock, not the classic panel.
+	function Library:GetOverlayHost()
+		return State.Gui
+	end
+
+	function Library:SetOpening(opening)
+		if self.Unloaded or not self.Window then
+			return nil
+		end
+		if opening then
+			if not self.Opening then
+				self.Opening = {
+					WindowVisible = self.Window.Visible,
+					FloatVisible = Float.Button and Float.Button.Visible,
+					DisplayOrder = State.Gui.DisplayOrder,
+				}
+				self.Window:SetVisible(false)
+				State.Gui.DisplayOrder = math.max(
+					1000,
+					(tonumber(State.Gui.DisplayOrder) or 100) + 1
+				)
+				Float.SetVisible(false)
+			end
+			return State.Gui
+		end
+		local previous = self.Opening
+		self.Opening = nil
+		if previous then
+			State.Gui.DisplayOrder = previous.DisplayOrder
+			self.Window:SetVisible(previous.WindowVisible)
+			Float.SetVisible(previous.FloatVisible == true)
+		end
+		return State.Gui
 	end
 
 	function Library:CreateWindow(options)
@@ -20903,6 +20952,15 @@ do
 					Category = "Simulator",
 					Icon = "coin",
 				},
+				{
+					Id = "eggchili",
+					Name = "StealAnEgg-CHILI",
+					Description = "Recovered core from partial Chilli SAE source: nearby carry, opt-in saved-point return, egg labels and basic progression. Default off. VM-dependent features remain unavailable.",
+					File = "Nullx11-StealAnEgg-CHILI.luau",
+					Author = "Developed by Gab; recovered-core adaptation of user-supplied Chilli SAE source; original authorship retained.",
+					Category = "Simulator",
+					Icon = "egg",
+				},
 			},
 		})
 		catalog.Loaded = true
@@ -21045,6 +21103,12 @@ do
 					type(loadstring) == "function",
 					"Client loadstring unavailable; run reviewed scripts as Studio LocalScripts instead"
 				)
+				if progress then
+					task.wait()
+				end
+				if not alive or (progress and not progress:CanContinue()) then
+					return
+				end
 				local source =
 					game:HttpGet(CONFIG.ScriptBaseURL .. entry.File, true)
 				if progress then
@@ -21228,6 +21292,7 @@ do
 						or entry.Id == "money"
 						or entry.Id == "egg"
 						or entry.Id == "stealabrainrot"
+						or entry.Id == "eggchili"
 					then "View details & launch"
 					else "Run / " .. entry.Name,
 				TextSize = 15,
@@ -21248,6 +21313,7 @@ do
 						or entry.Id == "money"
 						or entry.Id == "egg"
 						or entry.Id == "stealabrainrot"
+						or entry.Id == "eggchili"
 					then
 						catalog.OpenGame(entry)
 					else
@@ -21687,6 +21753,11 @@ end)
 
 connect(gui.Destroying, function()
 	alive = false
+	-- Dispose the primary GUI before disconnecting the listener that also owns it.
+	-- Event dispatch ordering must not leave the native host/intro behind.
+	if playerToolsBridge.UnloadPrimary then
+		pcall(playerToolsBridge.UnloadPrimary)
+	end
 	table.clear(portal.Jobs)
 	if playerToolsBridge.Destroy then
 		playerToolsBridge.Destroy()
@@ -21707,222 +21778,6 @@ connect(gui.Destroying, function()
 	end
 	table.clear(activeTweens)
 end)
-
--- Native-UI gravity well: concentric lenses, orbital dust, implosion, shockwave.
-do
-	if
-		CONFIG.StartupAnimation
-		and not CONFIG.ReducedMotion
-		and not CONFIG.EnhancedWorkspace
-	then
-		card.Visible = false
-		mini.Visible = false
-		local intro = create("Frame", {
-			Name = "StartupWhirlpool",
-			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = Color3.fromRGB(8, 12, 24),
-			BackgroundTransparency = 0.03,
-			BorderSizePixel = 0,
-			ZIndex = 50,
-			Active = true,
-			ClipsDescendants = true,
-		}, root)
-		create("UIGradient", {
-			Color = ColorSequence.new(
-				Color3.fromRGB(14, 18, 38),
-				Color3.fromRGB(7, 19, 28)
-			),
-			Rotation = 38,
-		}, intro)
-		local lenses = {}
-		for index = 1, 3 do
-			local lens = create("Frame", {
-				Name = "GravityLens" .. index,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5, 0.5),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Rotation = -24 + index * 17,
-			}, intro)
-			corner(lens, 1000)
-			local outline = create("UIStroke", {
-				Color = if index == 2
-					then Color3.fromRGB(120, 238, 226)
-					else CONFIG.Accent,
-				Thickness = if index == 2 then 2 else 1,
-				Transparency = 0.4 + index * 0.1,
-			}, lens)
-			table.insert(lenses, { Frame = lens, Stroke = outline })
-		end
-		local particles = {}
-		for index = 1, 48 do
-			local particle = create("Frame", {
-				Name = "WhirlpoolParticle" .. index,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Size = UDim2.fromOffset(2 + index % 3, 8 + index % 5 * 3),
-				BackgroundColor3 = if index % 3 == 0
-					then Color3.fromRGB(128, 240, 228)
-					elseif index % 7 == 0 then Color3.fromRGB(
-						255,
-						218,
-						157
-					)
-					else CONFIG.Accent,
-				BorderSizePixel = 0,
-			}, intro)
-			corner(particle, 3)
-			table.insert(particles, particle)
-		end
-		local center = create("Frame", {
-			Name = "WhirlpoolCenter",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(80, 80),
-			BackgroundColor3 = colors.Panel,
-			BorderSizePixel = 0,
-			ZIndex = 3,
-		}, intro)
-		corner(center, 24)
-		local coreStroke = create(
-			"UIStroke",
-			{ Color = CONFIG.Accent, Thickness = 2, Transparency = 0.1 },
-			center
-		)
-		local insignia = drawIcon(
-			center,
-			Color3.fromRGB(164, 244, 233),
-			UDim2.fromScale(0.2, 0.2),
-			48
-		)
-		insignia.Size = UDim2.fromScale(0.6, 0.6)
-		local wordmark = label(intro, "NULLX11", 27, colors.Text)
-		wordmark.Name = "StartupWordmark"
-		wordmark.Font = Enum.Font.Arcade
-		wordmark.ZIndex = 5
-		wordmark.AnchorPoint = Vector2.new(0.5, 0.5)
-		wordmark.Size = UDim2.fromOffset(320, 40)
-		wordmark.TextXAlignment = Enum.TextXAlignment.Center
-		local caption =
-			label(intro, "GRAVITY CORE / OPENING WORKSPACE", 14, colors.Muted)
-		caption.Name = "StartupCaption"
-		caption.ZIndex = 5
-		caption.AnchorPoint = Vector2.new(0.5, 0.5)
-		caption.Size = UDim2.new(1, -32, 0, 30)
-		caption.TextXAlignment = Enum.TextXAlignment.Center
-		local skip = create("TextButton", {
-			Name = "SkipStartup",
-			Text = "Skip animation  →",
-			Font = Enum.Font.GothamMedium,
-			TextSize = 16,
-			TextColor3 = colors.Text,
-			BackgroundColor3 = colors.Surface,
-			BackgroundTransparency = 0.15,
-			BorderSizePixel = 0,
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -18),
-			Size = UDim2.fromOffset(190, 46),
-			ZIndex = 6,
-		}, intro)
-		corner(skip, 13)
-		local elapsed, rotation = 0, 0
-		local finished = false
-		local animation: RBXScriptConnection? = nil
-		local function finish(immediate: boolean?)
-			if finished or not alive then
-				return
-			end
-			finished = true
-			if animation then
-				animation:Disconnect()
-			end
-			intro:Destroy()
-			mini.Visible = true
-			layout()
-			if immediate then
-				card.Visible = expanded
-			elseif expanded then
-				portal.Play(card, true)
-			end
-		end
-		connect(skip.Activated, function()
-			finish(true)
-		end)
-		animation = connect(RunService.RenderStepped, function(dt: number)
-			if finished or not alive then
-				return
-			end
-			local viewport = root.AbsoluteSize
-			local short = viewport.Y > 0 and viewport.Y < 420
-			wordmark.Position = if short
-				then UDim2.new(0.5, 0, 0, 30)
-				else UDim2.new(0.5, 0, 0.5, 126)
-			caption.Position = if short
-				then UDim2.new(0.5, 0, 0, 62)
-				else UDim2.new(0.5, 0, 0.5, 166)
-			rotation += math.min(dt, 0.1) * 3.2
-			if game:IsLoaded() then
-				elapsed += dt
-				caption.Text = "GRAVITY CORE / OPENING WORKSPACE"
-			else
-				caption.Text = "Waiting for the game / Skip is available"
-			end
-			local pull = math.clamp(elapsed / 1.25, 0, 1)
-			local burst = math.clamp((elapsed - 1.25) / 0.7, 0, 1)
-			local collapsing = elapsed < 1.25
-			local baseRadius =
-				math.clamp(math.min(viewport.X, viewport.Y) * 0.48, 90, 220)
-			for index, lens in ipairs(lenses) do
-				local diameter = if collapsing
-					then (baseRadius * 2 + index * 26) * (1 - pull ^ 2) + 10
-					else 10 + burst * (baseRadius * 3 + index * 80)
-				lens.Frame.Size =
-					UDim2.fromOffset(diameter, diameter * (0.42 + index * 0.12))
-				lens.Frame.Rotation = -24
-					+ index * 17
-					+ math.deg(rotation)
-						* 0.1
-						* (if index % 2 == 0 then -1 else 1)
-				lens.Stroke.Transparency = if collapsing
-					then 0.35 + index * 0.12
-					else math.clamp(0.25 + burst * 0.75, 0, 1)
-			end
-			local core = if collapsing
-				then 80 * (1 - pull) ^ 0.7 + 5
-				else 5 + burst * 100
-			center.Size = UDim2.fromOffset(core, core)
-			center.Rotation = if collapsing
-				then -pull * 100
-				else -100 + burst * 145
-			center.BackgroundTransparency = if collapsing then 0.05 else burst
-			coreStroke.Transparency = if collapsing then 0.1 else burst
-			wordmark.TextTransparency = math.clamp((pull - 0.65) / 0.35, 0, 1)
-			for index, particle in ipairs(particles) do
-				local angle = index * 2.399963
-					+ rotation * (0.75 + index % 3 * 0.2)
-					+ pull * 8
-				local radius = if collapsing
-					then (baseRadius + index % 5 * 12) * (1 - pull) ^ 1.6
-					else burst * (baseRadius * 1.4 + index % 5 * 28)
-				particle.Position = UDim2.new(
-					0.5,
-					math.cos(angle) * radius,
-					0.5,
-					math.sin(angle) * radius * 0.65
-				)
-				particle.Rotation = math.deg(angle) + 90
-				particle.BackgroundTransparency = if collapsing
-					then 0.15 + pull * 0.2
-					else burst
-			end
-			intro.BackgroundTransparency = if collapsing
-				then 0.03
-				else 0.03 + burst * 0.97
-			if elapsed >= 1.95 then
-				finish()
-			end
-		end)
-	end
-end
 
 -- Primary Nullx11 workspace. Uses the supplied +1 UI as its actual renderer.
 -- Existing player tools and Design Studio remain live, not recreated as demos.
@@ -21960,7 +21815,7 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by Gab",
-					Content = "One Nullx11 interface, native player tools and seven independent game workspaces. Nothing plays or farms until you enable it.",
+					Content = "One Nullx11 interface, native player tools and eight independent game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()
@@ -22136,6 +21991,15 @@ do
 				Watermark = false,
 				OnUnlocked = build,
 			})
+			playerToolsBridge.UnloadPrimary = function()
+				library:Unload()
+			end
+			playerToolsBridge.StartupBegin = function()
+				return library:SetOpening(true)
+			end
+			playerToolsBridge.StartupEnd = function()
+				library:SetOpening(false)
+			end
 			playerToolsBridge.BeginExecution = function(title)
 				return library:BeginExecution(title)
 			end
@@ -22167,5 +22031,234 @@ do
 				"Shared UI could not start; classic controls remain available."
 			warn("[Nullx11 workspace] " .. tostring(reason))
 		end
+	end
+end
+
+-- Native-UI gravity well: concentric lenses, orbital dust, implosion, shockwave.
+do
+	if CONFIG.StartupAnimation and not CONFIG.ReducedMotion then
+		card.Visible = false
+		mini.Visible = false
+		local introHost = root
+		if
+			playerToolsBridge.PrimaryActive and playerToolsBridge.StartupBegin
+		then
+			introHost = playerToolsBridge.StartupBegin() or root
+		end
+		local intro = create("Frame", {
+			Name = "StartupWhirlpool",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Color3.fromRGB(8, 12, 24),
+			BackgroundTransparency = 0.03,
+			BorderSizePixel = 0,
+			ZIndex = 70,
+			Active = true,
+			ClipsDescendants = true,
+		}, introHost)
+		create("UIGradient", {
+			Color = ColorSequence.new(
+				Color3.fromRGB(14, 18, 38),
+				Color3.fromRGB(7, 19, 28)
+			),
+			Rotation = 38,
+		}, intro)
+		local lenses = {}
+		for index = 1, 3 do
+			local lens = create("Frame", {
+				Name = "GravityLens" .. index,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Rotation = -24 + index * 17,
+			}, intro)
+			corner(lens, 1000)
+			local outline = create("UIStroke", {
+				Color = if index == 2
+					then Color3.fromRGB(120, 238, 226)
+					else CONFIG.Accent,
+				Thickness = if index == 2 then 2 else 1,
+				Transparency = 0.4 + index * 0.1,
+			}, lens)
+			table.insert(lenses, { Frame = lens, Stroke = outline })
+		end
+		local particles = {}
+		for index = 1, 48 do
+			local particle = create("Frame", {
+				Name = "WhirlpoolParticle" .. index,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Size = UDim2.fromOffset(2 + index % 3, 8 + index % 5 * 3),
+				BackgroundColor3 = if index % 3 == 0
+					then Color3.fromRGB(128, 240, 228)
+					elseif index % 7 == 0 then Color3.fromRGB(
+						255,
+						218,
+						157
+					)
+					else CONFIG.Accent,
+				BorderSizePixel = 0,
+			}, intro)
+			corner(particle, 3)
+			table.insert(particles, particle)
+		end
+		local center = create("Frame", {
+			Name = "WhirlpoolCenter",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(80, 80),
+			BackgroundColor3 = colors.Panel,
+			BorderSizePixel = 0,
+			ZIndex = 3,
+		}, intro)
+		corner(center, 24)
+		local coreStroke = create(
+			"UIStroke",
+			{ Color = CONFIG.Accent, Thickness = 2, Transparency = 0.1 },
+			center
+		)
+		local insignia = drawIcon(
+			center,
+			Color3.fromRGB(164, 244, 233),
+			UDim2.fromScale(0.2, 0.2),
+			48
+		)
+		insignia.Size = UDim2.fromScale(0.6, 0.6)
+		local wordmark = label(intro, "NULLX11", 27, colors.Text)
+		wordmark.Name = "StartupWordmark"
+		wordmark.Font = Enum.Font.Arcade
+		wordmark.ZIndex = 5
+		wordmark.AnchorPoint = Vector2.new(0.5, 0.5)
+		wordmark.Size = UDim2.fromOffset(320, 40)
+		wordmark.TextXAlignment = Enum.TextXAlignment.Center
+		local caption =
+			label(intro, "GRAVITY CORE / OPENING WORKSPACE", 14, colors.Muted)
+		caption.Name = "StartupCaption"
+		caption.ZIndex = 5
+		caption.AnchorPoint = Vector2.new(0.5, 0.5)
+		caption.Size = UDim2.new(1, -32, 0, 30)
+		caption.TextXAlignment = Enum.TextXAlignment.Center
+		local skip = create("TextButton", {
+			Name = "SkipStartup",
+			Text = "Skip animation  →",
+			Font = Enum.Font.GothamMedium,
+			TextSize = 16,
+			TextColor3 = colors.Text,
+			BackgroundColor3 = colors.Surface,
+			BackgroundTransparency = 0.15,
+			BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -18),
+			Size = UDim2.fromOffset(190, 46),
+			ZIndex = 6,
+		}, intro)
+		corner(skip, 13)
+		local elapsed, rotation = 0, 0
+		local finished = false
+		local animation: RBXScriptConnection? = nil
+		local function finish(immediate: boolean?)
+			if finished or not alive then
+				return
+			end
+			finished = true
+			if animation then
+				animation:Disconnect()
+			end
+			intro:Destroy()
+			if
+				playerToolsBridge.PrimaryActive and playerToolsBridge.StartupEnd
+			then
+				playerToolsBridge.StartupEnd()
+				card.Visible = false
+				mini.Visible = false
+				return
+			end
+			mini.Visible = true
+			layout()
+			if immediate then
+				card.Visible = expanded
+			elseif expanded then
+				portal.Play(card, true)
+			end
+		end
+		connect(skip.Activated, function()
+			finish(true)
+		end)
+		animation = connect(RunService.RenderStepped, function(dt: number)
+			if finished or not alive then
+				return
+			end
+			local viewport = intro.AbsoluteSize
+			if viewport.X <= 0 or viewport.Y <= 0 then
+				viewport = root.AbsoluteSize
+			end
+			local short = viewport.Y > 0 and viewport.Y < 420
+			wordmark.Position = if short
+				then UDim2.new(0.5, 0, 0, 30)
+				else UDim2.new(0.5, 0, 0.5, 126)
+			caption.Position = if short
+				then UDim2.new(0.5, 0, 0, 62)
+				else UDim2.new(0.5, 0, 0.5, 166)
+			rotation += math.min(dt, 0.1) * 3.2
+			if game:IsLoaded() then
+				elapsed += dt
+				caption.Text = "GRAVITY CORE / OPENING WORKSPACE"
+			else
+				caption.Text = "Waiting for the game / Skip is available"
+			end
+			local pull = math.clamp(elapsed / 1.25, 0, 1)
+			local burst = math.clamp((elapsed - 1.25) / 0.7, 0, 1)
+			local collapsing = elapsed < 1.25
+			local baseRadius =
+				math.clamp(math.min(viewport.X, viewport.Y) * 0.48, 90, 220)
+			for index, lens in ipairs(lenses) do
+				local diameter = if collapsing
+					then (baseRadius * 2 + index * 26) * (1 - pull ^ 2) + 10
+					else 10 + burst * (baseRadius * 3 + index * 80)
+				lens.Frame.Size =
+					UDim2.fromOffset(diameter, diameter * (0.42 + index * 0.12))
+				lens.Frame.Rotation = -24
+					+ index * 17
+					+ math.deg(rotation)
+						* 0.1
+						* (if index % 2 == 0 then -1 else 1)
+				lens.Stroke.Transparency = if collapsing
+					then 0.35 + index * 0.12
+					else math.clamp(0.25 + burst * 0.75, 0, 1)
+			end
+			local core = if collapsing
+				then 80 * (1 - pull) ^ 0.7 + 5
+				else 5 + burst * 100
+			center.Size = UDim2.fromOffset(core, core)
+			center.Rotation = if collapsing
+				then -pull * 100
+				else -100 + burst * 145
+			center.BackgroundTransparency = if collapsing then 0.05 else burst
+			coreStroke.Transparency = if collapsing then 0.1 else burst
+			wordmark.TextTransparency = math.clamp((pull - 0.65) / 0.35, 0, 1)
+			for index, particle in ipairs(particles) do
+				local angle = index * 2.399963
+					+ rotation * (0.75 + index % 3 * 0.2)
+					+ pull * 8
+				local radius = if collapsing
+					then (baseRadius + index % 5 * 12) * (1 - pull) ^ 1.6
+					else burst * (baseRadius * 1.4 + index % 5 * 28)
+				particle.Position = UDim2.new(
+					0.5,
+					math.cos(angle) * radius,
+					0.5,
+					math.sin(angle) * radius * 0.65
+				)
+				particle.Rotation = math.deg(angle) + 90
+				particle.BackgroundTransparency = if collapsing
+					then 0.15 + pull * 0.2
+					else burst
+			end
+			intro.BackgroundTransparency = if collapsing
+				then 0.03
+				else 0.03 + burst * 0.97
+			if elapsed >= 1.95 then
+				finish()
+			end
+		end)
 	end
 end

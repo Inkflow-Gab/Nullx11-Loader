@@ -8246,6 +8246,9 @@ function Gui.Setup()
 end
 
 function Gui.OnInputBegan(input, processed)
+	if Library.Opening then
+		return
+	end
 	if State.Binding then
 		Keybinds.Capture(input)
 		return
@@ -12545,6 +12548,40 @@ end
 
 -- @NULLX11_SCRIPT_BROWSER
 -- @NULLX11_EXECUTION_VIEW
+
+-- The existing gravity-well intro is hosted in this GUI, above its own window.
+-- Hide/restore the actual native window and static dock, not the classic panel.
+function Library:GetOverlayHost()
+	return State.Gui
+end
+
+function Library:SetOpening(opening)
+	if self.Unloaded or not self.Window then
+		return nil
+	end
+	if opening then
+		if not self.Opening then
+			self.Opening = {
+				WindowVisible = self.Window.Visible,
+				FloatVisible = Float.Button and Float.Button.Visible,
+				DisplayOrder = State.Gui.DisplayOrder,
+			}
+			self.Window:SetVisible(false)
+			State.Gui.DisplayOrder =
+				math.max(1000, (tonumber(State.Gui.DisplayOrder) or 100) + 1)
+			Float.SetVisible(false)
+		end
+		return State.Gui
+	end
+	local previous = self.Opening
+	self.Opening = nil
+	if previous then
+		State.Gui.DisplayOrder = previous.DisplayOrder
+		self.Window:SetVisible(previous.WindowVisible)
+		Float.SetVisible(previous.FloatVisible == true)
+	end
+	return State.Gui
+end
 
 function Library:CreateWindow(options)
 	options = options or {}

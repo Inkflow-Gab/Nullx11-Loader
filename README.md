@@ -122,13 +122,13 @@ Player-tool options are **session-only**, separate from Design Studio's appearan
 
 The default shared workspace uses the supplied library's decorative entrance and N-icon window transport. These are presentation animations, not network/gameplay progress measurements. `StartupAnimation = false` bypasses the entrance; Reduced motion suppresses transitions, title motion and particles. With `EnhancedWorkspace = false`, the preserved classic reveal is available:
 
-The decorative reveal uses **48 precreated particles, three rotating elliptical lenses, a central N insignia, and a pixel wordmark**: approximately **1.25 seconds of inward spiral/implosion**, then a **0.7-second outward shockwave**, followed by a dock-to-window entrance. If `game:IsLoaded()` is false, it honestly says it is waiting; no fake percentage or asset progress is shown. Skip remains available while waiting. Completing, skipping, rerunning, or closing disconnects the temporary animation callback. Short landscape screens move labels away from the bottom skip button.
+The decorative reveal uses **48 precreated particles, three rotating elliptical lenses, a central geometric prism, and a pixel wordmark**: approximately **1.25 seconds of inward spiral/implosion**, then a **0.7-second outward shockwave**, followed by a dock-to-window entrance. If `game:IsLoaded()` is false, it honestly says it is waiting; no fake percentage or asset progress is shown. Skip remains available while waiting. Completing, skipping, rerunning, or closing disconnects the temporary animation callback. Short landscape screens move labels away from the bottom skip button.
 
 Set `CONFIG.StartupAnimation = false` to skip the decoration, or `CONFIG.ReducedMotion = true` to bypass it and disable other motion by default. The animation plays once per execution, not whenever a window is reopened. It is independent of the optional App initializer invoked by Load.
 
 ## Game ports / Scripts library
 
-**Workspace → Scripts** has all seven adapted games immediately. **Open Scripts library** is an ordinary action, not an ON/OFF toggle. A game's detail window shows its description, target and provenance. Opening it performs no download or execution.
+**Workspace → Scripts** has all eight entries (seven prior ports plus the CHILI recovered core) immediately. **Open Scripts library** is an ordinary action, not an ON/OFF toggle. A game's detail window shows its description, target and provenance. Opening it performs no download or execution.
 
 - Unsupported place: direct Execute is blocked for the three exact-place ports. Join the game manually; the launcher never asks to teleport, teleports automatically or queues arrival code.
 - Steal An Egg has no place ID in the uploaded source. Its standalone bundle checks seven core ModuleScript paths before initializing its controller, then validates every required game module. No destination ID is invented. Game updates can break this signature.
@@ -277,7 +277,7 @@ npm run format:check
 npm test
 ```
 
-The checks verify reproducible generated artifacts, all seven controllers/place-or-module gates/defaults/dependencies/size limits and font licensing; exercise actual shared reactive APIs and actual adapter/session/standalone launch modules with development fixtures; and compile the main, bootstrap, and native diagnostic Luau files (the native diagnostic is not executed here), parse the real repository manifest JSON, compile any published library scripts, and exercise deterministic development API doubles for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Player-tool tests cover separate/reused windows, team/visibility/death filters, bounding boxes/chams/tracers, editable numeric limits, FOV placement/color, smoothing versus strength-100 snap, hold/release and input guards, touch-pad input, camera replacement/loss, respawns, crowded-server ray/instance caps, emergency off, and teardown. New polish checks cover animation token lifetime/reversal/resize, native font choices/looks, Auto/Hold, root fallbacks, explicit camera override, play view, render fallback/error reporting, and library path validation/search/confirmation/refreshed-row cleanup. They do not prove rendered motion or real HTTP. Startup tests cover contraction/burst/reveal, actual readiness waiting, skip, short landscape positioning, reduced motion, rerun, and closing during animation. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
+The checks verify reproducible generated artifacts, all eight bundles/place-or-module gates/defaults/dependencies/size limits and font licensing; exercise actual shared reactive APIs and actual adapter/session/standalone launch modules with development fixtures; and compile the main, bootstrap, and native diagnostic Luau files (the native diagnostic is not executed here), parse the real repository manifest JSON, compile any published library scripts, and exercise deterministic development API doubles for loading, tabs, themes, scaling, window locking, hotkey input filtering, live coordinates, independent bookmarks, Unicode name sanitization, live distance, animated switch states, FPS history capacity/reset/no-instance-allocation, dock edge-snapping/rotation, confirmation/recovery actions, spawn/seat guards, cooldowns, respawn, FPS sampling, reduced motion, glitch reset, dragging, resize, closing, rerunning, initializer retry, and execution without a `script` instance. Player-tool tests cover separate/reused windows, team/visibility/death filters, bounding boxes/chams/tracers, editable numeric limits, FOV placement/color, smoothing versus strength-100 snap, hold/release and input guards, touch-pad input, camera replacement/loss, respawns, crowded-server ray/instance caps, emergency off, and teardown. New polish checks cover animation token lifetime/reversal/resize, native font choices/looks, Auto/Hold, root fallbacks, explicit camera override, play view, render fallback/error reporting, and library path validation/search/confirmation/refreshed-row cleanup. They do not prove rendered motion or real HTTP. Startup tests cover contraction/burst/reveal, actual readiness waiting, skip, short landscape positioning, reduced motion, rerun, and closing during animation. The Design Studio suite additionally checks lazy construction/reuse, preferences, palette/hex math, custom RGB, search, typography, motion priority, resize/locking, bounded history, quick-control synchronization, saved designs, settings validation, shortcuts, and editor safe-area clamping. Its JSON codec is mocked: tests exercise validation and transfer flow, not Roblox’s JSON parser. Bootstrap checks cover missing capabilities, download/compile failure, and startup. GitHub Actions runs formatting and the same checks for pushes and PRs. `npm run format` applies the pinned StyLua configuration.
 
 These mocks do not emulate Roblox physics, rendering, real touch input, or Delta. Test in Studio's **Device Emulator**, your own game, and a real device. In particular, verify the startup effect, chams and box alignment, FOV centering, camera/game compatibility, real touch hold/release, short-landscape layouts, drag-vs-tap behavior on the restore icon, respawns, closing while initialization yields, and whether your game's server accepts the intended movement.
 
@@ -291,7 +291,7 @@ Keep extras opt-in: a compact changelog or real asset preloading for your own ex
 
 ## Source / build / code size
 
-The generated standalone main is **22,171 lines**, exceeding the current **15,000-line** requirement. Its substantial +1 UI library is embedded **once as a working factory and used by the default workspace**. Existing player tools, Studio and launch flows remain functional code; there are no repeated dummy controls or unused source-string blobs to pad the count.
+The generated standalone main is **22,264 lines**, exceeding the current **15,000-line** requirement. Its substantial +1 UI library is embedded **once as a working factory and used by the default workspace**. Existing player tools, Studio and launch flows remain functional code; there are no repeated dummy controls or unused source-string blobs to pad the count.
 
 - Edit `src/loader.luau`, `src/ui/`, `src/games/` and `src/games/catalog.json`.
 - `npm run format` formats sources and builds the main, game bundles and manifest.
@@ -299,10 +299,27 @@ The generated standalone main is **22,171 lines**, exceeding the current **15,00
 - Do not hand-edit generated `Nullx11.client.luau` or `scripts/Nullx11-*.luau`.
 - Formatter/compiler/test packages are development-only and are not required by Delta or Roblox.
 
-The seven standalone bundles intentionally each include the shared UI so that **selected-script-only execution is self-contained**. They do not embed other game controllers or the main client. See [source provenance](docs/SOURCE-PROVENANCE.md) before redistribution; Rosu-derived material is not for resale.
+The eight standalone bundles intentionally each include the shared UI so that **selected-script-only execution is self-contained**. They do not embed other game controllers or the main client. See [source provenance](docs/SOURCE-PROVENANCE.md) before redistribution; Rosu-derived material is not for resale.
 
 ## TTK Testing / +1 Money per Click and Scripts refresh
 
 Both supplied scripts now use Nullx11/Gab controls, with original credits retained. **TTK Testing** includes visual/aim/weapon controls and explicit equipped-weapon discovery; **+1 Money per Click** includes exclusive World 1–4 Rebirth/Cash routing, money/rebirth/evolve and sixteen egg choices. Defaults are off. Instant ADS is explicitly unavailable because the supplied setter cannot safely restore its original spring settings; Drawing-based TTK overlays require executor support. See [source review and native boundaries](docs/TTK-MONEY-REVIEW.md).
 
 **Workspace → Scripts** now has native reusable cards, responsive one/two-column layout, game/feature/creator search, category and exact-place filters, visible launch requirements and detail-first actions. Refresh updates the workspace too. The separate browser also has larger, clearer branded cards and compatibility labels. New original coin, rhythm and anvil vectors remain static. No fake ratings, compatibility badges or performance guarantees are used.
+
+## Enhanced-GUI loading fix / StealAnEgg-CHILI
+
+The opening gravity-well effect now runs with the enhanced workspace too, inside
+its actual GUI host. It reveals that workspace rather than the hidden classic
+launcher. Skip, readiness waiting, reduced motion and cleanup remain supported;
+the restore icon stays static. Execution loading has its own higher-order GUI
+so a newly opened game window does not cover the Initialize stage.
+
+**StealAnEgg-CHILI** is the eighth entry: a **recovered-core edition**, not a full
+devirtualization of the partial upload. Implemented: filtered nearby egg carry,
+opt-in saved-point return, native field labels and basic away/index/base/treadmill/
+trail progression. The original Steal An Egg remains separate. Unresolved VM/event/
+full-steal/fuse/finder features are explicitly unavailable, not empty toggles.
+See [recovery review and validation limits](docs/CHILI-EGG-REVIEW.md). No raw VM,
+vendor account API, remote UI/loader, webhook or teleport queue is run. Native
+Roblox/Delta rendering, FPS and server acceptance still require device testing.

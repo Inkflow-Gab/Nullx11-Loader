@@ -34,7 +34,7 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by Gab",
-					Content = "One Nullx11 interface, native player tools and seven independent game workspaces. Nothing plays or farms until you enable it.",
+					Content = "One Nullx11 interface, native player tools and eight independent game workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()
@@ -210,6 +210,15 @@ do
 				Watermark = false,
 				OnUnlocked = build,
 			})
+			playerToolsBridge.UnloadPrimary = function()
+				library:Unload()
+			end
+			playerToolsBridge.StartupBegin = function()
+				return library:SetOpening(true)
+			end
+			playerToolsBridge.StartupEnd = function()
+				library:SetOpening(false)
+			end
 			playerToolsBridge.BeginExecution = function(title)
 				return library:BeginExecution(title)
 			end

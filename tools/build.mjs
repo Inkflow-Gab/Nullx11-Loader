@@ -53,7 +53,7 @@ let main = read('src/loader.luau')
   .replace('-- @NULLX11_WORKSPACE', read('src/ui/Workspace.luau'));
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
-  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick'})[entry.Id];
+  const name = ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick',eggchili:'StealAnEggChili'})[entry.Id];
   if (!name) {
     // Other reviewed repository scripts can participate without being generated.
     if (!/^[\w/.-]+\.luau$/.test(entry.File) || entry.File.includes('..') || entry.File.startsWith('/')) throw new Error('Invalid external script path');
@@ -69,6 +69,7 @@ ${entry.Id === 'egg' ? module('makeWindAdapter', wind) : ''}
 ${entry.Id === 'stealabrainrot' ? module('makeOwnedRuntime', ownedRuntime) + '\n' + module('makeChilliAdapter', chilli) : ''}
 ${entry.Id === 'ttk' ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
 ${entry.Id === 'money' ? module('makeMoneyData', 'return function()\n'+read('src/games/MoneyData.luau')+'\nend') : ''}
+${entry.Id === 'eggchili' ? module('chiliPolicy', read('src/games/ChiliEggPolicy.luau')) : ''}
 ${module('wrongPlace', launcher)}
 local function runGame(context)
 ${controller}
@@ -77,7 +78,17 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 local entry=${lua(entry)}
 local environment=type(getgenv)=="function" and getgenv() or _G
 local library=createNullx11UI({Id=${quote(name)},ReducedMotion=environment.Nullx11ReducedMotion==true})
-${entry.Id === 'ttk' ? `local function compatible()
+${entry.Id === 'eggchili' ? `local function compatible()
+local storage=game:GetService("ReplicatedStorage")
+for _,path in ipairs({"Client.EggState","Shared.Save","Data.Assets"}) do
+local node=storage
+for part in path:gmatch("[^.]+") do node=node and node:FindFirstChild(part) end
+if not node or not node:IsA("ModuleScript") then return false end
+end
+local packages=storage:FindFirstChild("Packages")
+return packages and packages:FindFirstChild("Networking")~=nil
+end
+if not compatible() then` : entry.Id === 'ttk' ? `local function compatible()
 local controllers=game:GetService("ReplicatedStorage"):FindFirstChild("Modules")
 for _,name in ipairs({"Client","Controllers"}) do controllers=controllers and controllers:FindFirstChild(name) end
 for _,name in ipairs({"GunController","CameraController"}) do
@@ -122,6 +133,7 @@ ${entry.Id === 'egg' ? 'context.WindAdapter=makeWindAdapter(library,context.Adap
 ${entry.Id === 'stealabrainrot' ? 'context.Runtime=makeOwnedRuntime(context)\ncontext.ChilliAdapter=makeChilliAdapter(library,context.Runtime)' : ''}
 ${entry.Id === 'ttk' ? 'context.Patches=makePatches()' : ''}
 ${entry.Id === 'money' ? 'context.MoneyData=makeMoneyData()' : ''}
+${entry.Id === 'eggchili' ? 'context.ChiliPolicy=chiliPolicy' : ''}
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
 if not ok then
 library:Unload()

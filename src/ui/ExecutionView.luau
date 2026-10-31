@@ -6,6 +6,15 @@ function Library:BeginExecution(title)
 	if self.Execution then
 		self.Execution:Close()
 	end
+	-- Separate ScreenGui: a newly-created game UI must not cover initialization.
+	local executionGui = Draw.New("ScreenGui", {
+		Name = "Nullx11ExecutionOverlay",
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		DisplayOrder = math.max(1000, State.Gui.DisplayOrder + 1),
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Parent = State.Gui.Parent,
+	})
 	local shade = Draw.New("TextButton", {
 		Name = "ExecutionLoading",
 		Text = "",
@@ -14,7 +23,7 @@ function Library:BeginExecution(title)
 		BackgroundTransparency = 0.36,
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 72,
-		Parent = State.Gui,
+		Parent = executionGui,
 	})
 	local card = Draw.Box("CanvasGroup", {
 		Name = "ExecutionCard",
@@ -163,7 +172,8 @@ function Library:BeginExecution(title)
 		end
 		self.Model:Dismiss()
 		self.Closed = true
-		shade:Destroy()
+		Theme.UnbindTree(executionGui)
+		executionGui:Destroy()
 		if Library.Execution == self then
 			Library.Execution = nil
 		end

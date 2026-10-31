@@ -91,3 +91,29 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
 - Profile native device FPS and memory with all jobs off, individual jobs on,
   crowded ESP, hidden windows and after game/loader unload. No sandbox test
   establishes zero FPS drops, Delta compatibility or server acceptance.
+
+## Enhanced loading and StealAnEgg-CHILI recovered core
+
+- Run the normal main URL with EnhancedWorkspace on. Confirm the opening effect
+  is visible in the native GUI, not behind it. Wait and Skip should both reveal
+  the new workspace only; reduced motion should reveal it without the effect.
+  Check portrait/landscape, hotkeys during the effect, close and immediate rerun.
+- Open/confirm a game launch. Verify the execution sheet remains above the newly
+  created game GUI through Initialize, with actual stage/error text. Close must
+  not unload an initialized game. Check slow/failed executor HTTP and late replies.
+- CHILI: verify the recovered-core warning and unavailable list. There must be no
+  initial module scan/worker/server action. Wrong-game signature must block before
+  module execution. Confirm the original Egg session is not replaced/unloaded.
+- In an authorized test account, compare source metadata/value estimates, rarity,
+  starter exclusions and 12-stud eligibility. A rejected carry must not be shown
+  as a successful steal. Missing mutation data must not generate fake estimates.
+- Save a safe delivery point explicitly, then opt into return while carrying.
+  Check death/respawn/anchored/no-point cases, no repeat teleport for one UID,
+  and clear-stop controls. Avoid simultaneous movement jobs in the two Egg ports.
+- Paid progression: verify actual live costs and request acceptance before enabling
+  base/treadmill/trail jobs. Away/index requests must check real source save fields.
+  Toggle off during pacing/slow methods and unload before delayed replies; ensure
+  no follow-up requests. Already-sent requests cannot be recalled.
+- Toggle native labels repeatedly, then stop/unload. Verify bounded label counts,
+  no remaining render listener/overlay, no stale intro host after rerun, and profile
+  real device frame time. Development tests are not native rendering/gameplay proof.
