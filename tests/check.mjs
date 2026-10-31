@@ -19,11 +19,13 @@ try {
   for (const entry of manifest.Scripts) {
     assert.ok(typeof entry.Id === 'string' && entry.Id.length > 0 && !ids.has(entry.Id));
     ids.add(entry.Id);
+    assert.ok(typeof entry.Description === 'string' && entry.Description.length <= 240, 'every published description fits the runtime catalog validator');
     assert.ok(typeof entry.File === 'string' && /^[\w/.-]+\.luau$/.test(entry.File)
       && !entry.File.startsWith('/') && !entry.File.includes('..'));
     state.loadstring(read(`scripts/${entry.File}`), `library/${entry.File}`, true);
   }
   console.log('PASS: repository manifest JSON and published-script compilation; native Roblox diagnostic compiles (not executed here)');
+  const between = (text, start, end) => text.slice(text.indexOf(start), text.indexOf(end, text.indexOf(start)));
   const module = (name, path) => `local ${name}=(function()\n${read(path)}\nend)()`;
   const portContracts = read('tests/game-port-contracts.luau')
     .replace('-- @PORT_MODULES', module('makeAdapter', 'src/ui/Gen2Adapter.luau') + '\n' + module('makeSession', 'src/games/Context.luau'))
@@ -32,22 +34,67 @@ try {
     .replace('-- @WORKSPACE_TEARDOWN', read('src/ui/Workspace.luau').match(/connect\(gui\.Destroying, function\(\)[\s\S]*?\n\s*end\)/)[0]);
   const portResults = await state.loadstring(portContracts, 'game-port-contracts', true)();
   console.log(portResults[0]);
+  const brainrotChecks = read('tests/game-port-contracts.luau').split('-- Insert the actual modules')[0]
+    + read('tests/brainrot-contracts.luau')
+      .replace('-- @CHILLI_MODULE', module('makeChilliAdapter', 'src/ui/ChilliAdapter.luau'))
+      .replace('-- @OWNED_RUNTIME', module('makeOwnedRuntime', 'src/games/OwnedRuntime.luau'))
+      .replace('-- @EXECUTION_STATE', module('makeExecutionState', 'src/ui/ExecutionState.luau'));
+  console.log(...await state.loadstring(brainrotChecks, 'brainrot-module-contracts', true)());
+  console.log(...await state.loadstring(module('policy','src/ui/PerformancePolicy.luau')+'\n'+read('tests/ui-performance.luau'),'ui-performance-policy',true)());
+  const budgetUi = read('src/ui/Nullx11UI.luau');
+  const budgetChecks = module('uiPerformance','src/ui/PerformancePolicy.luau')+'\n'+read('tests/ui-budget-runtime.luau')
+    .replace('-- @GROUP_GATE',between(budgetUi,'function Anim.SetGroupActive(group, active)','function Anim.Pop('))
+    .replace('-- @PARTICLES_GATE',between(budgetUi,'function Particles.Active()','function Particles.Launch('))
+    .replace('-- @BUDGET_METHODS',between(budgetUi,'function Library:SetReducedMotion(enabled)','function Library:GetGuiParent()'))
+    .replace('-- @TWEEN_GATE',between(budgetUi,'function Anim.Tween(inst, goal, duration, ease, repeatCount, reverses, delay)','-- Register a visibility-gated infinite tween'));
+  console.log(...await state.loadstring(budgetChecks,'ui-budget-runtime',true)());
   const coreChecks = read('tests/roblox-mock.luau') + '\n' + read('tests/player-tools-mock.luau') + '\n'
-    + read('tests/shared-ui-core.luau').replace('-- @SHARED_UI', `local function createNullx11UI(scope)\n${read('src/ui/Nullx11UI.luau')}\nend`);
+    + read('tests/shared-ui-core.luau').replace('-- @SHARED_UI', `local function createNullx11UI(scope)\n${read('src/ui/Nullx11UI.luau').replace('-- @NULLX11_PERFORMANCE_POLICY', module('uiPerformance','src/ui/PerformancePolicy.luau'))}\nend`);
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 4);
-  assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549]);
+  assert.equal(manifest.Scripts.length, 15);
+  assert.ok(source.includes('Universal = true'), 'generated embedded catalog serializes boolean values as booleans, not empty tables');
+  assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549, 4924922222, 4924922222]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
-    assert.ok(bundle.includes(entry.Id === 'egg' ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
+    assert.ok(entry.Id === 'autoplayer' || bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) || /^(yarhm_|chaos_)/.test(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
     assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
     assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');
     assert.ok(Buffer.byteLength(bundle, 'utf8') < 2097152, 'bundle fits reviewed source size budget');
   }
+  const hubModules = ['HubCore','HubPolicy','HubBrookhavenData','HubForsaken','HubMM2','HubFTF','HubBrookhaven','HubUniversal'];
+  for (const name of hubModules) {
+    const text = read(`src/games/${name}.luau`);
+    assert.ok(!/HttpGet|loadstring|scriptblox\.com|hookmetamethod|while true|getgenv\(/.test(text), `${name}: no vendor execution, telemetry, global hooks or immortal jobs`);
+  }
+  for (const entry of manifest.Scripts) assert.ok(entry.Author.startsWith('Owner: NULL.'), 'every edition visibly identifies NULL');
+  const hubChecks = read('tests/hub-collection-contracts.luau')
+    .replace('-- @CATALOG_VALIDATE', read('src/loader.luau').slice(read('src/loader.luau').indexOf('function catalog.Validate('), read('src/loader.luau').indexOf('-- @NULLX11_CATALOG')))
+    .replace('-- @HUB_MODULES', module('makePatches','src/games/OwnedPatches.luau') + '\n' + module('makeSession','src/games/Context.luau') + '\n' + hubModules.map(name => ['HubForsaken','HubMM2','HubFTF','HubBrookhaven','HubUniversal'].includes(name) ? `local ${name}=function(context)\n${read(`src/games/${name}.luau`)}\nend` : module(name, `src/games/${name}.luau`)).join('\n'));
+  console.log(...await state.loadstring(hubChecks, 'actual-hub-collection-contracts', true)());
+  const midiModules = [['MakeMidiPreferences','src/games/MidiPreferences.luau'],['MidiParser','src/games/MidiParser.luau'],['MidiFiles','src/games/MidiFiles.luau'],['MakeMidiOutput','src/games/MidiOutput.luau'],['MakeMidiTransport','src/games/MidiTransport.luau']];
+  const midiChecks = read('tests/midi-contracts.luau')
+    .replace('-- @MIDI_MODULES',midiModules.map(([name,path])=>module(name,path)).join('\n'))
+    .replace('-- @MIDI_CONTROLLER',`local function runAutoPlayer(context)\n${read('src/games/AutoPlayer.luau')}\nend`);
+  console.log(...await state.loadstring(midiChecks,'actual-midi-contracts',true)());
+  console.log(...await state.loadstring(module('makePreferences','src/games/MidiPreferences.luau')+'\n'+read('tests/midi-preferences.luau'),'actual-midi-preferences',true)());
+  const midiViewChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-view.luau').replace('-- @MIDI_UI_RUNTIME',read('tests/midi-ui-runtime.luau')).replace('-- @MIDI_OUTPUT',module('makeViewOutput','src/games/MidiOutput.luau')).replace('-- @MIDI_VIEW',module('makeAutoPlayerView','src/ui/AutoPlayerView.luau'));
+  console.log(...await state.loadstring(midiViewChecks,'actual-midi-view',true)());
+  const fitSource=read('src/ui/Nullx11UI.luau').slice(read('src/ui/Nullx11UI.luau').indexOf('function Window:ClampPosition()'),read('src/ui/Nullx11UI.luau').indexOf('function Window:ApplyLayout()'));
+  console.log(...await state.loadstring(read('tests/roblox-mock.luau')+'\n'+read('tests/midi-ui-runtime.luau')+'\n'+read('tests/window-placement.luau').replace('-- @WINDOW_FIT',fitSource),'actual-window-placement',true)());
+  const midiBundle=read('scripts/Nullx11-AutoPlayer.luau');
+  assert.ok(!/HttpGet|loadstring|https?:\/\/|makefolder|BindToRenderStep/.test(midiBundle),'Auto Player executes local MIDI data only; no presets, directory creation or idle rendering worker');
+  assert.ok(!/while true/.test(read('src/ui/AutoPlayerView.luau')),'no immortal loading animation');
+  const brainrot = read('src/games/StealABrainrot.luau');
+  assert.ok(!/tienkhanh1|webhooks|request_|loadstring|queue_on_teleport|queueonteleport|ChilliLibrary\/configs|Default = true|BlockTools/.test(brainrot), 'no exfiltration, upstream loader, auto-enable defaults or startup tool-block bypass');
+  assert.equal((brainrot.match(/:Connect\(/g) || []).length, 200);
+  assert.equal((brainrot.match(/runtime.Track\(/g) || []).length, 200, 'every source subscription is owned');
+  assert.equal((brainrot.match(/runtime.Cleanup\(/g) || []).length, 9, 'restore callbacks do not depend on deferred event timing');
+  assert.ok(read('src/ui/BrandIcons.luau').includes('brain ='));
+  assert.ok(!/Anim.Loop|RenderStepped/.test(read('src/ui/ExecutionView.luau')), 'loading screen has no idle frame loop');
   const huss = read('src/games/Huss.luau');
   for (const setting of ['RunnerEnabled','CatcherChase','AutoGems','AutoRevive','AutoTackle','AutoMelee']) {
     assert.ok(huss.includes(`${setting} = false`), `${setting} starts off`);
@@ -66,7 +113,6 @@ try {
   const egg = read('src/games/StealAnEgg.luau');
   assert.ok(!egg.includes('SetAutoLoad') && egg.includes('context.RegisterCleanup'));
   assert.ok(egg.includes('runtime:Destroy()\n\terror('), 'failed module startup cleans up');
-  const between = (text, start, end) => text.slice(text.indexOf(start), text.indexOf(end, text.indexOf(start)));
   const helpers = between(egg, 'function utils.remember(', 'function utils.mark(')
     + between(egg, 'function utils.esp()', 'function utils.eggHolders()')
     + between(egg, 'function utils.applyCharacter()', 'function utils.antiTrap()');
@@ -74,8 +120,55 @@ try {
     .replace('-- @EGG_HELPERS', helpers)
     .replace('-- @EGG_COMPATIBLE', between(read('scripts/Nullx11-StealAnEgg.luau'), 'local function compatible()', 'if not compatible() then'));
   console.log(...await state.loadstring(eggChecks, 'egg-idle-contracts', true)());
+  const browserChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-ui-runtime.luau')+'\n'+read('tests/script-browser.luau')
+    .replace('-- @BROWSER_MODEL', 'makeScriptLibraryModel=(function()\n'+read('src/ui/ScriptLibraryModel.luau')+'\nend)()')
+    .replace('-- @BROWSER_VIEW',read('src/ui/ScriptBrowser.luau'));
+  console.log(...await state.loadstring(browserChecks,'script-browser',true)());
+  const ttkSource=read('src/games/TTKTesting.luau');
+  assert.ok(!/hookfunction|newcclosure|SessionTelemetry|HttpGet|loadstring|WaitForChild|task\.spawn/.test(ttkSource), 'TTK has no telemetry hijack, remote UI or startup discovery worker');
+  assert.equal((ttkSource.match(/context\.Connect\(/g)||[]).length,6,'all TTK source subscriptions are session-owned');
+  const moneySource=read('src/games/MoneyPerClick.luau');
+  assert.equal((moneySource.match(/task\.spawn\(/g)||[]).length,2,'at most one route worker and one dispatcher');
+  assert.ok(!/HttpGet|loadstring|WaitForChild|while true/.test(moneySource),'no upstream UI, indefinite dependency wait or immortal worker');
+  const newPorts = read('tests/game-port-contracts.luau').split('-- Insert the actual modules')[0]
+    + read('tests/new-game-ports.luau')
+      .replace('-- @MODULES', [module('makeAdapter','src/ui/Gen2Adapter.luau'), module('makeSession','src/games/Context.luau'), module('makePatches','src/games/OwnedPatches.luau'), module('makeMoneyData','src/games/MoneyData.luau').replace('local makeMoneyData=', 'local moneyData=' ) + '\nlocal function makeMoneyData() return moneyData end', between(read('scripts/Nullx11-TTKTesting.luau'),'local function compatible()', 'if not compatible() then').replace('function compatible()', 'function ttkCompatible()'), between(read('scripts/Nullx11-MoneyPerClick.luau'),'local function compatible()', 'if not compatible() then').replace('function compatible()', 'function moneyCompatible()')].join('\n'))
+      .replace('-- @TTK',read('src/games/TTKTesting.luau'))
+      .replace('-- @MONEY',read('src/games/MoneyPerClick.luau'));
+  console.log(...await state.loadstring(newPorts,'new-game-ports',true)());
+  const chiliSource=read('src/games/StealAnEggChili.luau');
+  assert.ok(!/loadstring|HttpGet|queue_on_teleport|queueonteleport|hookfunction|syn\.request|http_request|writefile|while true|chillihub\.pro|api\.luarmor/.test(chiliSource),'no raw VM, vendor API/bootstrap, queue, webhook or immortal worker in recovered core');
+  assert.equal((chiliSource.match(/task\.spawn\(/g)||[]).length,1,'one serialized recovered-core worker');
+  assert.ok(chiliSource.includes('Not recovered / intentionally unavailable'),'partial recovery boundary visible in actual GUI');
+  const chiliContracts=read('tests/game-port-contracts.luau').split('-- Insert the actual modules')[0]
+    + read('tests/chili-egg-contracts.luau')
+      .replace('-- @CHILI_MODULES', [module('makeAdapter','src/ui/Gen2Adapter.luau'),module('makeSession','src/games/Context.luau'),module('chiliPolicy','src/games/ChiliEggPolicy.luau'),between(read('scripts/Nullx11-StealAnEgg-CHILI.luau'),'local function compatible()','if not compatible() then')].join('\n'))
+      .replace('-- @CHILI_CONTROLLER',read('src/games/StealAnEggChili.luau'));
+  console.log(...await state.loadstring(chiliContracts,'chili-egg-core',true)());
+  const loadingLayers=read('tests/roblox-mock.luau')+'\n'+read('tests/loading-layers.luau')
+    .replace('-- @EXECUTION_MODEL',module('makeExecutionState','src/ui/ExecutionState.luau'))
+    .replace('-- @EXECUTION_VIEW',read('src/ui/ExecutionView.luau'));
+  console.log(...await state.loadstring(loadingLayers,'loading-layer-contracts',true)());
+  const openingMethods=between(read('src/ui/Nullx11UI.luau'),'function Library:SetOpening(opening)','function Library:CreateWindow(options)');
+  const enhancedBridge=`local State={Gui=Instance.new("ScreenGui")}
+State.Gui.Name="EnhancedIntroHost";State.Gui.Parent=gui.Parent;State.Gui.DisplayOrder=100
+local nativePanel=Instance.new("Frame");nativePanel.Name="EnhancedPanel";nativePanel.Visible=true;nativePanel.Parent=State.Gui
+local Float={Button=Instance.new("Frame")};Float.Button.Name="EnhancedDock";Float.Button.Parent=State.Gui;Float.Button.Visible=true
+Float.SetVisible=function(value) Float.Button.Visible=value end
+local Library={Window={Visible=true}}
+function Library.Window:SetVisible(value) self.Visible=value;nativePanel.Visible=value end
+${openingMethods}
+playerToolsBridge.StartupBegin=function() return Library:SetOpening(true) end
+playerToolsBridge.StartupEnd=function() Library:SetOpening(false) end
+playerToolsBridge.PrimaryActive=true;card.Visible=false;mini.Visible=false
+playerToolsBridge.UnloadPrimary=function() State.Gui:Destroy() end
+connect(gui.Destroying,function() State.Gui:Destroy() end)`;
+  const enhancedSource=read('src/loader.luau').replace('-- @NULLX11_WORKSPACE',enhancedBridge);
+  assert.ok(enhancedSource.indexOf('playerToolsBridge.StartupBegin=function')<enhancedSource.indexOf('-- Native-UI gravity well'), 'bridge installed before actual startup effect');
+  const enhancedIntro=read('tests/roblox-mock.luau')+'\nlocal function runEnhancedLoader()\n'+enhancedSource+'\nend\nlocal function runEnhancedReducedLoader()\n'+enhancedSource.replace('ReducedMotion = false','ReducedMotion = true')+'\nend\n'+read('tests/enhanced-intro.luau');
+  console.log(...await state.loadstring(enhancedIntro,'enhanced-startup-contracts',true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: four actual controllers, place/module gates, source/default-state/budget/size, static icon and font license checks');
+  console.log('PASS: fifteen published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),
@@ -109,6 +202,23 @@ try {
   );
   const gameResults = await gameChecks();
   console.log(gameResults[0]);
+  console.log(...await state.loadstring(read('tests/roblox-mock.luau')+'\nlocal loadstring\nlocal function runLoader()\n'+logicSource+'\nend\n'+read('tests/classic-script-pages.luau'),'classic-script-pages',true)());
+  const executionFlow = read('tests/roblox-mock.luau')
+    + '\nlocal executionFactory, loadstring\n' + module('makeExecutionState', 'src/ui/ExecutionState.luau')
+    + '\nlocal function runLoader()\n' + logicSource.replace('local progress = playerToolsBridge.BeginExecution\n\t\t\tand playerToolsBridge.BeginExecution(entry.Name)', 'local progress = executionFactory(entry.Name)')
+    + '\nend\n' + read('tests/execution-flow.luau');
+  assert.ok(executionFlow.includes('local progress = executionFactory(entry.Name)'), 'execution test uses actual catalog path');
+  console.log(...await state.loadstring(executionFlow, 'execution-integration', true)());
+  const autoEntry = manifest.Scripts.find(entry => entry.Id === 'autoplayer');
+  const autoEntryLua = '{'+Object.entries(autoEntry).map(([key,value])=>`${key}=${JSON.stringify(value)}`).join(',')+'}';
+  const autoLoaderSource=logicSource.replace('local progress = playerToolsBridge.BeginExecution\n\t\t\tand playerToolsBridge.BeginExecution(entry.Name)', 'local progress = executionFactory(entry.Name)');
+  const autoIntegration = read('tests/roblox-mock.luau')+'\n'+read('tests/midi-loader-integration.luau')
+    .replace('-- @MIDI_UI_RUNTIME',read('tests/midi-ui-runtime.luau'))
+    .replace('-- @PUBLISHED_AUTO_PLAYER',read('scripts/Nullx11-AutoPlayer.luau'))
+    .replace('-- @EXECUTION_FIXTURE',read('tests/loading-layers.luau').split('local job = Library:BeginExecution')[0].replace('-- @EXECUTION_MODEL',module('makeExecutionState','src/ui/ExecutionState.luau')).replace('-- @EXECUTION_VIEW',read('src/ui/ExecutionView.luau')))
+    .replace('-- @LOADER',autoLoaderSource)
+    .replace('-- @AUTO_ENTRY',autoEntryLua);
+  console.log(...await state.loadstring(autoIntegration, 'actual-auto-player-loader',true)());
   const introChecks = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + source.replace('EnhancedWorkspace = true', 'EnhancedWorkspace = false')
       + '\nend\nlocal function runReducedLoader()\n'

@@ -1,5 +1,20 @@
 runLoader()
 local root = find("SafeArea")
+local host = find("Nullx11Loader")
+assert(
+	host.IgnoreGuiInset and host.ScreenInsets == Enum.ScreenInsets.None,
+	"startup shares full viewport coordinates"
+)
+local particleCount = 0
+for _, object in ipairs(objects) do
+	if object.Name:match("^WhirlpoolParticle%d+$") and not object.Destroyed then
+		particleCount += 1
+	end
+end
+assert(
+	particleCount == (services.UserInputService.TouchEnabled and 16 or 24),
+	"bounded light startup pool"
+)
 root.AbsoluteSize = Vector2.new(400, 700)
 root:GetPropertyChangedSignal("AbsoluteSize"):Fire()
 local intro = find("StartupWhirlpool")
@@ -8,7 +23,13 @@ assert(
 	"startup hides workspace until reveal"
 )
 local initial = find("WhirlpoolCenter").Size.X
-advance(0.4)
+local rotationBefore = find("WhirlpoolCenter").Rotation
+advance(1 / 120)
+assert(
+	find("WhirlpoolCenter").Rotation == rotationBefore,
+	"high-refresh frames do not force decorative writes"
+)
+advance(0.4 - 1 / 120)
 assert(find("WhirlpoolCenter").Size.X < initial, "whirlpool contracts")
 advance(1.1)
 assert(

@@ -71,7 +71,14 @@ assert(
 	"repeated action opens instead of toggling closed"
 )
 find("RefreshScripts").Activated:Fire()
-assert(find("RunScript_forge"), "game entries visible outside target places")
+find("ScriptsNext").Activated:Fire()
+find("ScriptsNext").Activated:Fire()
+assert(
+	find("RunScript_forge"),
+	"other-place entries are reachable by page without scrolling"
+)
+find("ScriptsPrevious").Activated:Fire()
+find("ScriptsPrevious").Activated:Fire()
 local before = #requests
 find("RunScript_rosu").Activated:Fire()
 assert(
@@ -94,6 +101,8 @@ assert(
 )
 assert(#teleports == 0 and #queued == 0)
 game.PlaceId = 118805555015549
+find("ScriptsSearch").Text = "Forge"
+find("ScriptsSearch"):GetPropertyChangedSignal("Text"):Fire()
 find("RunScript_forge").Activated:Fire()
 find("GameExecute").Activated:Fire()
 assert(ran == 0, "first execute tap confirms only")
@@ -101,6 +110,36 @@ find("GameExecute").Activated:Fire()
 assert(
 	ran == 1,
 	"second execute tap invokes selected game code in correct place"
+)
+-- Universe metadata is retained through the actual validator and blocks fetches
+-- even when the source has no root-place ID.
+find("ScriptsSearch").Text = ""
+find("ScriptsSearch"):GetPropertyChangedSignal("Text"):Fire()
+manifest.Scripts = {
+	{
+		Id = "universe",
+		Name = "Universe test",
+		Description = "Fixture",
+		File = "universe.luau",
+		GameUniverseId = 6331902150,
+	},
+}
+find("RefreshScripts").Activated:Fire()
+find("RunScript_universe").Activated:Fire()
+assert(
+	string.find(
+		find("GameScriptDetails").Text,
+		"Unsupported game universe",
+		1,
+		true
+	)
+)
+local universeBefore = #requests
+find("GameExecute").Activated:Fire()
+find("GameExecute").Activated:Fire()
+assert(
+	#requests == universeBefore and ran == 1,
+	"wrong universe blocks before code fetch"
 )
 -- A successful refresh invalidates the previously selected/confirmed game.
 manifest.Scripts = {}

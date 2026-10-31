@@ -8,8 +8,11 @@
 
 Use an experience you control or are authorized to test. In Studio, start a **two-client local server**, not only Play Solo; these features target other real Players, not NPCs. Arrange opposing teams or disable the team filters intentionally.
 
-- [ ] Run the full current main script. Confirm 48 orbital particles, three lens rings, central N implosion, outward shockwave, and dock-to-window entrance. Skip works even before the game is loaded. No fake asset percentage.
+- [ ] Run the full current main script. Confirm 24 orbital particles (16 on touch-enabled clients), three lens rings, central N implosion, outward shockwave, and dock-to-window entrance. Skip works even before the game is loaded. No fake asset percentage.
 - [ ] Check portrait and short landscape; 14+ px baseline text, 16 px toggle headings, and scroll access to every setting. Check **Style → Pixel / Medieval**, plus Aurora / Pixel and Citadel / Gothic looks. Body text must remain readable.
+- [ ] Confirm startup/main/execution are centered with no topbar offset. Check a notched device and Center loader window. Minimize, rotate while hidden, and restore: it must use the updated center or clamped explicit drag position.
+- [ ] Use Scripts Prev/Next, page jumping, literal multiword search, category/collection sort and This game/Pinned/Recent views. Refresh after removing a pinned entry; no stale row may launch. In short landscape, search/results/pagination stay reachable. Separate Scripts window must also be paginated.
+- [ ] Compare Auto, Balanced and Low power UI profiles on a real device. Record frame times rather than claiming an FPS boost. Hidden/user-disabled effects must stay off after recovery; low-power controls must still complete actions.
 - [ ] Minimize to the dock; restore from it. Rapidly reverse the animation, rotate the device mid-animation, and drag after completion. Windows must not remain tiny, rotated, or offscreen. Reduced motion bypasses transport.
 - [ ] Enable Visuals near a real opposing player. Inspect box alignment, chams, names, health, distance, and tracers. Move behind a wall, change team filtering, respawn, and leave/rejoin.
 - [ ] Open Aim; enable it in **Auto** mode with a real player inside the center radius and unobstructed line of sight. Confirm local camera steering without RMB/touch hold. Increase strength to 100 and inspect snap behavior. It does not alter weapon hits or server state.

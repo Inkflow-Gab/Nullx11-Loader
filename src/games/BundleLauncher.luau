@@ -2,7 +2,7 @@
 return function(library, entry, _url)
 	library:CreateWindow({
 		Title = "Nullx11",
-		SubTitle = entry.Name .. " / Gab",
+		SubTitle = entry.Name .. " / NULL",
 		Theme = "Nullx11",
 		Intro = false,
 		Watermark = false,
@@ -20,7 +20,7 @@ return function(library, entry, _url)
 			})
 			group:AddParagraph({
 				Title = "Credits",
-				Content = entry.Author or "Developed by Gab",
+				Content = entry.Author or "Developed by NULL",
 			})
 			group:AddButton({
 				Text = "Close",

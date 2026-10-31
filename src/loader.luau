@@ -11,12 +11,12 @@ local RunService = game:GetService("RunService")
 
 local CONFIG = {
 	Name = "Nullx11",
-	Subtitle = "Developed by Gab.",
-	Accent = Color3.fromRGB(167, 146, 255),
+	Subtitle = "Developed by NULL.",
+	Accent = Color3.fromRGB(104, 155, 250),
 	ReducedMotion = false,
 	StartupAnimation = true,
 	EnhancedWorkspace = true,
-	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/scripts/",
+	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/",
 }
 
 -- External runtimes may not provide the LocalScript instance.
@@ -30,11 +30,11 @@ if previous then
 end
 
 local colors = {
-	Panel = Color3.fromRGB(12, 16, 28),
-	Surface = Color3.fromRGB(23, 29, 46),
-	Border = Color3.fromRGB(60, 75, 104),
-	Text = Color3.fromRGB(242, 241, 249),
-	Muted = Color3.fromRGB(178, 190, 211),
+	Panel = Color3.fromRGB(17, 18, 22),
+	Surface = Color3.fromRGB(28, 31, 38),
+	Border = Color3.fromRGB(51, 57, 68),
+	Text = Color3.fromRGB(242, 244, 248),
+	Muted = Color3.fromRGB(141, 150, 166),
 	Error = Color3.fromRGB(255, 151, 160),
 	Success = Color3.fromRGB(143, 221, 182),
 }
@@ -137,13 +137,14 @@ end
 local gui = create("ScreenGui", {
 	Name = "Nullx11Loader",
 	ResetOnSpawn = false,
-	IgnoreGuiInset = false,
-	ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
+	IgnoreGuiInset = true,
+	ScreenInsets = Enum.ScreenInsets.None,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	DisplayOrder = 100,
 }, playerGui)
 
--- This frame uses the device's safe area, not the entire screen/notch region.
+-- All loader layers share full-viewport coordinates; no topbar inset is added
+-- twice when handing off to the workspace or execution overlay.
 local root = create("Frame", {
 	Name = "SafeArea",
 	Size = UDim2.fromScale(1, 1),
@@ -591,11 +592,7 @@ local function layout()
 		Vector2.new(width, height) * scale
 	)
 	miniCenter = clampCenter(
-		miniCenter
-			or Vector2.new(
-				if viewport.X > viewport.Y then viewport.X - 48 else 48,
-				viewport.Y - 46
-			),
+		miniCenter or Vector2.new(viewport.X / 2, viewport.Y - 46),
 		mini.AbsoluteSize
 	)
 	if not portal.Jobs[card] then
@@ -6647,6 +6644,7 @@ do
 	local catalog: { [string]: any } =
 		{ Entries = {}, Loaded = false, Busy = false, Rows = {}, Confirm = nil }
 	catalog.RowConnections = {}
+	catalog.Page, catalog.PageSize, catalog.Pages = 1, 2, 1
 	function catalog.Message(message: string, failed: boolean?)
 		if catalog.GameWindow and catalog.GameWindow.Panel.Visible then
 			engine.Status("GameScript", message)
@@ -6707,10 +6705,45 @@ do
 					"Invalid game place ID"
 				)
 			end
+			if entry.GameUniverseId ~= nil then
+				assert(
+					type(entry.GameUniverseId) == "number"
+						and entry.GameUniverseId > 0
+						and entry.GameUniverseId <= 9007199254740991
+						and entry.GameUniverseId % 1 == 0,
+					"Invalid game universe ID"
+				)
+			end
+			assert(
+				entry.Universal == nil or type(entry.Universal) == "boolean",
+				"Invalid universal flag"
+			)
+			assert(
+				entry.Collection == nil
+					or (
+						type(entry.Collection) == "string"
+						and #entry.Collection <= 40
+					),
+				"Invalid collection"
+			)
 			if entry.Author ~= nil then
 				assert(
 					type(entry.Author) == "string" and #entry.Author <= 160,
 					"Invalid source credit"
+				)
+			end
+			if entry.Category ~= nil then
+				assert(
+					type(entry.Category) == "string" and #entry.Category <= 40,
+					"Invalid category"
+				)
+			end
+			if entry.Icon ~= nil then
+				assert(
+					type(entry.Icon) == "string"
+						and entry.Icon:match("^[%w_%-]+$")
+						and #entry.Icon <= 32,
+					"Invalid icon"
 				)
 			end
 			local file = entry.File
@@ -6748,11 +6781,16 @@ do
 			end
 			seen[entry.Id] = true
 			table.insert(clean, {
+				Category = entry.Category,
+				Icon = entry.Icon,
 				Id = entry.Id,
 				Name = entry.Name,
 				Description = entry.Description,
 				File = file,
 				GamePlaceId = entry.GamePlaceId,
+				GameUniverseId = entry.GameUniverseId,
+				Universal = entry.Universal,
+				Collection = entry.Collection,
 				Author = entry.Author,
 				PlaceIds = places,
 			})
@@ -6822,14 +6860,21 @@ do
 		catalog.GameDetails.Text = entry.Description
 			.. "\n\n"
 			.. (
-				if not entry.GamePlaceId
+				if entry.Universal
+					then "Universal tools. Confirm execution below."
+					elseif entry.GameUniverseId then (if game.GameId
+							== entry.GameUniverseId
+						then "Target game universe detected. Confirm execution below."
+						else "Unsupported game universe. Join the game manually to use this script.")
+					elseif
+						not entry.GamePlaceId
 					then "Game modules are checked before startup."
 					elseif
 						game.PlaceId == entry.GamePlaceId
 					then "Target game detected. Confirm execution below."
 					else "Unsupported place. Join the game manually to use this script."
 			)
-		catalog.GameCredit.Text = "Source credits: "
+		catalog.GameCredit.Text = "Edition / notices: "
 			.. (
 				entry.Author
 				or "See the reviewed script source; original attribution must be retained."
@@ -6849,6 +6894,13 @@ do
 	end
 	function catalog.Run(entry: any, button: TextButton)
 		if catalog.Busy then
+			return
+		end
+		if entry.GameUniverseId and game.GameId ~= entry.GameUniverseId then
+			catalog.Message(
+				"Unsupported game universe. Join the game manually; no code was downloaded.",
+				true
+			)
 			return
 		end
 		if entry.GamePlaceId and game.PlaceId ~= entry.GamePlaceId then
@@ -6890,14 +6942,35 @@ do
 		catalog.Busy = true
 		button.Text = "Downloading…"
 		catalog.Message("Fetching scripts/" .. entry.File)
+		local progress = playerToolsBridge.BeginExecution
+			and playerToolsBridge.BeginExecution(entry.Name)
 		task.spawn(function()
 			local ok, reason = pcall(function()
 				assert(
 					type(loadstring) == "function",
 					"Client loadstring unavailable; run reviewed scripts as Studio LocalScripts instead"
 				)
+				if progress then
+					task.wait()
+				end
+				if not alive or (progress and not progress:CanContinue()) then
+					return
+				end
 				local source =
 					game:HttpGet(CONFIG.ScriptBaseURL .. entry.File, true)
+				if progress then
+					if not progress:CanContinue() then
+						return
+					end
+					progress:Phase(
+						2,
+						"HTTP response received / "
+							.. tostring(
+								type(source) == "string" and #source or 0
+							)
+							.. " bytes"
+					)
+				end
 				assert(
 					type(source) == "string"
 						and #source > 0
@@ -6907,23 +6980,63 @@ do
 				if not alive then
 					return
 				end
+				if progress then
+					progress:Phase(
+						3,
+						"Compiling the selected source locally; no game feature is enabled by the loader."
+					)
+				end
+				-- Let the stage render once; this is not a timed/fake progress animation.
+				if progress then
+					task.wait()
+				end
+				if not alive or (progress and not progress:CanContinue()) then
+					return
+				end
 				local execute, compileError =
 					loadstring(source, "Nullx11Library/" .. entry.File)
 				assert(execute, compileError or "Script compilation failed")
 				if not alive then
 					return
 				end
+				if progress then
+					if not progress:CanContinue() then
+						return
+					end
+					progress:Phase(
+						4,
+						"Opening the selected game UI. Hiding this screen will not stop an initialized script."
+					)
+				end
 				button.Text = "Running…"
-				execute()
+				return execute()
 			end)
 			catalog.Busy = false
+			if progress then
+				if not ok then
+					progress:Fail(reason)
+				elseif progress:CanContinue() then
+					-- Ready UI handoff: do not cover Auto Player with a second sheet.
+					progress:Finish(
+						type(reason) == "table" and reason.Nullx11Ready == true
+					)
+				end
+			end
 			if not alive or not button.Parent then
 				return
 			end
 			button.Text = if entry.GamePlaceId
 				then "Execute game script"
 				else "Run / " .. entry.Name
-			if ok then
+			if
+				progress
+				and progress.Model
+				and progress.Model.Status == "cancelled"
+			then
+				catalog.Message(
+					"Cancelled before initialization. The selected script was not started."
+				)
+			elseif ok then
 				catalog.Message(
 					"Client call returned: "
 						.. entry.Name
@@ -6956,8 +7069,9 @@ do
 		catalog.Confirm = nil
 		local window = catalog.Window
 		local query = string.lower(catalog.Search.Text)
-		local cursor = 116
+		local cursor = 154
 		local count = 0
+		local matches = {}
 		for _, entry in ipairs(catalog.Entries) do
 			local matchesPlace = entry.GamePlaceId ~= nil
 				or #entry.PlaceIds == 0
@@ -6976,6 +7090,10 @@ do
 							.. entry.Description
 							.. " "
 							.. entry.File
+							.. " "
+							.. (entry.Author or "")
+							.. " "
+							.. (entry.Category or "Community")
 					),
 					query,
 					1,
@@ -6984,52 +7102,104 @@ do
 			then
 				continue
 			end
+			table.insert(matches, entry)
+		end
+		-- Only a small viewport page is materialized in the separate Scripts window.
+		local bodyHeight = window.Body.AbsoluteSize.Y
+		if bodyHeight <= 0 then
+			bodyHeight = math.min(540, math.max(260, root.AbsoluteSize.Y - 24))
+				- 128
+		end
+		catalog.PageSize =
+			math.clamp(math.floor((bodyHeight - 154 + 10) / 100), 1, 4)
+		catalog.Pages = math.max(1, math.ceil(#matches / catalog.PageSize))
+		catalog.Page = math.clamp(catalog.Page, 1, catalog.Pages)
+		if catalog.PageStatus then
+			catalog.PageStatus.Text = string.format(
+				"%d / %d  /  %d scripts",
+				catalog.Page,
+				catalog.Pages,
+				#matches
+			)
+		end
+		for index = (catalog.Page - 1) * catalog.PageSize + 1, math.min(#matches, catalog.Page * catalog.PageSize) do
+			local entry = matches[index]
 			local row = create("Frame", {
 				Name = "ScriptEntry_" .. entry.Id,
 				BackgroundColor3 = colors.Surface,
 				BorderSizePixel = 0,
 				Position = UDim2.fromOffset(0, cursor),
-				Size = UDim2.new(1, -4, 0, 156),
+				Size = UDim2.new(1, -4, 0, 90),
 			}, window.Body)
 			corner(row, 12)
 			table.insert(catalog.Rows, row)
-			local heading = label(row, entry.Name, 18, colors.Text)
-			heading.Position = UDim2.fromOffset(12, 8)
-			heading.Size = UDim2.new(1, -24, 0, 24)
+			local heading = label(row, entry.Name, 15, colors.Text)
+			heading.Position = UDim2.fromOffset(12, 30)
+			heading.Size = UDim2.new(1, -112, 0, 24)
+			heading.TextWrapped = false
 			heading.TextTruncate = Enum.TextTruncate.AtEnd
 			local description = label(row, entry.Description, 14, colors.Muted)
-			description.Position = UDim2.fromOffset(12, 36)
-			description.Size = UDim2.new(1, -24, 0, 40)
-			description.TextWrapped = true
-			local path = label(row, "scripts/" .. entry.File, 14, CONFIG.Accent)
-			path.Position = UDim2.fromOffset(12, 78)
-			path.Size = UDim2.new(1, -24, 0, 22)
+			description.Position = UDim2.fromOffset(12, 59)
+			description.Size = UDim2.new(1, -24, 0, 20)
+			description.TextWrapped = false
+			description.TextTruncate = Enum.TextTruncate.AtEnd
+			local path = label(
+				row,
+				(entry.Category or "Community"):upper()
+					.. " / "
+					.. (
+						entry.Universal and "UNIVERSAL / NATIVE"
+						or (entry.GameUniverseId and (entry.GameUniverseId == game.GameId and "UNIVERSE MATCH" or "OTHER UNIVERSE"))
+						or entry.GamePlaceId and (entry.GamePlaceId == game.PlaceId and "PLACE MATCH" or "OTHER PLACE")
+						or "MODULE CHECK ON LAUNCH"
+					),
+				12,
+				CONFIG.Accent
+			)
+			path.Position = UDim2.fromOffset(12, 8)
+			path.Size = UDim2.new(1, -24, 0, 18)
 			path.TextTruncate = Enum.TextTruncate.AtEnd
 			local run = create("TextButton", {
 				Name = "RunScript_" .. entry.Id,
 				Text = if entry.GamePlaceId
-					then "Open game window"
-					else "Run / " .. entry.Name,
+						or entry.Id == "ttk"
+						or entry.Id == "money"
+						or entry.Id == "egg"
+						or entry.Id == "stealabrainrot"
+						or entry.Id == "eggchili"
+						or entry.GameUniverseId
+						or entry.Universal
+					then "Details"
+					else "Run",
 				TextSize = 15,
 				Font = Enum.Font.GothamMedium,
 				TextColor3 = colors.Panel,
 				BackgroundColor3 = CONFIG.Accent,
 				BorderSizePixel = 0,
-				Position = UDim2.fromOffset(10, 104),
-				Size = UDim2.new(1, -20, 0, 44),
+				Position = UDim2.new(1, -92, 0, 28),
+				Size = UDim2.fromOffset(80, 40),
 			}, row)
 			corner(run, 9)
 			table.insert(
 				catalog.RowConnections,
 				run.Activated:Connect(function()
-					if entry.GamePlaceId then
+					if
+						entry.GamePlaceId
+						or entry.Id == "ttk"
+						or entry.Id == "money"
+						or entry.Id == "egg"
+						or entry.Id == "stealabrainrot"
+						or entry.Id == "eggchili"
+						or entry.GameUniverseId
+						or entry.Universal
+					then
 						catalog.OpenGame(entry)
 					else
 						catalog.Run(entry, run)
 					end
 				end)
 			)
-			cursor += 166
+			cursor += 100
 			count += 1
 		end
 		if count == 0 then
@@ -7052,6 +7222,7 @@ do
 			cursor += 126
 		end
 		window.Body.CanvasSize = UDim2.fromOffset(0, cursor)
+		window.Body.CanvasPosition = Vector2.new(0, 0)
 		if studioBridge.RegisterUI then
 			studioBridge.RegisterUI()
 		end
@@ -7075,6 +7246,13 @@ do
 				)
 			end)
 			catalog.Busy = false
+			if progress then
+				if not ok then
+					progress:Fail(reason)
+				elseif progress:CanContinue() then
+					progress:Finish()
+				end
+			end
 			if not alive then
 				return
 			end
@@ -7086,8 +7264,12 @@ do
 					portal.Play(catalog.GameWindow.Panel, false)
 				end
 				catalog.Entries = result
+				catalog.Page = 1
 				catalog.Loaded = true
 				catalog.Render()
+				if catalog.WorkspaceBrowser then
+					catalog.WorkspaceBrowser:Refresh()
+				end
 				catalog.Message(
 					string.format(
 						"GitHub manifest loaded / %d published scripts.",
@@ -7118,7 +7300,7 @@ do
 		catalog.Search = create("TextBox", {
 			Name = "ScriptsSearch",
 			Text = "",
-			PlaceholderText = "Search published scripts…",
+			PlaceholderText = "Search games, features or creators…",
 			ClearTextOnFocus = false,
 			MultiLine = false,
 			Font = Enum.Font.Gotham,
@@ -7131,7 +7313,42 @@ do
 			Size = UDim2.new(1, -4, 0, 44),
 		}, window.Body)
 		corner(catalog.Search, 10)
-		connect(catalog.Search:GetPropertyChangedSignal("Text"), catalog.Render)
+		local function pageButton(name, caption, x, direction)
+			local control = create("TextButton", {
+				Name = name,
+				Text = caption,
+				Font = Enum.Font.GothamMedium,
+				TextSize = 13,
+				TextColor3 = colors.Text,
+				BackgroundColor3 = colors.Surface,
+				BorderSizePixel = 0,
+				Position = x,
+				Size = UDim2.fromOffset(62, 36),
+			}, window.Body)
+			corner(control, 8)
+			connect(control.Activated, function()
+				local nextPage =
+					math.clamp(catalog.Page + direction, 1, catalog.Pages)
+				if nextPage ~= catalog.Page then
+					catalog.Page = nextPage
+					catalog.Render()
+				end
+			end)
+		end
+		pageButton("ScriptsPrevious", "Prev", UDim2.fromOffset(0, 110), -1)
+		pageButton("ScriptsNext", "Next", UDim2.new(1, -66, 0, 110), 1)
+		catalog.PageStatus = label(window.Body, "", 12, colors.Muted)
+		catalog.PageStatus.Name = "ScriptsPageStatus"
+		catalog.PageStatus.Position, catalog.PageStatus.Size =
+			UDim2.fromOffset(68, 110), UDim2.new(1, -140, 0, 36)
+		catalog.PageStatus.TextXAlignment = Enum.TextXAlignment.Center
+		connect(window.Body:GetPropertyChangedSignal("AbsoluteSize"), function()
+			catalog.Render()
+		end)
+		connect(catalog.Search:GetPropertyChangedSignal("Text"), function()
+			catalog.Page = 1
+			catalog.Render()
+		end)
 		catalog.Render()
 		catalog.Message(
 			if catalog.Loaded
@@ -7451,6 +7668,11 @@ end)
 
 connect(gui.Destroying, function()
 	alive = false
+	-- Dispose the primary GUI before disconnecting the listener that also owns it.
+	-- Event dispatch ordering must not leave the native host/intro behind.
+	if playerToolsBridge.UnloadPrimary then
+		pcall(playerToolsBridge.UnloadPrimary)
+	end
 	table.clear(portal.Jobs)
 	if playerToolsBridge.Destroy then
 		playerToolsBridge.Destroy()
@@ -7472,25 +7694,29 @@ connect(gui.Destroying, function()
 	table.clear(activeTweens)
 end)
 
+-- @NULLX11_WORKSPACE
+
 -- Native-UI gravity well: concentric lenses, orbital dust, implosion, shockwave.
 do
-	if
-		CONFIG.StartupAnimation
-		and not CONFIG.ReducedMotion
-		and not CONFIG.EnhancedWorkspace
-	then
+	if CONFIG.StartupAnimation and not CONFIG.ReducedMotion then
 		card.Visible = false
 		mini.Visible = false
+		local introHost = root
+		if
+			playerToolsBridge.PrimaryActive and playerToolsBridge.StartupBegin
+		then
+			introHost = playerToolsBridge.StartupBegin() or root
+		end
 		local intro = create("Frame", {
 			Name = "StartupWhirlpool",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundColor3 = Color3.fromRGB(8, 12, 24),
 			BackgroundTransparency = 0.03,
 			BorderSizePixel = 0,
-			ZIndex = 50,
+			ZIndex = 70,
 			Active = true,
 			ClipsDescendants = true,
-		}, root)
+		}, introHost)
 		create("UIGradient", {
 			Color = ColorSequence.new(
 				Color3.fromRGB(14, 18, 38),
@@ -7519,7 +7745,7 @@ do
 			table.insert(lenses, { Frame = lens, Stroke = outline })
 		end
 		local particles = {}
-		for index = 1, 48 do
+		for index = 1, (UserInputService.TouchEnabled and 16 or 24) do
 			local particle = create("Frame", {
 				Name = "WhirlpoolParticle" .. index,
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -7588,7 +7814,7 @@ do
 			ZIndex = 6,
 		}, intro)
 		corner(skip, 13)
-		local elapsed, rotation = 0, 0
+		local elapsed, rotation, drawElapsed = 0, 0, 0
 		local finished = false
 		local animation: RBXScriptConnection? = nil
 		local function finish(immediate: boolean?)
@@ -7600,6 +7826,14 @@ do
 				animation:Disconnect()
 			end
 			intro:Destroy()
+			if
+				playerToolsBridge.PrimaryActive and playerToolsBridge.StartupEnd
+			then
+				playerToolsBridge.StartupEnd()
+				card.Visible = false
+				mini.Visible = false
+				return
+			end
 			mini.Visible = true
 			layout()
 			if immediate then
@@ -7615,7 +7849,21 @@ do
 			if finished or not alive then
 				return
 			end
-			local viewport = root.AbsoluteSize
+			if game:IsLoaded() then
+				elapsed += dt
+			end
+			drawElapsed += dt
+			-- Keep wall-clock phases exact while writing decorative properties at
+			-- most 30 times/second, including on high-refresh displays.
+			if drawElapsed < 1 / 30 and elapsed < 1.95 then
+				return
+			end
+			rotation += math.min(drawElapsed, 0.1) * 3.2
+			drawElapsed = 0
+			local viewport = intro.AbsoluteSize
+			if viewport.X <= 0 or viewport.Y <= 0 then
+				viewport = root.AbsoluteSize
+			end
 			local short = viewport.Y > 0 and viewport.Y < 420
 			wordmark.Position = if short
 				then UDim2.new(0.5, 0, 0, 30)
@@ -7623,9 +7871,7 @@ do
 			caption.Position = if short
 				then UDim2.new(0.5, 0, 0, 62)
 				else UDim2.new(0.5, 0, 0.5, 166)
-			rotation += math.min(dt, 0.1) * 3.2
 			if game:IsLoaded() then
-				elapsed += dt
 				caption.Text = "GRAVITY CORE / OPENING WORKSPACE"
 			else
 				caption.Text = "Waiting for the game / Skip is available"
@@ -7687,5 +7933,3 @@ do
 		end)
 	end
 end
-
--- @NULLX11_WORKSPACE

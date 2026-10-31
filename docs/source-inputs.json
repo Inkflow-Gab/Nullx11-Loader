@@ -47,6 +47,48 @@
       "source": "User upload Main.luau.txt",
       "sha256": "89aab6560361ffeb28d0b34539ecc709d4cf51bae1cc1b27630e2919aced7e8f",
       "bytes": 199482
+    },
+    "stealabrainrot-recovered.lua": {
+      "source": "User upload StealB.deobfuscated.lua.txt",
+      "sha256": "d909b9c86eaa02d8a6746f21d723f068dcb10a90b1564284c0208112f21c0d5d",
+      "bytes": 463283,
+      "note": "Recovered artifact; bootstrap, telemetry/config exfiltration, arrival loader and unconditional BlockTools listener removed before adaptation was published."
+    },
+    "ttk-testing-original.lua": {
+      "source": "User upload dollaropen-sourcedollar-ttk-testing-inf-ammo-no-recoil-rapid-fire-max_1793372509440_zi8bj2WeI6.txt",
+      "sha256": "6b882a6901fed1a2f1e76b0c01704368f1bea05d115b13d26c24e5ff2426e91e",
+      "bytes": 18027,
+      "note": "VibeUI and unconditional game-telemetry suppression removed; explicit discovery and owned reversible edits; irreversible ADS left unavailable."
+    },
+    "money-per-click-original.lua": {
+      "source": "User upload smart-farmingopen-source_1793302893383_MCFPAlb4zl.txt",
+      "sha256": "f4f2b3515ffc9f78a47024dbcc6144bcf9a22370e4af3c7897f5f18036fb2243",
+      "bytes": 19482,
+      "note": "VoidScripts attribution retained; Rayfield removed; exclusive routes and bounded default-off workers."
+    },
+    "stealanegg-chili-partial.lua": {
+      "source": "User upload steal.partial-decoded.lua.txt",
+      "sha256": "c198d8df2672e4f000c748818d6f624daadb593bf6ee3583841ab9d0d08ccdba",
+      "bytes": 1740136,
+      "note": "Partial static recovery with remaining VM. Never raw-executed or shipped. Only independently implemented readable core is published; full VM features unavailable. See CHILI-EGG-REVIEW.md."
+    },
+    "chaos-brookhaven-original.lua": {
+      "source": "User upload Chaos_Hub_Open_Source.txt",
+      "sha256": "0fceb54e6fa108f1ec1888c274d91f70bbcaa5997b0d4b24a67c9e0e6d064233",
+      "bytes": 382183,
+      "note": "Statically reviewed only; raw upload never executed/distributed. Native reviewed-feature collection; no full feature-parity claim. See HUB-COLLECTION-REVIEW.md."
+    },
+    "yarhm-keyless-2026-original.lua": {
+      "source": "User upload YARHM_Hub_KEYLESS_2026.txt",
+      "sha256": "982fcebaddcc35828141ce322155d91dee91704910f3b80355b892cc48cec114",
+      "bytes": 408853,
+      "note": "Statically reviewed only; raw upload never executed/distributed. Native reviewed-feature collection; no full feature-parity claim. See HUB-COLLECTION-REVIEW.md."
+    },
+    "romidi-local-piano-original.lua": {
+      "source": "User upload RoMidiFull.lua.txt",
+      "sha256": "b63831a1d0f2ad18c8eb57c0436c7b76cd441220c1acdfa5172703eea2073b36",
+      "bytes": 324741,
+      "note": "Static review only; raw hub not executed or distributed. Source-informed piano mapping, bounded replacement decoder/transport and custom local-only NULL GUI. See MIDI-REVIEW.md."
     }
   },
   "Updated": "2026-10-31"

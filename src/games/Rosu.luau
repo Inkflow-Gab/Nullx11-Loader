@@ -1647,7 +1647,7 @@ local window = rayfield:CreateWindow({
 	showName = "Nullx11",
 	showIcon = "flame",
 	sidebarLayout = true,
-	profile = "Wyrizon & The Infernum Team",
+	profile = "NULL",
 })
 ap.window = window
 

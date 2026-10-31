@@ -36,7 +36,7 @@ local Config = {
 	PreloadTimeout = 5,
 	ThaiFont = {
 		Family = "Nullx11Kanit",
-		Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/d92ad2cf-nullx11-loader/assets/fonts/Kanit-%s.ttf",
+		Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/assets/fonts/Kanit-%s.ttf",
 		Weights = { [400] = "Regular", [500] = "Medium", [600] = "SemiBold" },
 	},
 	-- Scale bonus for Thai glyphs to match Latin x-height
@@ -53,14 +53,14 @@ local Config = {
 		Section = 14,
 	},
 	Window = {
-		Width = 820,
-		Height = 560,
+		Width = 960,
+		Height = 640,
 		MinWidth = 520,
 		MinHeight = 360,
 		TouchMinWidth = 320,
 		TouchMinHeight = 260,
 		Topbar = 56,
-		Sidebar = 196,
+		Sidebar = 180,
 		SidebarCompact = 64,
 		Header = 62,
 		Ground = 24,
@@ -70,7 +70,7 @@ local Config = {
 		Margin = 24,
 		TouchMargin = 10,
 		Radius = 12,
-		Stroke = 3,
+		Stroke = 1,
 		Shadow = 6,
 	},
 	Metrics = {
@@ -116,14 +116,14 @@ local Config = {
 		Radius = 8,
 		HoverAlpha = 0.35,
 	},
-	Button = { PadX = 14, IconGap = 6, Depth = 4, HoverLighten = 0.14 },
+	Button = { PadX = 14, IconGap = 6, Depth = 1, HoverLighten = 0.14 },
 	Group = {
 		Header = 36,
 		PadX = 12,
 		PadY = 10,
-		Shadow = 4,
+		Shadow = 0,
 		Radius = 12,
-		Stroke = 2,
+		Stroke = 1,
 	},
 	Gap = { X = 8, Y = 6, Column = 12 },
 	Page = { Pad = 14, ScrollBar = 6 },
@@ -169,7 +169,7 @@ local Config = {
 		[Enum.UserInputType.MouseButton2] = "MB2",
 		[Enum.UserInputType.MouseButton3] = "MB3",
 	},
-	TitleColors = { "Accent", "Coin", "Good", "Blue" },
+	TitleColors = { "Text" },
 }
 
 local function rgb(hex)
@@ -622,38 +622,42 @@ local Themes = {
 Themes.Nullx11 = table.clone(Themes.Dark)
 for token, value in
 	pairs(Palette({
-		Backdrop = "0C101C",
-		BackdropAlt = "131D30",
-		Topbar = "101829",
-		Sidebar = "141B30",
-		SidebarAlt = "101626",
-		SidebarText = "F2F1F9",
-		SidebarMuted = "B2BED3",
-		TabActive = "A792FF",
-		TabActiveText = "0C101C",
-		Panel = "171D2E",
-		PanelHeader = "202941",
-		Element = "1C2840",
-		Hover = "2D3955",
-		Outline = "3C4B68",
-		Shadow = "060913",
-		Text = "F2F1F9",
-		SubText = "BEC9DE",
-		Muted = "9EADC5",
-		Accent = "A792FF",
-		AccentDark = "6D58AD",
-		Grass = "283652",
-		GrassDark = "162139",
-		Brick = "23324F",
-		BrickDark = "101829",
-		Particle = { "*", false, "A792FF" },
+		Backdrop = "111216",
+		BackdropAlt = "14161B",
+		Topbar = "14161B",
+		Sidebar = "16181D",
+		SidebarAlt = "16181D",
+		SidebarText = "F2F4F8",
+		SidebarMuted = "8D96A6",
+		TabActive = "689BFA",
+		TabActiveText = "111216",
+		Panel = "1C1F26",
+		PanelHeader = "1C1F26",
+		Element = "252932",
+		Hover = "303642",
+		Outline = "333944",
+		Shadow = "090A0D",
+		Text = "F2F4F8",
+		SubText = "ADB6C5",
+		Muted = "8D96A6",
+		Accent = "689BFA",
+		AccentDark = "4568AD",
+		Grass = "252932",
+		GrassDark = "20242C",
+		Brick = "17191F",
+		BrickDark = "14161B",
+		Particle = { "*", false, "689BFA" },
 	}))
 do
 	Themes.Nullx11[token] = value
 end
 table.insert(Themes.Order, 1, "Nullx11")
 
+-- @NULLX11_PERFORMANCE_POLICY
+
 local State = {
+	Performance = uiPerformance.New(),
+	LowPower = false,
 	ReducedMotion = scope and scope.ReducedMotion == true,
 	Gui = nil,
 	Overlay = nil,
@@ -1247,6 +1251,7 @@ end
 
 Anim.Loops = {}
 Anim.GroupState = {}
+Anim.GroupRequested = {}
 Anim.NoopSignal = {
 	Once = function(_, fn)
 		if type(fn) == "function" then
@@ -1274,8 +1279,14 @@ function Anim.Info(duration, ease, repeatCount, reverses, delay)
 end
 
 function Anim.Tween(inst, goal, duration, ease, repeatCount, reverses, delay)
+	-- A decorative round trip ends at its starting value; do not leave a
+	-- low-power control displaced at the first (outbound) goal.
+	if State.LowPower and (reverses or (repeatCount or 0) ~= 0) then
+		return Anim.NoopTween
+	end
 	if
 		State.ReducedMotion
+		or State.LowPower
 		or (duration == 0 and (repeatCount or 0) == 0 and (delay or 0) == 0)
 	then
 		for prop, val in pairs(goal) do
@@ -1312,7 +1323,7 @@ function Anim.Loop(group, inst, goal, duration, ease, reverses, delay)
 		list = {}
 		Anim.Loops[group] = list
 	end
-	local active = Anim.GroupState[group] ~= false
+	local active = Anim.GroupState[group] ~= false and not State.LowPower
 	local entry = { Tween = tween, Inst = inst, Playing = active }
 	table.insert(list, entry)
 	if active then
@@ -1326,7 +1337,8 @@ function Anim.Loop(group, inst, goal, duration, ease, reverses, delay)
 end
 
 function Anim.SetGroupActive(group, active)
-	active = active == true and not State.ReducedMotion
+	Anim.GroupRequested[group] = active == true
+	active = active == true and not State.ReducedMotion and not State.LowPower
 	if Anim.GroupState[group] == active then
 		return
 	end
@@ -1356,7 +1368,7 @@ end
 
 --@param rise Vertical bounce height in px (short vertical bounce)
 function Anim.Bump(frame, rise)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		return
 	end
 	if frame:GetAttribute("Bumping") then
@@ -1379,7 +1391,7 @@ function Anim.Bump(frame, rise)
 end
 
 function Anim.Shake(frame)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		return
 	end
 	local base = frame.Position
@@ -1732,11 +1744,11 @@ function Lang.Set(code)
 end
 
 Fonts.Latin = {
-	Display = Enum.Font.LuckiestGuy,
-	Body = Enum.Font.FredokaOne,
+	Display = Enum.Font.GothamBold,
+	Body = Enum.Font.Gotham,
 	Desc = Enum.Font.BuilderSansMedium,
 	Strong = Enum.Font.BuilderSansBold,
-	Logo = Enum.Font.Arcade,
+	Logo = Enum.Font.GothamBold,
 	Glyph = Enum.Font.BuilderSansBold,
 }
 Fonts.ThaiWeights = {
@@ -2081,6 +2093,31 @@ function Draw.DrawnEmblem(parent, size)
 		Size = UDim2.fromOffset(size, size),
 		Parent = parent,
 	}, "Panel", "Outline", 10, 2)
+	Draw.New("UIGradient", {
+		Color = ColorSequence.new(
+			Color3.fromRGB(34, 39, 65),
+			Color3.fromRGB(14, 19, 34)
+		),
+		Rotation = 45,
+		Parent = emblem,
+	})
+	local rim = Draw.New("Frame", {
+		Name = "PrismRim",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromScale(0.09, 0.09),
+		Size = UDim2.fromScale(0.82, 0.82),
+		Parent = emblem,
+	})
+	Draw.Corner(rim, 8)
+	local stroke = Draw.Stroke(rim, "Accent", 1)
+	Draw.New("UIGradient", {
+		Color = ColorSequence.new(
+			Color3.fromRGB(164, 143, 255),
+			Color3.fromRGB(96, 220, 224)
+		),
+		Rotation = 45,
+		Parent = stroke,
+	})
 	for _, shape in ipairs({
 		{ 0.35, 0.29, 0.075, 0.34, 55 },
 		{ 0.65, 0.29, 0.075, 0.34, -55 },
@@ -2974,6 +3011,8 @@ Icons.Vectors = {
 	end,
 }
 
+-- @NULLX11_BRAND_ICONS
+
 function Icons.NormalizeKey(rawName)
 	if type(rawName) ~= "string" then
 		return ""
@@ -2990,8 +3029,10 @@ function Icons.FromTitle(titleSpec, defaultSprite)
 	local text = Lang.SearchText(titleSpec)
 	if text ~= "" then
 		for _, rule in ipairs(Icons.Rules) do
-			if text:find(rule[1]) then
-				return rule[2]
+			for word in rule[1]:gmatch("[^|]+") do
+				if text:find(word, 1, true) then
+					return rule[2]
+				end
 			end
 		end
 	end
@@ -3043,6 +3084,11 @@ function Icons.Create(parent, iconSpec, size, colorToken, fallbackTitle)
 		return img
 	end
 	local key = Icons.NormalizeKey(iconSpec)
+	if key == "" then
+		key = Icons.NormalizeKey(
+			Icons.FromTitle(fallbackTitle or iconSpec, "info")
+		)
+	end
 	if Icons.Vectors[key] then
 		return Icons.Vector(parent, key, size, colorToken)
 	end
@@ -3175,7 +3221,7 @@ function Motion.Wake()
 end
 
 function Motion.Spring(inst, prop, target, speedKey, options)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		Motion.Set(inst, prop, target)
 		if options and options.OnDone then
 			options.OnDone()
@@ -3196,7 +3242,7 @@ function Motion.Spring(inst, prop, target, speedKey, options)
 end
 
 function Motion.Impulse(inst, prop, velocity, speedKey, damping)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		return
 	end
 	local kind = typeof(inst[prop])
@@ -3329,7 +3375,12 @@ function Fx.Bump(frame, velocity)
 end
 
 function Fx.Ripple(parent, screenPos, token)
-	if not parent or not parent.Parent then
+	if
+		State.LowPower
+		or State.ReducedMotion
+		or not parent
+		or not parent.Parent
+	then
 		return
 	end
 	local pointer = screenPos or UserInputService:GetMouseLocation()
@@ -3356,7 +3407,7 @@ function Fx.Ripple(parent, screenPos, token)
 end
 
 function Fx.CountUp(owner, fromValue, toValue, duration, onTick)
-	if State.ReducedMotion then
+	if State.ReducedMotion or State.LowPower then
 		pcall(onTick, toValue, true)
 		return
 	end
@@ -8180,6 +8231,7 @@ function Gui.Setup()
 		Name = Config.GuiAttribute,
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true,
+		ScreenInsets = Enum.ScreenInsets.None,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		DisplayOrder = 100,
 		Parent = parent,
@@ -8212,6 +8264,9 @@ function Gui.Setup()
 end
 
 function Gui.OnInputBegan(input, processed)
+	if Library.Opening then
+		return
+	end
 	if State.Binding then
 		Keybinds.Capture(input)
 		return
@@ -8256,6 +8311,9 @@ end
 function Gui.OnHeartbeat(deltaTime)
 	if deltaTime > 0 then
 		State.Fps = State.Fps * 0.92 + (1 / deltaTime) * 0.08
+	end
+	if uiPerformance.Step(State.Performance, deltaTime, State.Fps) then
+		Library:ApplyPerformanceBudget()
 	end
 	for _, job in ipairs(State.Tasks) do
 		job.Elapsed += deltaTime
@@ -8309,7 +8367,7 @@ function Window.New(options)
 	end
 	local self = setmetatable({
 		Title = options.Title or "Nullx11",
-		SubTitle = options.SubTitle or "Developed by Gab",
+		SubTitle = options.SubTitle or "Developed by NULL",
 		Desired = size,
 		Size = size,
 		Tabs = {},
@@ -8476,6 +8534,7 @@ function Window:BuildTopbar()
 		if not delta then
 			return self.Root.Position
 		end
+		self.UserPositioned = true
 		self.Root.Position = begin + UDim2.fromOffset(delta.X, delta.Y)
 		self:ClampPosition()
 		return begin
@@ -8738,7 +8797,7 @@ function Window:BuildTitle(parent)
 end
 
 function Window:WaveTitle()
-	if not State.TitleGlitch then
+	if not State.TitleGlitch or State.LowPower then
 		return
 	end
 	if State.ReducedMotion then
@@ -9055,7 +9114,9 @@ function Window:BuildGround()
 		ClipsDescendants = true,
 		Parent = ground,
 	})
-	Draw.Bricks(bricks, 28, "BrickDark")
+	if State.ThemeName ~= "Nullx11" then
+		Draw.Bricks(bricks, 28, "BrickDark")
+	end
 	Draw.Box(
 		"Frame",
 		{ Size = UDim2.new(1, 0, 0, 6), Parent = ground },
@@ -9098,6 +9159,7 @@ function Window:BuildGround()
 end
 
 function Window:ResizeFrom(begin, delta)
+	self.UserPositioned = true
 	if self.Minimized then
 		return
 	end
@@ -9144,7 +9206,7 @@ end
 
 function Window:FitViewport()
 	local viewport = State.Gui.AbsoluteSize
-	if viewport.X <= 0 then
+	if viewport.X <= 0 or viewport.Y <= 0 then
 		return
 	end
 	local margin = (
@@ -9161,7 +9223,21 @@ function Window:FitViewport()
 		math.floor(math.clamp(self.Desired.Y, minHeight, availH))
 	)
 	self:ApplyLayout()
+	if not self.Visible and self.UserPositioned and self.RestPosition then
+		self.Root.Position = self.RestPosition
+	end
+	if not self.UserPositioned then
+		self.Root.Position = UDim2.new(
+			0.5,
+			0,
+			0.5,
+			-math.floor((self.Size.Y + Config.Window.Shadow) * scaleFactor / 2)
+		)
+	end
 	self:ClampPosition()
+	-- A hidden window can resize before its first reveal (or on rotation).
+	-- Keep the restore target in the same viewport, not the old hide/dock offset.
+	self.RestPosition = self.Root.Position
 	if Float.Clamp then
 		Float.Clamp()
 	end
@@ -9232,6 +9308,12 @@ function Window:ApplyChrome(width, height)
 	self.SearchField.Size = UDim2.fromOffset(searchWidth, Util.Metric("Box"))
 	self.HeaderTitle.Size = UDim2.new(1, -(searchWidth + 44), 0, 26)
 	self.HeaderDesc.Size = UDim2.new(1, -(searchWidth + 44), 0, 16)
+	local libraryPage = self.ActiveTab and self.ActiveTab.LibraryBrowser
+	self.SearchField.Visible = not libraryPage
+	if libraryPage then
+		self.HeaderTitle.Size = UDim2.new(1, -32, 0, 26)
+		self.HeaderDesc.Size = UDim2.new(1, -32, 0, 16)
+	end
 	self.UserName.Visible = not self.Compact
 	self.UserTag.Visible = not self.Compact
 	self.Avatar.Position = UDim2.new(0, self.Compact and 10 or 12, 0.5, 0)
@@ -9283,6 +9365,7 @@ function Window:SelectTab(tab)
 	Popup.Close()
 	local previous = self.ActiveTab
 	self.ActiveTab = tab
+	self:ApplyChrome(self.Size.X, self.Size.Y)
 	if previous then
 		previous.Page.Visible = false
 		previous:RenderButton()
@@ -9292,7 +9375,7 @@ function Window:SelectTab(tab)
 	tab.Page.Position = UDim2.fromOffset(0, 18)
 	Anim.Tween(tab.Page, { Position = UDim2.new() }, Config.Tween.Slide)
 	tab:RenderButton()
-	Anim.Bump(tab.IconSlot, 6)
+	-- Restore and navigation artwork stays still; animate the content, not the icon.
 	Lang.Bind(self.HeaderTitle, tab.Name)
 	Lang.Bind(self.HeaderDesc, tab.Description or "")
 	local titleY = self.HeaderDesc.Visible and 10 or 11
@@ -9301,7 +9384,7 @@ function Window:SelectTab(tab)
 		self.HeaderTitle,
 		{ Position = UDim2.fromOffset(16, titleY) },
 		Config.Tween.Slide,
-		"Back"
+		"Out"
 	)
 	if (tab.FilteredQuery or "") ~= self.Query then
 		self:ApplyFilter()
@@ -9318,6 +9401,13 @@ function Window:SelectTab(tab)
 end
 
 function Window:ApplyFilter()
+	if self.ActiveTab and self.ActiveTab.ApplyLibraryFilter then
+		if self.EmptyState then
+			self.EmptyState.Visible = false
+		end
+		self.ActiveTab.ApplyLibraryFilter(self.Query)
+		return
+	end
 	local tab = self.ActiveTab
 	if not tab then
 		return
@@ -9904,6 +9994,10 @@ function Float.Clamp()
 	if viewport.X <= 0 or viewport.Y <= 0 then
 		return
 	end
+	if not Float.Moved then
+		button.Position =
+			UDim2.new(0.5, -(Float.Size or 48) / 2, 1, -(Float.Size or 48) - 18)
+	end
 	local pos = button.Position
 	local absX = viewport.X * pos.X.Scale + pos.X.Offset
 	local absY = viewport.Y * pos.Y.Scale + pos.Y.Offset
@@ -9921,12 +10015,7 @@ function Float.Build()
 		Text = "",
 		AutoButtonColor = false,
 		BackgroundTransparency = 1,
-		Position = UDim2.new(
-			0,
-			(scope and scope.Id ~= "Workspace") and 84 or 18,
-			0.45,
-			0
-		),
+		Position = UDim2.new(0.5, -size / 2, 1, -size - 18),
 		Size = UDim2.fromOffset(size, size),
 		ZIndex = Config.Layer.Float,
 		Visible = true,
@@ -9956,6 +10045,7 @@ function Float.Build()
 		end
 		moved = moved or delta.Magnitude > Config.DragThreshold
 		if moved then
+			Float.Moved = true
 			button.Position = begin + UDim2.fromOffset(delta.X, delta.Y)
 			Float.Clamp()
 		end
@@ -10122,6 +10212,8 @@ end
 function Particles.Active()
 	local window = State.Window
 	return Particles.Enabled
+		and not State.LowPower
+		and not State.ReducedMotion
 		and window ~= nil
 		and window.Visible
 		and not window.Minimized
@@ -10173,7 +10265,7 @@ end
 function Particles.SetEnabled(enabled)
 	Particles.Enabled = enabled and not State.ReducedMotion
 	if Particles.Layer then
-		Particles.Layer.Visible = enabled
+		Particles.Layer.Visible = enabled and not State.LowPower
 	end
 	if enabled then
 		Particles.Resume()
@@ -10353,7 +10445,7 @@ function Intro.Show(settings, screen)
 	Intro.Finale(scene, track)
 	task.wait(0.3)
 	Anim.Tween(scale, { Scale = State.UserScale * 1.06 }, 0.2, "In")
-	Anim.Tween(card, { GroupTransparency = 1 }, 0.2)
+	card.Visible = false
 	Anim.Tween(screen, { BackgroundTransparency = 1 }, 0.2)
 	task.wait(0.2)
 end
@@ -10361,7 +10453,7 @@ end
 function Intro.BuildCard(screen)
 	local width, height = Intro.Width, Intro.Height
 	local pad, shadow = 4, 6
-	local card = Draw.New("CanvasGroup", {
+	local card = Draw.New("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(width + pad + shadow, height + pad + shadow),
@@ -12342,9 +12434,7 @@ function Configs.BuildSection(group)
 		Height = 4,
 		NoSave = true,
 	})
-	local autoload = group:AddLabel(
-		Lang.Format("Autoload", Configs.GetAutoload() or Lang.Get("None"))
-	)
+	group:AddLabel("Manual profiles / no automatic startup execution")
 	local function Selected()
 		local typed = nameInput.Value:gsub("^%s+", ""):gsub("%s+$", "")
 		return typed ~= "" and typed or list.Value
@@ -12411,19 +12501,6 @@ function Configs.BuildSection(group)
 				list:SetValues(Configs.List())
 			end,
 		})
-	group:AddButton({
-		Text = Lang.Strings.SetAutoload,
-		Style = "Warning",
-		Func = function()
-			Run("SetAutoload", function(name)
-				local ok, reason = Configs.SetAutoload(name)
-				if ok then
-					autoload:SetText(Lang.Format("Autoload", name))
-				end
-				return ok, reason
-			end)
-		end,
-	})
 end
 
 function Window:AddSettingsTab()
@@ -12515,6 +12592,43 @@ function Window:AddSettingsTab()
 		})
 	Configs.BuildSection(tab:AddRightGroupbox(Lang.Strings.Configs, "qblock"))
 	return tab
+end
+
+-- @NULLX11_SCRIPT_BROWSER
+-- @NULLX11_EXECUTION_VIEW
+
+-- The existing gravity-well intro is hosted in this GUI, above its own window.
+-- Hide/restore the actual native window and static dock, not the classic panel.
+function Library:GetOverlayHost()
+	return State.Gui
+end
+
+function Library:SetOpening(opening)
+	if self.Unloaded or not self.Window then
+		return nil
+	end
+	if opening then
+		if not self.Opening then
+			self.Opening = {
+				WindowVisible = self.Window.Visible,
+				FloatVisible = Float.Button and Float.Button.Visible,
+				DisplayOrder = State.Gui.DisplayOrder,
+			}
+			self.Window:SetVisible(false)
+			State.Gui.DisplayOrder =
+				math.max(1000, (tonumber(State.Gui.DisplayOrder) or 100) + 1)
+			Float.SetVisible(false)
+		end
+		return State.Gui
+	end
+	local previous = self.Opening
+	self.Opening = nil
+	if previous then
+		State.Gui.DisplayOrder = previous.DisplayOrder
+		self.Window:SetVisible(previous.WindowVisible)
+		Float.SetVisible(previous.FloatVisible == true)
+	end
+	return State.Gui
 end
 
 function Library:CreateWindow(options)
@@ -12689,8 +12803,61 @@ function Library:SetReducedMotion(enabled)
 		end
 	end
 	for group in pairs(Anim.Loops) do
-		Anim.SetGroupActive(group, not enabled)
+		Anim.SetGroupActive(group, Anim.GroupRequested[group] ~= false)
 	end
+end
+
+-- Apply only when the policy changes, not on every render. Preserve explicit
+-- visibility requests so recovery cannot restart hidden decoration groups.
+function Library:ApplyPerformanceBudget()
+	State.LowPower = State.Performance.LowPower
+	for group in pairs(Anim.Loops) do
+		Anim.SetGroupActive(group, Anim.GroupRequested[group] ~= false)
+	end
+	if State.LowPower then
+		for index = #Motion.Springs, 1, -1 do
+			local spring = Motion.Springs[index]
+			spring.Inst[spring.Prop] = Motion.Unpack(spring.Kind, spring.Goal)
+			Motion.Remove(spring, true)
+		end
+	end
+	if Particles.Layer then
+		Particles.Layer.Visible = Particles.Enabled and not State.LowPower
+	end
+	if not State.LowPower then
+		Particles.Resume()
+	end
+end
+
+function Library:SetPerformanceMode(mode)
+	if uiPerformance.SetMode(State.Performance, mode) then
+		self:ApplyPerformanceBudget()
+	end
+end
+
+function Library:GetPerformanceStatus()
+	return State.Performance.Mode
+		.. " / "
+		.. (
+			State.ReducedMotion and "reduced motion"
+			or State.LowPower and "low UI work"
+			or "full UI motion"
+		)
+end
+
+function Library:CenterWindow()
+	local window = self.Window
+	if self.Unloaded or type(window) ~= "table" then
+		return false
+	end
+	window.UserPositioned = false
+	window:FitViewport()
+	return true
+end
+
+function Library:GetGuiParent()
+	assert(State.Gui and State.Gui.Parent, "Nullx11 GUI is not initialized")
+	return State.Gui.Parent
 end
 
 function Library:GetFPS()

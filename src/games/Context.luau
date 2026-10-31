@@ -53,6 +53,18 @@ return function(key, library)
 		context.Sent += 1
 		return remote[method](remote, ...)
 	end
+	-- Revalidate feature/generation after pacing waits, before sending anything.
+	function context.SendWhen(predicate, remote, method, ...)
+		while context.Alive and predicate() and os.clock() < context.NextSend do
+			task.wait(math.min(0.125, context.NextSend - os.clock()))
+		end
+		if not context.Alive or not predicate() then
+			return nil, "cancelled"
+		end
+		context.NextSend = os.clock() + 0.125
+		context.Sent += 1
+		return remote[method](remote, ...)
+	end
 	function context.RegisterCleanup(callback)
 		library:OnUnload(function()
 			context.CleanupThread = coroutine.running() or context

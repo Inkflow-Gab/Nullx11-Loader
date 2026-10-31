@@ -16,6 +16,7 @@ do
 				action()
 			end
 			local function build()
+				local scriptsTab, browser
 				window = library.Window
 				window.OnShow = function()
 					expanded = false
@@ -33,21 +34,26 @@ do
 				local welcomeGroup =
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
-					Title = "Nullx11 / Developed by Gab",
-					Content = "Shared +1 interface, native player tools and four separate game workspaces. Nothing plays or farms until you enable it.",
+					Title = "Nullx11 / Developed by NULL",
+					Content = "One Nullx11 interface, native player tools and fifteen independent script workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()
-					if not alive or not window.Visible then
+					if
+						not alive
+						or not window.Visible
+						or window.ActiveTab ~= home
+					then
 						return
 					end
 					live:SetText(
 						string.format(
-							"%s / %d FPS / %d players / place %s",
+							"%s / %d FPS / %d players / place %s\n%s",
 							player.DisplayName,
 							library:GetFPS(),
 							#Players:GetPlayers(),
-							tostring(game.PlaceId)
+							tostring(game.PlaceId),
+							library:GetPerformanceStatus()
 						)
 					)
 				end)
@@ -56,7 +62,7 @@ do
 				actions:AddButton({
 					Text = "Open Scripts library",
 					Func = function()
-						secondary(playerToolsBridge.OpenScripts)
+						window:SelectTab(scriptsTab)
 					end,
 				})
 				actions:AddButton({
@@ -92,65 +98,50 @@ do
 					Func = playerToolsBridge.Stop,
 				})
 
-				local scriptsTab = window:AddTab(
+				scriptsTab = window:AddTab(
 					"Scripts",
 					"code",
-					"Open a game workspace; no ON/OFF navigation"
+					"Search, filter and pin. Details first; launch stays manual."
 				)
 				local catalog = playerToolsBridge.Catalog
-				for _, entry in ipairs(catalog.Entries) do
-					local group = scriptsTab:AddLeftGroupbox(entry.Name, "play")
-					group:AddParagraph({
-						Title = entry.GamePlaceId and ("Place " .. tostring(
-							entry.GamePlaceId
-						)) or "Game-module compatibility check",
-						Content = entry.Description,
-					})
-					group:AddLabel(entry.Author)
-					group:AddButton({
-						Text = "Open game launch window",
-						Func = function()
-							-- Resolve again: a refreshed manifest can remove or replace an entry.
-							local selected
-							for _, current in ipairs(catalog.Entries) do
-								if current.Id == entry.Id then
-									selected = current
-									break
-								end
-							end
-							if not selected then
-								library:Notify(
-									"Scripts",
-									"This entry changed. Open the refreshed Scripts library.",
-									5,
-									"Warning"
-								)
-								return
-							end
-							secondary(function()
-								catalog.OpenGame(selected)
-							end)
-						end,
-					})
-				end
-				local more = scriptsTab:AddRightGroupbox(
-					"Repository library",
-					"settings"
-				)
-				more:AddParagraph({
-					Title = "Separate game windows",
-					Content = "No teleport questions or automatic game joins. Unsupported games show a compatibility message. Executed game windows keep running when this loader is unloaded.",
-				})
-				more:AddButton({
-					Text = "Browse / refresh GitHub library",
-					Func = function()
-						secondary(playerToolsBridge.OpenScripts)
+				browser = library:CreateScriptBrowser(scriptsTab, {
+					Entries = function()
+						return catalog.Entries
+					end,
+					Refresh = catalog.Refresh,
+					Open = function(entry)
+						secondary(function()
+							catalog.OpenGame(entry)
+						end)
 					end,
 				})
-				more:AddParagraph({
-					Title = "Runtime requirements",
-					Content = "Game execution needs client loadstring and HTTP. Delta capabilities vary by build. If unavailable, a visible error replaces execution; no simulated gameplay is substituted.",
+				catalog.WorkspaceBrowser = browser
+				welcomeGroup:AddButton({
+					Text = "Saved & recently viewed scripts",
+					Func = function()
+						window:SelectTab(scriptsTab)
+					end,
 				})
+				welcomeGroup:AddButton({
+					Text = "Scripts for this game",
+					Func = function()
+						window:SelectTab(scriptsTab)
+						browser:Reset()
+						browser.View = "This game"
+						browser:Filter()
+					end,
+				})
+				welcomeGroup:AddButton({
+					Text = "Center loader window",
+					Func = function()
+						library:CenterWindow()
+					end,
+				})
+				library:OnUnload(function()
+					if catalog.WorkspaceBrowser == browser then
+						catalog.WorkspaceBrowser = nil
+					end
+				end)
 
 				local toolsTab = window:AddTab(
 					"Session tools",
@@ -166,6 +157,19 @@ do
 							setTeleportEnabled(true)
 						end)
 					end,
+				})
+				toolsGroup:AddDropdown("WorkspacePerformance", {
+					Text = "UI performance profile",
+					Values = { "Auto", "Balanced", "Low power" },
+					Default = "Auto",
+					NoSave = true,
+					Callback = function(value)
+						library:SetPerformanceMode(value)
+					end,
+				})
+				toolsGroup:AddParagraph({
+					Title = "Less UI work, not a graphics hack",
+					Content = "Auto reduces UI motion after sustained low FPS and restores it only after recovery. Low power keeps UI transitions instant and decorative particles paused. Gameplay and launched scripts are unchanged.",
 				})
 				toolsGroup:AddToggle("WorkspaceReducedMotion", {
 					Text = "Reduced motion",
@@ -238,7 +242,7 @@ do
 			end
 			library:CreateWindow({
 				Title = "Nullx11",
-				SubTitle = "Developed by Gab",
+				SubTitle = "Developed by NULL",
 				Theme = "Nullx11",
 				MenuKey = appearance.ToggleKey,
 				ConfigFolder = "Nullx11 Workspace",
@@ -246,6 +250,18 @@ do
 				Watermark = false,
 				OnUnlocked = build,
 			})
+			playerToolsBridge.UnloadPrimary = function()
+				library:Unload()
+			end
+			playerToolsBridge.StartupBegin = function()
+				return library:SetOpening(true)
+			end
+			playerToolsBridge.StartupEnd = function()
+				library:SetOpening(false)
+			end
+			playerToolsBridge.BeginExecution = function(title)
+				return library:BeginExecution(title)
+			end
 			-- The shared interface is the entry point; the older UI is an advanced
 			-- compatibility surface, available deliberately through Workspace.
 			playerToolsBridge.PrimaryActive = true
