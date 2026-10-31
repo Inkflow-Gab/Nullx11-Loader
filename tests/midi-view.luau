@@ -1,28 +1,7 @@
 -- Shipped bespoke view under a structural UI double. No rendering/animation
--- smoothness claim. Tween completion is immediate in this development fixture.
-local dimension = {}
-dimension.__index = dimension
-local function dim(scale, offset)
-	return setmetatable({ Scale = scale or 0, Offset = offset or 0 }, dimension)
-end
-local UDim2 = {
-	new = function(xs, xo, ys, yo)
-		return { X = dim(xs, xo), Y = dim(ys, yo) }
-	end,
-	fromOffset = function(x, y)
-		return { X = dim(0, x), Y = dim(0, y) }
-	end,
-	fromScale = function(x, y)
-		return { X = dim(x, 0), Y = dim(y, 0) }
-	end,
-}
-function methods:SetAttribute(key, value)
-	self.Attributes = self.Attributes or {}
-	self.Attributes[key] = value
-end
-function methods:GetAttribute(key)
-	return self.Attributes and self.Attributes[key]
-end
+-- smoothness claim. Delays use a real queued fixture, not inline completion.
+-- @MIDI_UI_RUNTIME
+local UDim2 = midiUDim2
 services.CoreGui = Instance.new("CoreGui")
 local hooks, connections = {}, {}
 local context = { Alive = true, ReducedMotion = false, Library = {} }
@@ -57,6 +36,16 @@ local safe = find("SafeArea")
 safe.AbsoluteSize = Vector2.new(1000, 740)
 safe:GetPropertyChangedSignal("AbsoluteSize"):Fire()
 local panel = find("AutoPlayerPanel")
+assert(
+	panel.ClassName == "Frame" and panel.Visible,
+	"main controls never depend on off-screen group rendering"
+)
+assert(find("LoadingStage").ClassName == "Frame")
+stepUI(0.56)
+assert(
+	not find("LoadingStage").Visible and not find("LoadingStage").Active,
+	"standalone opening removes its input blocker without a scan"
+)
 assert(panel.Size.X.Offset <= 1040 and panel.Size.Y.Offset <= 750)
 local entries = {}
 for index = 1, 24 do
@@ -142,7 +131,50 @@ assert(
 view.Loading(true, "Reading selected file")
 assert(find("LoadingStage").Visible)
 view.Loading(false)
+assert(
+	find("LoadingStage").Visible,
+	"fast reads do not produce a one-frame flash"
+)
+stepUI(0.19)
+assert(not find("LoadingStage").Visible and not find("LoadingStage").Active)
+-- A delayed completion from the previous operation cannot hide a new one.
+view.Loading(true, "First read")
+view.Loading(false)
+view.Loading(true, "Replacement read")
+stepUI(0.2)
+assert(find("LoadingStage").Visible)
+find("HideLoading").Activated:Fire()
+assert(not find("LoadingStage").Visible and not find("LoadingStage").Active)
+view.Loading(true, "Decoding same operation")
+assert(
+	not find("LoadingStage").Visible,
+	"phase updates respect manual dismissal"
+)
+view.Loading(false)
+stepUI(0.2)
+view.Loading(true, "New read", 1)
+assert(find("LoadingStage").Visible)
+find("HideLoading").Activated:Fire()
+view.Loading(true, "Replacement operation", 2)
+assert(
+	find("LoadingStage").Visible,
+	"a new operation can show its own real loading stage"
+)
+view.Loading(false)
+stepUI(0.2)
+-- Even a refused tween cannot leave a transparent/black inaccessible window.
+local createTween = tweenService.Create
+tweenService.Create = function()
+	error("fixture tween denied")
+end
+view.SetVisible(false)
+view.SetVisible(true)
+assert(panel.Visible and find("UIScale").Scale == 1)
+view.Loading(true, "No tween backend")
+view.Loading(false)
+stepUI(0.2)
 assert(not find("LoadingStage").Visible)
+tweenService.Create = createTween
 view.SetPage("Settings")
 assert(find("Settings").Visible and not find("SongRail").Visible)
 view.SetVisible(false)
@@ -164,12 +196,15 @@ assert(
 	find("PooledWaterfall").Size.Y.Offset == -70
 		and not find("StageTag").Visible
 )
+assert(find("PanicInput"), "touch emergency stop is available")
 assert(find("TestInput"), "touch-accessible C4 input test exists in settings")
 view.Actions.unload = function()
 	context.Library:Unload()
 end
 find("Unload").Activated:Fire()
 assert(view.Gui.Destroyed and not view.Alive)
+stepUI(2)
+assert(view.Gui.Destroyed, "delayed work cannot resurrect an unloaded GUI")
 for _, connection in ipairs(connections) do
 	assert(not connection.Connected)
 end

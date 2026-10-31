@@ -178,3 +178,15 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
 - Stress dense MIDI, sustained/shared physical keys, large directories, frame
   stalls, hidden UI, maximum file/voice/event/bar bounds and slow native I/O.
   Profile actual device FPS/memory/input timing; no zero-cost/zero-lag guarantee.
+
+### Auto Player black-screen regression (native follow-up)
+
+- Freshly execute the updated main branch loader; open Scripts → NULL Studio →
+  Auto Player. Confirm the loader's execution sheet hands off without obscuring
+  the player's opening, and text/controls render on the actual Delta device.
+- Test fast/slow/missing-folder scans, invalid MIDI and a blocked read. Hide the
+  loading view, switch tabs, select a replacement file, and close during loading.
+  The old phase must not reopen or leave a fullscreen/tap-blocking black layer.
+- Check portrait/landscape, reduced motion, dragging/hide/restore, and Settings →
+  STOP INPUT. Independently verify C4/game key acceptance and releases. Development
+  queued-timer/generated-bundle tests are not native rendering/performance proof.

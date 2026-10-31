@@ -23,7 +23,8 @@ remote song catalog, upload service, announcement, decal or font download runs.
    piano responds. An available API is not proof that the game accepts key events.
 6. Choose **Play**. The default two-second start delay gives you time to focus the
    game piano. Change Start delay to 0–10 seconds if necessary. Hiding the window
-   leaves explicit playback running; opening text input or losing app focus pauses and releases keys.
+   leaves explicit playback running; opening text input or losing app focus
+   pauses and releases keys.
 
 If Delta has no permitted `keypress`/`keyrelease` pair or VirtualInputManager,
 real playback is unavailable. **Preview only** is an explicit alternative: the
@@ -55,7 +56,8 @@ preview, never passed off as successful game input. This is not an audio synth.
   dedicated Library/Queue/Mixer/Settings, compact portrait/landscape layouts and
   reduced-motion option. The dock icon has no idle animation or letter monogram.
 - **F8:** play/pause (ignored while typing or when the game consumes input).
-- **F7:** emergency stop/disarm and retry owned key releases, even while typing.
+- **F7 / Settings → STOP INPUT:** emergency stop/disarm and retry owned key
+  releases, even while typing. The Settings button is available on touch devices.
 - **Close:** unload only this player, cancel pending local work and release owned
   inputs. Loader unload does not close an initialized Auto Player session.
 
@@ -88,3 +90,23 @@ revoked input API will release a game key. Requests already delivered to the gam
 cannot be recalled. A dropped callback/native file call may also block inside an
 executor. No zero-FPS-drop, perfect timing, native Delta or game acceptance claim
 is made by compilation/API-double tests. Validate on your actual device/piano.
+
+## Black-screen / loading repair
+
+The player and loader execution sheet now use ordinary Frames rather than
+nested off-screen CanvasGroups. Controls are visible independently of tween
+completion; the opening and actual file-operation sheets have finite visibility,
+a **Hide loading view** action and a **Close player** action. Hiding a phase does
+not cancel its filesystem work, and a decode phase does not reopen a dismissed
+sheet. A new file operation can show a new loading stage.
+
+The loader consumes the player's explicit UI-ready return value and removes its
+own execution sheet immediately, instead of covering the new player's opening.
+Initialization errors now propagate to the loader's failure sheet after cleaning
+up the partial player; they are not logged as successful initialization. A blocked
+CoreGui parent assignment also tries PlayerGui. No access restriction is bypassed.
+
+Re-execute the **updated main loader**, then Scripts → NULL Studio → Auto Player.
+Old already-running code is not hot-patched. These paths have delayed-callback,
+failed-animation, parent-permission and real catalog-to-generated-bundle tests
+using development API doubles; on-device Delta rendering still needs checking.

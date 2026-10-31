@@ -70,7 +70,7 @@ try {
     .replace('-- @MIDI_MODULES',midiModules.map(([name,path])=>module(name,path)).join('\n'))
     .replace('-- @MIDI_CONTROLLER',`local function runAutoPlayer(context)\n${read('src/games/AutoPlayer.luau')}\nend`);
   console.log(...await state.loadstring(midiChecks,'actual-midi-contracts',true)());
-  const midiViewChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-view.luau').replace('-- @MIDI_VIEW',module('makeAutoPlayerView','src/ui/AutoPlayerView.luau'));
+  const midiViewChecks=read('tests/roblox-mock.luau')+'\n'+read('tests/midi-view.luau').replace('-- @MIDI_UI_RUNTIME',read('tests/midi-ui-runtime.luau')).replace('-- @MIDI_VIEW',module('makeAutoPlayerView','src/ui/AutoPlayerView.luau'));
   console.log(...await state.loadstring(midiViewChecks,'actual-midi-view',true)());
   const midiBundle=read('scripts/Nullx11-AutoPlayer.luau');
   assert.ok(!/HttpGet|loadstring|https?:\/\/|writefile|makefolder|BindToRenderStep/.test(midiBundle),'Auto Player executes local MIDI data only; no presets, writes or idle rendering worker');
@@ -196,6 +196,16 @@ connect(gui.Destroying,function() State.Gui:Destroy() end)`;
     + '\nend\n' + read('tests/execution-flow.luau');
   assert.ok(executionFlow.includes('local progress = executionFactory(entry.Name)'), 'execution test uses actual catalog path');
   console.log(...await state.loadstring(executionFlow, 'execution-integration', true)());
+  const autoEntry = manifest.Scripts.find(entry => entry.Id === 'autoplayer');
+  const autoEntryLua = '{'+Object.entries(autoEntry).map(([key,value])=>`${key}=${JSON.stringify(value)}`).join(',')+'}';
+  const autoLoaderSource=logicSource.replace('local progress = playerToolsBridge.BeginExecution\n\t\t\tand playerToolsBridge.BeginExecution(entry.Name)', 'local progress = executionFactory(entry.Name)');
+  const autoIntegration = read('tests/roblox-mock.luau')+'\n'+read('tests/midi-loader-integration.luau')
+    .replace('-- @MIDI_UI_RUNTIME',read('tests/midi-ui-runtime.luau'))
+    .replace('-- @PUBLISHED_AUTO_PLAYER',read('scripts/Nullx11-AutoPlayer.luau'))
+    .replace('-- @EXECUTION_FIXTURE',read('tests/loading-layers.luau').split('local job = Library:BeginExecution')[0].replace('-- @EXECUTION_MODEL',module('makeExecutionState','src/ui/ExecutionState.luau')).replace('-- @EXECUTION_VIEW',read('src/ui/ExecutionView.luau')))
+    .replace('-- @LOADER',autoLoaderSource)
+    .replace('-- @AUTO_ENTRY',autoEntryLua);
+  console.log(...await state.loadstring(autoIntegration, 'actual-auto-player-loader',true)());
   const introChecks = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + source.replace('EnhancedWorkspace = true', 'EnhancedWorkspace = false')
       + '\nend\nlocal function runReducedLoader()\n'

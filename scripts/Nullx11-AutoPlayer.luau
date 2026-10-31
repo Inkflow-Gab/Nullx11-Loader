@@ -1023,6 +1023,7 @@ end)()
 local makeAutoPlayerView = (function()
 	-- Bespoke NULL MIDI control room. Native geometry, no image/font downloads.
 	-- Static piano dock; finite opening/loading tweens; pooled waterfall and rows.
+	-- Ordinary Frames deliberately avoid mobile off-screen CanvasGroup textures.
 	return function(context)
 		local tweenService = game:GetService("TweenService")
 		local input = game:GetService("UserInputService")
@@ -1054,19 +1055,46 @@ local makeAutoPlayerView = (function()
 		gui.IgnoreGuiInset = false
 		gui.DisplayOrder = 350
 		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-		local ok, host = pcall(function()
-			if type(gethui) == "function" then
-				return gethui()
-			end
-			return game:GetService("CoreGui")
-		end)
-		if not ok or not host then
-			host = game:GetService("Players").LocalPlayer
-				:WaitForChild("PlayerGui", 5)
-		end
-		assert(host, "No permitted GUI host")
-		gui.Parent = host
 		view.Gui = gui
+		-- Own the GUI before constructing any children. Failed startup cannot leave
+		-- a black/orphaned host behind. Parenting can fail even if GetService works.
+		context.RegisterCleanup(function()
+			view.Alive = false
+			for _, tween in pairs(view.Tweens) do
+				pcall(tween.Cancel, tween)
+			end
+			table.clear(view.Tweens)
+			gui:Destroy()
+		end)
+		local parents = {
+			function()
+				return type(gethui) == "function" and gethui() or nil
+			end,
+			function()
+				return game:GetService("CoreGui")
+			end,
+			function()
+				return game:GetService("Players").LocalPlayer
+					:WaitForChild("PlayerGui", 5)
+			end,
+		}
+		local mounted = false
+		for _, resolve in ipairs(parents) do
+			local success = pcall(function()
+				local host = resolve()
+				if host then
+					gui.Parent = host
+					mounted = gui.Parent == host
+				end
+			end)
+			if success and mounted then
+				break
+			end
+		end
+		assert(
+			mounted,
+			"No permitted GUI host; allow CoreGui/gethui or PlayerGui access"
+		)
 		local function create(class, parent, props)
 			local object = Instance.new(class)
 			for key, value in pairs(props or {}) do
@@ -1111,27 +1139,36 @@ local makeAutoPlayerView = (function()
 			})
 		end
 		local function animate(object, duration, props)
-			if view.ReducedMotion then
+			local previous = view.Tweens[object]
+			if previous then
+				pcall(previous.Cancel, previous)
+			end
+			local function apply()
 				for key, value in pairs(props) do
 					object[key] = value
 				end
+			end
+			if view.ReducedMotion then
+				apply()
 				return
 			end
-			local previous = view.Tweens[object]
-			if previous then
-				previous:Cancel()
+			-- An animation is decorative, never a prerequisite for visible controls.
+			local success = pcall(function()
+				local tween = tweenService:Create(
+					object,
+					TweenInfo.new(
+						duration,
+						Enum.EasingStyle.Quart,
+						Enum.EasingDirection.Out
+					),
+					props
+				)
+				view.Tweens[object] = tween
+				tween:Play()
+			end)
+			if not success then
+				apply()
 			end
-			local tween = tweenService:Create(
-				object,
-				TweenInfo.new(
-					duration,
-					Enum.EasingStyle.Quart,
-					Enum.EasingDirection.Out
-				),
-				props
-			)
-			view.Tweens[object] = tween
-			tween:Play()
 		end
 		function view.Dispatch(name, ...)
 			if view.Alive and view.Actions[name] then
@@ -1169,12 +1206,14 @@ local makeAutoPlayerView = (function()
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 		})
-		local panel = create("CanvasGroup", root, {
+		local panel = create("Frame", root, {
 			Name = "AutoPlayerPanel",
 			BackgroundColor3 = color.Background,
 			BorderSizePixel = 0,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			GroupTransparency = 1,
+			Size = UDim2.new(1, -16, 1, -16),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Visible = true,
 		})
 		corner(panel, 20)
 		stroke(panel)
@@ -1632,20 +1671,21 @@ local makeAutoPlayerView = (function()
 			dock.Visible = not value
 			if value then
 				animate(openingScale, 0.3, { Scale = 1 })
-				animate(panel, 0.25, { GroupTransparency = 0 })
+				view.Dispatch("reveal")
 			end
 		end
 		function view.Message(message, bad)
 			status.Text = tostring(message):gsub("[%z\1-\8]", "")
 			status.TextColor3 = bad and color.Red or color.Muted
 		end
-		local overlay = create("CanvasGroup", panel, {
+		local overlay = create("Frame", panel, {
 			Name = "LoadingStage",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundColor3 = color.Background,
 			BorderSizePixel = 0,
 			ZIndex = 20,
-			GroupTransparency = 0,
+			Visible = true,
+			Active = true,
 		})
 		corner(overlay, 20)
 		local loadingMark = pianoMark(overlay, 72)
@@ -1672,12 +1712,15 @@ local makeAutoPlayerView = (function()
 		loadingText.TextWrapped = true
 		loadingText.TextXAlignment = Enum.TextXAlignment.Center
 		loadingText.ZIndex = 21
+		local loadingDismissed = false
 		local dismiss = button(
 			overlay,
 			"HideLoading",
 			"Hide loading view",
 			function()
+				loadingDismissed = true
 				overlay.Visible = false
+				overlay.Active = false
 			end
 		)
 		dismiss.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1693,31 +1736,64 @@ local makeAutoPlayerView = (function()
 		local sweep = frame(strip, "DecorativeSweep", color.Cyan)
 		sweep.Size = UDim2.fromScale(0.3, 1)
 		sweep.ZIndex = 22
-		local loadingSerial = 0
-		function view.Loading(visible, phase)
+		local closeLoading =
+			button(overlay, "CloseLoadingPlayer", "Close player", "unload")
+		closeLoading.AnchorPoint = Vector2.new(0.5, 0.5)
+		closeLoading.Position = UDim2.fromScale(0.5, 0.88)
+		closeLoading.Size = UDim2.fromOffset(170, 36)
+		closeLoading.ZIndex = 21
+		local loadingSerial, loadingBusy, loadingOperation = 0, false, nil
+		local openingUntil, shownAt = os.clock() + 0.55, os.clock()
+		function view.Loading(visible, phase, operationId)
 			loadingSerial += 1
 			local serial = loadingSerial
 			if phase then
 				loadingText.Text = phase
 			end
 			if visible then
-				overlay.Visible = true
-				animate(overlay, 0.15, { GroupTransparency = 0 })
-				loadingMark.Position = UDim2.fromScale(0.5, 0.32)
-				sweep.Position = UDim2.fromScale(-0.3, 0)
-				animate(sweep, 0.9, { Position = UDim2.fromScale(1.1, 0) })
-				animate(
-					loadingMark,
-					0.45,
-					{ Position = UDim2.fromScale(0.5, 0.36) }
-				)
+				if
+					not loadingBusy
+					or (operationId ~= nil and operationId ~= loadingOperation)
+				then
+					loadingDismissed = false
+					shownAt = os.clock()
+				end
+				loadingOperation = operationId
+				loadingBusy = true
+				-- Phase updates must not bring back a sheet the user dismissed.
+				overlay.Visible = not loadingDismissed
+				overlay.Active = not loadingDismissed
+				if not loadingDismissed then
+					loadingMark.Position = UDim2.fromScale(0.5, 0.32)
+					sweep.Position = UDim2.fromScale(-0.3, 0)
+					animate(sweep, 0.9, { Position = UDim2.fromScale(1.1, 0) })
+					animate(
+						loadingMark,
+						0.45,
+						{ Position = UDim2.fromScale(0.5, 0.36) }
+					)
+				end
 			else
-				animate(overlay, 0.3, { GroupTransparency = 1 })
-				task.delay(view.ReducedMotion and 0 or 0.31, function()
+				loadingBusy = false
+				-- Hold a fast real operation briefly so it doesn't flash on a tap.
+				-- No tween completion/texture is needed to remove the input blocker.
+				local delay = view.ReducedMotion and 0
+					or math.max(
+						0,
+						openingUntil - os.clock(),
+						shownAt + 0.18 - os.clock()
+					)
+				local function hide()
 					if view.Alive and serial == loadingSerial then
 						overlay.Visible = false
+						overlay.Active = false
 					end
-				end)
+				end
+				if delay == 0 then
+					hide()
+				else
+					task.delay(delay, hide)
+				end
 			end
 		end
 		local trackRows = {}
@@ -2011,6 +2087,15 @@ local makeAutoPlayerView = (function()
 		local testButton = button(testRow, "TestInput", "Test C4", "test")
 		testButton.Size = UDim2.fromOffset(88, 40)
 		testButton.Position = UDim2.new(1, -100, 0.5, -20)
+		local panicRow = settingRow(
+			settings,
+			"Emergency stop",
+			"Disarm and retry all owned key releases. Also available as F7."
+		)
+		local panicButton =
+			button(panicRow, "PanicInput", "STOP INPUT", "panic", color.Red)
+		panicButton.Size = UDim2.fromOffset(100, 40)
+		panicButton.Position = UDim2.new(1, -112, 0.5, -20)
 		local clearRow = settingRow(
 			settings,
 			"Session queue",
@@ -2284,19 +2369,11 @@ local makeAutoPlayerView = (function()
 				context.Library:Unload()
 			end
 		end)
-		context.RegisterCleanup(function()
-			view.Alive = false
-			loadingSerial += 1
-			for _, tween in pairs(view.Tweens) do
-				pcall(tween.Cancel, tween)
-			end
-			table.clear(view.Tweens)
-			gui:Destroy()
-		end)
 		layout()
 		view.SetPage("Library")
-		animate(panel, 0.6, { GroupTransparency = 0 })
 		animate(openingScale, 0.6, { Scale = 1 })
+		-- Standalone construction also has a finite opening, even without a scan.
+		view.Loading(false)
 		return view
 	end
 end)()
@@ -2442,8 +2519,13 @@ local function runGame(context)
 		end
 		operation = nil
 		stop()
-		view.Loading(true, phase)
+		view.Loading(true, phase, token)
 		operation = task.defer(function()
+			-- Present the real phase before a synchronous executor filesystem call.
+			task.wait()
+			if not current(token) then
+				return
+			end
 			local success, result = pcall(callback, token)
 			if not current(token) then
 				return
@@ -2494,7 +2576,7 @@ local function runGame(context)
 			)
 			local data = api.Read(entry.Path)
 			assert(current(token), "File load cancelled")
-			view.Loading(true, "Decoding MIDI tracks and tempo map")
+			view.Loading(true, "Decoding MIDI tracks and tempo map", token)
 			local score = parser.Parse(data, function()
 				task.wait()
 				assert(current(token), "MIDI parse cancelled")
@@ -2566,6 +2648,8 @@ local function runGame(context)
 		render()
 	end
 	view.Actions = {
+		reveal = render,
+		panic = panic,
 		unload = function()
 			context.Library:Unload()
 		end,
@@ -2893,7 +2977,12 @@ local function runGame(context)
 	rows()
 	render()
 	refresh()
-	return { Transport = player, Output = output, View = view }
+	return {
+		Transport = player,
+		Output = output,
+		View = view,
+		Nullx11Ready = true,
+	}
 end
 if not game:IsLoaded() then
 	game.Loaded:Wait()
@@ -2928,5 +3017,6 @@ local ok, result = xpcall(function()
 end, debug.traceback)
 if not ok then
 	library:Unload()
-	warn("[NULL Auto Player] " .. tostring(result))
+	error("[NULL Auto Player] " .. tostring(result), 0)
 end
+return result

@@ -56,3 +56,22 @@ controls, pooled rows, track reuse, 61/88 keys, portrait/landscape dimensions,
 opening/loading transitions, dock restore and disposal. These are **not screenshots,
 native animation quality, touch hardware, filesystem access or successful gameplay
 proof**. Use [the user guide](AUTO-PLAYER.md) and [native checklist](../diagnostics/GAME-PORTS.md).
+
+### Follow-up: black loading/launcher handoff
+
+Removed off-screen CanvasGroups from the player, execution card and legacy intro
+card. Auto Player controls do not require opacity tweens to become visible. The
+finite loading state uses operation generations, minimum display time, explicit
+hide/close and deterministic delayed-hide ownership; stale callbacks cannot hide
+a newer operation, and phase updates respect a manual dismissal. GUI ownership is
+registered before construction, parent *assignment* failures trigger fallback,
+and startup failures clean up and rethrow to the loader. A returned
+`Nullx11Ready` marker hands off the loader's sheet only after controls are wired.
+
+New `midi-loader-integration.luau` executes the actual catalog Run path and the
+actual generated chunk with its real view/controller/parser. It exercises local
+selection, queue/favorite, track mute, speed/transpose, preview, armed key requests,
+C4 release, touch panic, minimize/restore, parent fallback, startup failure/retry
+and independent loader unload. `midi-view.luau` now uses queued timers and checks
+stale operations, denied tweens and permanent blocker removal. These are not GPU,
+physical-touch, native executor or accepted-game-input proofs.

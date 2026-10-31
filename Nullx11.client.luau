@@ -10899,7 +10899,7 @@ local function createNullx11UI(scope)
 		Intro.Finale(scene, track)
 		task.wait(0.3)
 		Anim.Tween(scale, { Scale = State.UserScale * 1.06 }, 0.2, "In")
-		Anim.Tween(card, { GroupTransparency = 1 }, 0.2)
+		card.Visible = false
 		Anim.Tween(screen, { BackgroundTransparency = 1 }, 0.2)
 		task.wait(0.2)
 	end
@@ -10907,7 +10907,7 @@ local function createNullx11UI(scope)
 	function Intro.BuildCard(screen)
 		local width, height = Intro.Width, Intro.Height
 		local pad, shadow = 4, 6
-		local card = Draw.New("CanvasGroup", {
+		local card = Draw.New("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.fromOffset(
@@ -13598,12 +13598,12 @@ local function createNullx11UI(scope)
 			ZIndex = 72,
 			Parent = executionGui,
 		})
-		local card = Draw.Box("CanvasGroup", {
+		local card = Draw.Box("Frame", {
 			Name = "ExecutionCard",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.new(1, -32, 1, -32),
-			GroupTransparency = 1,
+			Visible = true,
 			ZIndex = 73,
 			Parent = shade,
 		}, "Panel", "Outline", 20, 1)
@@ -13634,7 +13634,7 @@ local function createNullx11UI(scope)
 				Parent = scroll,
 			}, "Body", size, token or "Text")
 		end
-		text("Developer", "NULLX11 / GAB", 86, 22, 18, 14, "Muted")
+		text("Developer", "NULLX11 / NULL", 86, 22, 18, 14, "Muted")
 		text("ScriptName", title, 86, 44, 26, 19)
 		local status =
 			text("ExecutionStatus", "Preparing execution", 24, 90, 26, 18)
@@ -13751,8 +13751,12 @@ local function createNullx11UI(scope)
 				Library.Execution = nil
 			end
 		end
-		function job:Finish()
+		function job:Finish(ready)
 			self.Model:Finish()
+			if ready then
+				self:Close()
+				return
+			end
 			task.delay(1.2, function()
 				if not self.Closed then
 					self:Close()
@@ -13774,7 +13778,9 @@ local function createNullx11UI(scope)
 				end
 			end)
 		end
-		Anim.Tween(card, { GroupTransparency = 0 }, 0.22, "Out")
+		local scale = Draw.New("UIScale", { Scale = 0.96, Parent = card })
+		pcall(Anim.Tween, scale, { Scale = 1 }, 0.22, "Out")
+		scale.Scale = 1
 		return job
 	end
 
@@ -21326,14 +21332,17 @@ do
 					)
 				end
 				button.Text = "Running…"
-				execute()
+				return execute()
 			end)
 			catalog.Busy = false
 			if progress then
 				if not ok then
 					progress:Fail(reason)
 				elseif progress:CanContinue() then
-					progress:Finish()
+					-- Ready UI handoff: do not cover Auto Player with a second sheet.
+					progress:Finish(
+						type(reason) == "table" and reason.Nullx11Ready == true
+					)
 				end
 			end
 			if not alive or not button.Parent then
@@ -21984,7 +21993,7 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by NULL",
-					Content = "One Nullx11 interface, native player tools and eight independent game workspaces. Nothing plays or farms until you enable it.",
+					Content = "One Nullx11 interface, native player tools and fifteen independent script workspaces. Nothing plays or farms until you enable it.",
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()

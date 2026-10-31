@@ -76,7 +76,8 @@ context.ReducedMotion=environment.Nullx11ReducedMotion==true
 context.MidiParser=midiParser;context.MidiFiles=midiFiles;context.MakeMidiOutput=makeMidiOutput
 context.MakeMidiTransport=makeMidiTransport;context.MakeAutoPlayerView=makeAutoPlayerView
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
-if not ok then library:Unload();warn("[NULL Auto Player] "..tostring(result)) end
+if not ok then library:Unload();error("[NULL Auto Player] "..tostring(result),0) end
+return result
 `);
     continue;
   }

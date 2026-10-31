@@ -10397,7 +10397,7 @@ function Intro.Show(settings, screen)
 	Intro.Finale(scene, track)
 	task.wait(0.3)
 	Anim.Tween(scale, { Scale = State.UserScale * 1.06 }, 0.2, "In")
-	Anim.Tween(card, { GroupTransparency = 1 }, 0.2)
+	card.Visible = false
 	Anim.Tween(screen, { BackgroundTransparency = 1 }, 0.2)
 	task.wait(0.2)
 end
@@ -10405,7 +10405,7 @@ end
 function Intro.BuildCard(screen)
 	local width, height = Intro.Width, Intro.Height
 	local pad, shadow = 4, 6
-	local card = Draw.New("CanvasGroup", {
+	local card = Draw.New("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(width + pad + shadow, height + pad + shadow),

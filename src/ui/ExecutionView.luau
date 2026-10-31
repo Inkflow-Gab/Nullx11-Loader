@@ -25,12 +25,12 @@ function Library:BeginExecution(title)
 		ZIndex = 72,
 		Parent = executionGui,
 	})
-	local card = Draw.Box("CanvasGroup", {
+	local card = Draw.Box("Frame", {
 		Name = "ExecutionCard",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.new(1, -32, 1, -32),
-		GroupTransparency = 1,
+		Visible = true,
 		ZIndex = 73,
 		Parent = shade,
 	}, "Panel", "Outline", 20, 1)
@@ -61,7 +61,7 @@ function Library:BeginExecution(title)
 			Parent = scroll,
 		}, "Body", size, token or "Text")
 	end
-	text("Developer", "NULLX11 / GAB", 86, 22, 18, 14, "Muted")
+	text("Developer", "NULLX11 / NULL", 86, 22, 18, 14, "Muted")
 	text("ScriptName", title, 86, 44, 26, 19)
 	local status =
 		text("ExecutionStatus", "Preparing execution", 24, 90, 26, 18)
@@ -178,8 +178,12 @@ function Library:BeginExecution(title)
 			Library.Execution = nil
 		end
 	end
-	function job:Finish()
+	function job:Finish(ready)
 		self.Model:Finish()
+		if ready then
+			self:Close()
+			return
+		end
 		task.delay(1.2, function()
 			if not self.Closed then
 				self:Close()
@@ -201,6 +205,8 @@ function Library:BeginExecution(title)
 			end
 		end)
 	end
-	Anim.Tween(card, { GroupTransparency = 0 }, 0.22, "Out")
+	local scale = Draw.New("UIScale", { Scale = 0.96, Parent = card })
+	pcall(Anim.Tween, scale, { Scale = 1 }, 0.22, "Out")
+	scale.Scale = 1
 	return job
 end

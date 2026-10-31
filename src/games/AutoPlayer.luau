@@ -137,8 +137,13 @@ local function operationStart(phase, callback, complete)
 	end
 	operation = nil
 	stop()
-	view.Loading(true, phase)
+	view.Loading(true, phase, token)
 	operation = task.defer(function()
+		-- Present the real phase before a synchronous executor filesystem call.
+		task.wait()
+		if not current(token) then
+			return
+		end
 		local success, result = pcall(callback, token)
 		if not current(token) then
 			return
@@ -186,7 +191,7 @@ local function load(entry, continueQueue)
 		assert(type(api.Read) == "function", "Delta readfile is unavailable")
 		local data = api.Read(entry.Path)
 		assert(current(token), "File load cancelled")
-		view.Loading(true, "Decoding MIDI tracks and tempo map")
+		view.Loading(true, "Decoding MIDI tracks and tempo map", token)
 		local score = parser.Parse(data, function()
 			task.wait()
 			assert(current(token), "MIDI parse cancelled")
@@ -254,6 +259,8 @@ local function rebuild()
 	render()
 end
 view.Actions = {
+	reveal = render,
+	panic = panic,
 	unload = function()
 		context.Library:Unload()
 	end,
@@ -576,4 +583,4 @@ end)
 rows()
 render()
 refresh()
-return { Transport = player, Output = output, View = view }
+return { Transport = player, Output = output, View = view, Nullx11Ready = true }

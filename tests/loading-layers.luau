@@ -39,6 +39,10 @@ local State = {
 local job = Library:BeginExecution("Layer fixture")
 local gui = find("Nullx11ExecutionOverlay")
 assert(
+	find("ExecutionCard").ClassName == "Frame" and find("ExecutionCard").Visible,
+	"execution sheet cannot be an empty mobile group texture"
+)
+assert(
 	gui
 		and gui.Parent == State.Gui.Parent
 		and gui.DisplayOrder > State.Gui.DisplayOrder
@@ -56,6 +60,13 @@ job:Close()
 assert(
 	gui.Destroyed and newGameGui.Parent and job.Model.Started,
 	"hide does not remove the game GUI"
+)
+local handoff = Library:BeginExecution("Ready UI fixture")
+handoff:Phase(4, "controls connected")
+handoff:Finish(true)
+assert(
+	handoff.Closed and handoff.Model.Status == "complete",
+	"ready UI immediately takes over; loader sheet cannot swallow its input"
 )
 local failure = Library:BeginExecution("Failure fixture")
 failure:Fail("real runtime error")

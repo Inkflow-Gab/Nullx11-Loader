@@ -7011,14 +7011,17 @@ do
 					)
 				end
 				button.Text = "Running…"
-				execute()
+				return execute()
 			end)
 			catalog.Busy = false
 			if progress then
 				if not ok then
 					progress:Fail(reason)
 				elseif progress:CanContinue() then
-					progress:Finish()
+					-- Ready UI handoff: do not cover Auto Player with a second sheet.
+					progress:Finish(
+						type(reason) == "table" and reason.Nullx11Ready == true
+					)
 				end
 			end
 			if not alive or not button.Parent then

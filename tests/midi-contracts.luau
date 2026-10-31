@@ -533,11 +533,13 @@ end
 -- @MIDI_CONTROLLER
 local controller = runAutoPlayer(context)
 step(0)
+step(0)
 assert(
 	#fakeView.Rows == 4 and reads == 0 and not controller.Transport.Armed,
 	"scan on open does not read/play a song"
 )
 fakeView.Dispatch("select", fakeView.Rows[1])
+step(0)
 step(0)
 assert(reads == 1 and fakeView.Loaded and controller.Transport.State == "Ready")
 fakeView.Dispatch("play")
@@ -566,16 +568,20 @@ assert(not controller.Transport.Armed and controller.Transport.Position == 0)
 blocked = true
 fakeView.Dispatch("select", fakeView.Rows[1])
 step(0)
+step(0)
 local firstRead = reads
 fakeView.Dispatch("refresh")
 step(0)
+step(0)
 blocked = false
+step(0)
 step(0)
 assert(
 	reads == firstRead,
 	"old read thread is cancelled, not resumed into a stale load"
 )
 fakeView.Dispatch("select", fakeView.Rows[1])
+step(0)
 step(0)
 fakeView.Dispatch("preview", false)
 fakeView.Dispatch("arm", true)
