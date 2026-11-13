@@ -367,8 +367,8 @@ assert(not find("FPSHistory1").Visible, "disable resets graph")
 find("TabStyle").Activated:Fire()
 find("Snap dock").Activated:Fire()
 assert(
-	find("RestoreNullx11").Position.X == 38,
-	"snap respects dock half-width plus safe margin"
+	find("RestoreNullx11").Position.X == 352,
+	"centered dock snaps to the nearest edge with a safe margin"
 )
 local dockTouch = {
 	UserInputType = Enum.UserInputType.Touch,

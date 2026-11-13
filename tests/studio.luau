@@ -17,7 +17,7 @@ assert(
 assert(#warnings == 0, "Studio rendering should not throw")
 find("DesignUndo").Activated:Fire()
 assert(
-	find("DesignPreviewRGB").Text == "RGB 167 / 146 / 255",
+	find("DesignPreviewRGB").Text == "RGB 104 / 155 / 250",
 	"undo restores accent"
 )
 find("DesignRedo").Activated:Fire()
@@ -28,14 +28,14 @@ assert(
 find("DesignToggle_CustomAccent").Activated:Fire()
 find("DesignPlus_Red").Activated:Fire()
 assert(
-	find("DesignPreviewRGB").Text == "RGB 172 / 146 / 255",
+	find("DesignPreviewRGB").Text == "RGB 109 / 155 / 250",
 	"RGB controls update preview"
 )
 find("DesignSave1").Activated:Fire()
 find("DesignChoice_Theme_Ice").Activated:Fire()
 find("DesignLoad1").Activated:Fire()
 assert(
-	find("DesignPreviewRGB").Text == "RGB 172 / 146 / 255",
+	find("DesignPreviewRGB").Text == "RGB 109 / 155 / 250",
 	"memory design preserves custom RGB"
 )
 find("DesignAction_Export").Activated:Fire()
@@ -44,7 +44,7 @@ find("DesignChoice_Theme_Mint").Activated:Fire()
 find("DesignEditor_Transfer").Text = exported
 find("DesignAction_Import").Activated:Fire()
 assert(
-	find("DesignPreviewRGB").Text == "RGB 172 / 146 / 255",
+	find("DesignPreviewRGB").Text == "RGB 109 / 155 / 250",
 	"validated import restores appearance"
 )
 jsonDocuments.bad = { Version = 1, Settings = { Width = 99999 } }

@@ -1,4 +1,4 @@
--- Steal An Egg controller adapted for Nullx11 by Gab.
+-- Steal An Egg controller adapted for Nullx11 by NULL.
 -- Original source: Henrik / xyzhenrik (Silence), user-provided Main.luau.txt.
 -- See docs/SOURCE-PROVENANCE.md. Gameplay implementation retained, not a demo.
 local services = {
@@ -88,7 +88,7 @@ local desktop = services.UserInputService.KeyboardEnabled
 	and services.UserInputService.MouseEnabled
 local silence = WindUI:CreateWindow({
 	Title = "Nullx11 - Steal An Egg",
-	Author = "Developed by Gab; original Henrik / xyzhenrik",
+	Author = "Owner: NULL",
 	Icon = "solar:moon-bold",
 	IconSize = 26,
 	Theme = "Crimson",
@@ -7241,34 +7241,10 @@ function utils.buildConfig()
 end
 
 function utils.buildInfo()
+	tabs.info:Paragraph({ Title = "Owner: NULL / Nullx11 edition" })
 	tabs.info:Paragraph({
-		Title = "Developed by Gab / original source: xyzhenrik",
+		Title = "Source notices and restrictions: docs/SOURCE-PROVENANCE.md",
 	})
-	tabs.info:Paragraph({ Title = "Any issues? Create a Ticket on Discord" })
-	tabs.info:Paragraph({ Title = "Official Discord: discord.gg/9eFf93Kg8D" })
-	tabs.info:Button({
-		Title = "Copy Invite",
-		Callback = function()
-			local success = type(setclipboard) == "function"
-				and pcall(setclipboard, "https://discord.gg/9eFf93Kg8D")
-			pcall(function()
-				services.StarterGui:SetCore("SendNotification", {
-					Title = success and "Link Copied!" or "Error!",
-					Text = success and "You can continue to Discord now."
-						or "Clipboard not Supported.",
-					Duration = 3,
-				})
-			end)
-		end,
-	})
-	tabs.info:Space()
-	tabs.info:Section({ Title = "Contributors:", TextSize = 17, Box = false })
-	tabs.info:Paragraph({ Title = "- Henrik @xyzhenrik" })
-	tabs.info:Space()
-	tabs.info:Paragraph({
-		Title = "Nullx11 adaptation; original source attribution retained",
-	})
-	tabs.info:Space()
 	tabs.info.VersionLabel = tabs.info:Section({
 		Title = "Steal An Egg [V2.0.0]",
 		TextSize = 20,

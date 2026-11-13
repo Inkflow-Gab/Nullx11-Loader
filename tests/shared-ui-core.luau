@@ -15,6 +15,28 @@ assert(
 assert(
 	library.Themes[1] == "Nullx11" and table.find(library.Themes, "Halloween")
 )
+assert(library:GetPerformanceStatus() == "Auto / full UI motion")
+library:SetPerformanceMode("Low power")
+assert(library:GetPerformanceStatus() == "Low power / low UI work")
+local target, completed = { Value = 1 }, 0
+library.Motion.Spring(target, "Value", 9, "Normal", {
+	OnDone = function()
+		completed += 1
+	end,
+})
+assert(
+	target.Value == 9 and completed == 1,
+	"low-power springs snap and complete rather than hanging controls"
+)
+library:SetPerformanceMode("Balanced")
+assert(library:GetPerformanceStatus() == "Balanced / full UI motion")
+library:SetPerformanceMode("bad")
+assert(library:GetPerformanceStatus() == "Balanced / full UI motion")
+library:SetPerformanceMode("Auto")
+assert(
+	not library:CenterWindow(),
+	"center request is safe before the native window exists"
+)
 local value = library.Ref(2)
 local doubled = library.Computed(function()
 	return value.Value * 2

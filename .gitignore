@@ -1,1 +1,4 @@
 node_modules/
+
+# Local source-review and generation scratch work
+.cache/

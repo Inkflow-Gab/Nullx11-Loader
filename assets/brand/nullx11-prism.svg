@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <title>Nullx11 static prism — Gab</title>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse"><stop stop-color="#222741"/><stop offset="1" stop-color="#0E1322"/></linearGradient>
+    <linearGradient id="ink" x1="15" y1="15" x2="113" y2="113" gradientUnits="userSpaceOnUse"><stop stop-color="#A48FFF"/><stop offset="1" stop-color="#60DCE0"/></linearGradient>
+  </defs>
+  <rect x="1" y="1" width="126" height="126" rx="27" fill="url(#panel)" stroke="#3C4B68"/>
+  <rect x="12" y="12" width="104" height="104" rx="21" stroke="url(#ink)"/>
+  <path d="M24 44v40m80-40v40M30 40l34-24 34 24M30 88l34 24 34-24" stroke="url(#ink)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m64 46 18 18-18 18-18-18Z" fill="url(#ink)"/>
+</svg>

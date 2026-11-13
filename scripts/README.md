@@ -2,7 +2,9 @@
 
 This folder is connected to **Workspace → Scripts / Open Scripts library** in `Nullx11.client.luau` (also available through classic Tools).
 
-The manifest publishes the four adapted Rosu, Huss Valley, +1 Loot to Forge and Steal An Egg bundles. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
+The manifest retains the seven prior adapted Rosu, Huss Valley, +1 Loot to Forge, Steal An Egg, stealabrainrot, TTK Testing and +1 Money per Click bundles plus the separate **StealAnEgg-CHILI recovered-core edition**. They use the shared +1-derived Nullx11 UI and contain real controller code. Implementation/compilation is complete; live gameplay validation is pending. See [integration status](INTEGRATION-STATUS.md).
+
+Six additional native reviewed-feature editions bring the total to **14**: all five actual YARHM game/tool families and a separate English Chaos Brookhaven. Game coverage is complete for YARHM; feature parity is not. Use Source collection filtering and read [the precise matrix](../docs/HUB-COLLECTION-REVIEW.md). NULL is the visible owner brand for every edition; required source notices are retained.
 
 ## Add a script later
 
@@ -24,7 +26,7 @@ The manifest publishes the four adapted Rosu, Huss Valley, +1 Loot to Forge and 
 }
 ```
 
-3. Run `npm run build`, `npm run format:check` and `npm test` (update catalog expectations if adding entries), then publish both files on **`arena/d92ad2cf-nullx11-loader`**, the branch currently configured in the loader. If you later publish elsewhere, explicitly update `CONFIG.ScriptBaseURL` in the loader to that reviewed repository/branch/commit's `scripts/` URL.
+3. Run `npm run build`, `npm run format:check` and `npm test` (update catalog expectations if adding entries), then publish both files on **`arena/bc7610cd-nullx11-loader`**, the branch currently configured in the loader. If you later publish elsewhere, explicitly update `CONFIG.ScriptBaseURL` in the loader to that reviewed repository/branch/commit's `scripts/` URL.
 4. In the loader, press **Refresh from GitHub**. Search and place filtering use the fetched manifest.
 5. Review the source yourself. Tap **Run**, then confirm within five seconds. The first tap does not fetch or execute script code.
 
@@ -70,7 +72,7 @@ Scripts is now an **Open library** action rather than an ON/OFF switch. To use t
 - Steal An Egg omits `GamePlaceId` because the uploaded source provides none. Its bundle validates core ModuleScript paths before initializing the actual controller. Do not fabricate a place ID.
 - Ordinary loader unload/rerun leaves executed scripts running. Stop a bundled game through its own Unload control, or the loader's separately confirmed stop-all-game-scripts action.
 
-See [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md) for all four implemented ports and the remaining native-runtime validation boundary.
+See [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md) for all seven implemented ports and the remaining native-runtime validation boundary.
 
 ## Build and cleanup
 
@@ -79,3 +81,21 @@ See [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md) for all four implemented port
 Each generated bundle has a separate UI identity and default **Left Control** shortcut. Controllers register with `Nullx11GameSessions`; their own Unload and the main workspace's registered-session cleanup stop them. UI hide/close-to-icon does not stop an enabled feature. Other externally added scripts are not assumed to support this registry.
 
 The built-in catalog is usable without a network Refresh. Refresh replaces it atomically and invalidates stale selected-game state. Optional theme/font downloads are data, not another executable UI library. Original source and redistribution restrictions are documented in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
+
+StealAnEgg-CHILI is not a full VM recovery. See [recovery scope](../docs/CHILI-EGG-REVIEW.md) for implemented nearby carry/progression/labels and explicit unavailable features. Original Steal An Egg remains intact.
+
+- `GameUniverseId`: optional positive integer universe gate metadata; the selected
+  bundle still enforces its own target.
+- `Universal`: optional boolean for an explicitly reviewed universal entry.
+- `Collection`: optional source-family label, at most 40 bytes.
+
+Known-compatible filtering includes place/universe matches and Universal entries;
+module-gated entries without identity metadata remain unverified until launch.
+
+## Auto Player / NULL Studio
+
+The **15th** entry is `Nullx11-AutoPlayer.luau`, a lightweight standalone local
+MIDI piano edition with its own custom animated native GUI and the same independent
+session lifetime. It does not embed the whole generic game UI. See
+[Delta path/setup/features](../docs/AUTO-PLAYER.md) and
+[source review/test limits](../docs/MIDI-REVIEW.md).

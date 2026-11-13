@@ -56,6 +56,7 @@ local function fixtureLibrary()
 		local c = {
 			Kind = kind,
 			Spec = spec,
+			Callback = spec.Callback,
 			Value = spec.Default,
 			Values = spec.Values,
 			Title = spec.Text or spec.Title,
@@ -63,8 +64,8 @@ local function fixtureLibrary()
 		}
 		function c:SetValue(value)
 			self.Value = value
-			if spec.Callback then
-				spec.Callback(value)
+			if self.Callback then
+				self.Callback(value)
 			end
 		end
 		function c:SetText(value)

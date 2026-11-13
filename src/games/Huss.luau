@@ -6520,7 +6520,7 @@ do
 
 		SettingsTab:Paragraph({
 			Title = "Nullx11",
-			Desc = "Huss Valley helper.\nCreated by Wyrizon and the Yvetzal Team.\nToggle the window with the selected key (default: LeftControl).",
+			Desc = "Owner: NULL / Huss Valley edition.\nSource notices: docs/SOURCE-PROVENANCE.md.\nToggle the window with the selected key (default: LeftControl).",
 		})
 
 		SettingsTab:Button({
