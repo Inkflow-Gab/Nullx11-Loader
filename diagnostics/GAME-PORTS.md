@@ -264,3 +264,7 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
   Never restore autoplay or hide STOP. Verify independent lifetime after unload.
 - API-double tests pass, but actual native visuals, touch, audio/input acceptance
   and device frame times still need the above manual checks.
+
+## Arsenal
+
+Published standalone `scripts/Nullx11-Arsenal.luau` targets place `286090429`. Run the seven on-device cases in [ARSENAL-REVIEW.md](../docs/ARSENAL-REVIEW.md#validation-boundary). Automated actual-controller contracts are API doubles only; device rendering/input, physics, FPS and Arsenal server acceptance remain unverified. F7 stops effects; Left Control/shared dock controls the window.

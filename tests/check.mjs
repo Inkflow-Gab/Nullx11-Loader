@@ -53,9 +53,9 @@ try {
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 15);
+  assert.equal(manifest.Scripts.length, 16);
   assert.ok(source.includes('Universal = true'), 'generated embedded catalog serializes boolean values as booleans, not empty tables');
-  assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549, 4924922222, 4924922222]);
+  assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549, 4924922222, 4924922222, 286090429]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
@@ -136,6 +136,12 @@ try {
       .replace('-- @TTK',read('src/games/TTKTesting.luau'))
       .replace('-- @MONEY',read('src/games/MoneyPerClick.luau'));
   console.log(...await state.loadstring(newPorts,'new-game-ports',true)());
+  const arsenalChecks = read('tests/roblox-mock.luau') + '\n' + read('tests/player-tools-mock.luau') + '\n' + read('tests/arsenal.luau')
+    .replace('-- @LIBRARY_FIXTURE', between(read('tests/game-port-contracts.luau'), 'local function fixtureLibrary()', '-- Insert the actual modules'))
+    .replace('-- @ARSENAL_MODULES', [module('makeSession', 'src/games/Context.luau'), module('makePatches', 'src/games/OwnedPatches.luau'), module('arsenalPolicy', 'src/games/ArsenalPolicy.luau'), module('makeArsenalInput', 'src/games/ArsenalInput.luau')].join('\n'))
+    .replace('-- @ARSENAL_CONTROLLER', read('src/games/Arsenal.luau'));
+  console.log(...await state.loadstring(arsenalChecks, 'actual-arsenal-controller', true)());
+
   const chiliSource=read('src/games/StealAnEggChili.luau');
   assert.ok(!/loadstring|HttpGet|queue_on_teleport|queueonteleport|hookfunction|syn\.request|http_request|writefile|while true|chillihub\.pro|api\.luarmor/.test(chiliSource),'no raw VM, vendor API/bootstrap, queue, webhook or immortal worker in recovered core');
   assert.equal((chiliSource.match(/task\.spawn\(/g)||[]).length,1,'one serialized recovered-core worker');
@@ -168,7 +174,7 @@ connect(gui.Destroying,function() State.Gui:Destroy() end)`;
   const enhancedIntro=read('tests/roblox-mock.luau')+'\nlocal function runEnhancedLoader()\n'+enhancedSource+'\nend\nlocal function runEnhancedReducedLoader()\n'+enhancedSource.replace('ReducedMotion = false','ReducedMotion = true')+'\nend\n'+read('tests/enhanced-intro.luau');
   console.log(...await state.loadstring(enhancedIntro,'enhanced-startup-contracts',true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: fifteen published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
+  console.log('PASS: sixteen published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),

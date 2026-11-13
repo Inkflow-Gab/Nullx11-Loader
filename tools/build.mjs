@@ -84,7 +84,7 @@ return result
     continue;
   }
   const hub = hubControllers[entry.Id];
-  const name = hub || ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick',eggchili:'StealAnEggChili'})[entry.Id];
+  const name = hub || ({arsenal:'Arsenal',rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick',eggchili:'StealAnEggChili'})[entry.Id];
   if (!name) {
     // Other reviewed repository scripts can participate without being generated.
     if (!/^[\w/.-]+\.luau$/.test(entry.File) || entry.File.includes('..') || entry.File.startsWith('/')) throw new Error('Invalid external script path');
@@ -100,9 +100,10 @@ ${module('makeSession', session)}
 ${entry.Id === 'egg' ? module('makeWindAdapter', wind) : ''}
 ${entry.Id === 'stealabrainrot' ? module('makeOwnedRuntime', ownedRuntime) + '\n' + module('makeChilliAdapter', chilli) : ''}
 ${hub ? module('hubPolicy', read('src/games/HubPolicy.luau')) + '\n' + module('makeHubCore', read('src/games/HubCore.luau')) + (name === 'HubBrookhaven' ? '\n' + module('hubData', read('src/games/HubBrookhavenData.luau')) : '') : ''}
-${entry.Id === 'ttk' || hub ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
+${entry.Id === 'ttk' || entry.Id === 'arsenal' || hub ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
 ${entry.Id === 'money' ? module('makeMoneyData', 'return function()\n'+read('src/games/MoneyData.luau')+'\nend') : ''}
 ${entry.Id === 'eggchili' ? module('chiliPolicy', read('src/games/ChiliEggPolicy.luau')) : ''}
+${entry.Id === 'arsenal' ? module('arsenalPolicy', read('src/games/ArsenalPolicy.luau')) + '\n' + module('makeArsenalInput', read('src/games/ArsenalInput.luau')) : ''}
 ${module('wrongPlace', launcher)}
 local function runGame(context)
 ${controller}
@@ -158,17 +159,18 @@ end
 return true
 end
 if not compatible() then` : 'if game.PlaceId~=entry.GamePlaceId then'}
-wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/' + entry.File)})
+wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/' + (entry.Id === 'arsenal' ? 'arena/49cb1bfa-nullx11-loader' : 'arena/bc7610cd-nullx11-loader') + '/scripts/' + entry.File)})
 return
 end
 local context=makeSession(entry.Id,library)
 context.Adapter=makeAdapter(library,entry.Name,"Nullx11 "..${quote(scopeName)})
 ${entry.Id === 'egg' ? 'context.WindAdapter=makeWindAdapter(library,context.Adapter)' : ''}
 ${entry.Id === 'stealabrainrot' ? 'context.Runtime=makeOwnedRuntime(context)\ncontext.ChilliAdapter=makeChilliAdapter(library,context.Runtime)' : ''}
-${entry.Id === 'ttk' || hub ? 'context.Patches=makePatches()' : ''}
+${entry.Id === 'ttk' || entry.Id === 'arsenal' || hub ? 'context.Patches=makePatches()' : ''}
 ${hub ? 'context.HubPolicy=hubPolicy\ncontext.HubCore=makeHubCore\ncontext.Entry=entry' + (name === 'HubBrookhaven' ? '\ncontext.HubData=hubData' : '') : ''}
 ${entry.Id === 'money' ? 'context.MoneyData=makeMoneyData()' : ''}
 ${entry.Id === 'eggchili' ? 'context.ChiliPolicy=chiliPolicy' : ''}
+${entry.Id === 'arsenal' ? 'context.ArsenalPolicy=arsenalPolicy\ncontext.MakeArsenalInput=makeArsenalInput' : ''}
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
 if not ok then
 library:Unload()

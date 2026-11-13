@@ -89,6 +89,16 @@
       "sha256": "b63831a1d0f2ad18c8eb57c0436c7b76cd441220c1acdfa5172703eea2073b36",
       "bytes": 324741,
       "note": "Static review only; raw hub not executed or distributed. Source-informed piano mapping, bounded replacement decoder/transport and custom local-only NULL GUI. See MIDI-REVIEW.md."
+    },
+    "Arsenal_opensrc.lua.txt": {
+      "sha256": "3563b9e059a5aa22a96c77bab34009c259ab48991df5a5d4ec82b27891b6a12d",
+      "bytes": 34651,
+      "status": "User upload; reviewed adaptation; see ARSENAL-REVIEW.md"
+    },
+    "GAME_OPEN_SOURCE.txt": {
+      "sha256": "ee8bca30475f172f61ae0bb987341bfb05187ae092d591c465a4885d8a42a280",
+      "bytes": 38422,
+      "status": "User upload; generic remote guesses and placeholder features excluded"
     }
   },
   "Updated": "2026-10-31"

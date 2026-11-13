@@ -94,7 +94,7 @@ game.HttpGet = function(_, url)
 	end
 	assert(
 		url:find(
-			"/arena/bc7610cd-nullx11-loader/scripts/Nullx11-AutoPlayer.luau",
+			"/arena/49cb1bfa-nullx11-loader/scripts/Nullx11-AutoPlayer.luau",
 			1,
 			true
 		),

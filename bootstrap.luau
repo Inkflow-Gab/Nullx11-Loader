@@ -4,7 +4,7 @@
 -- Review remote code before running it. Prefer pinning a reviewed commit SHA
 -- instead of a mutable branch once you publish a version you trust.
 local SOURCE_URL =
-	"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/Nullx11.client.luau"
+	"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/49cb1bfa-nullx11-loader/Nullx11.client.luau"
 
 local ok, reason = pcall(function()
 	assert(

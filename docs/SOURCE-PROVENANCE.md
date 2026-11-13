@@ -84,3 +84,7 @@ NULL is the edition/developer brand, not an invented copyright assignment of the
 upload or songs. New decoder/runtime/UI replace the raw hub; remote preset,
 announcement, asset and uploader systems are not executed. No MIDI is uploaded
 or written. [Setup and native limitations](AUTO-PLAYER.md).
+
+## Arsenal supplied-source adaptation
+
+The two user uploads `Arsenal_opensrc.lua.txt` and `GAME_OPEN_SOURCE.txt` are adapted into the standalone Arsenal edition. Original author/license is unspecified in the inputs; NULL identifies the collection edition, not a transfer of upstream authorship. Input hashes, reviewed features, rejected remote guesses and validation limits are recorded in [ARSENAL-REVIEW.md](ARSENAL-REVIEW.md).

@@ -16,7 +16,7 @@ local CONFIG = {
 	ReducedMotion = false,
 	StartupAnimation = true,
 	EnhancedWorkspace = true,
-	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/",
+	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/49cb1bfa-nullx11-loader/scripts/",
 }
 
 -- External runtimes may not provide the LocalScript instance.

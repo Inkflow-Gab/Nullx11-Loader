@@ -152,6 +152,17 @@
       "Collection": "NULL Studio",
       "Author": "Owner: NULL. Local MIDI piano edition; source review retained in docs/MIDI-REVIEW.md.",
       "Description": "Local MIDI library, tempo-aware playback, track mixer, speed/transpose and A-B loops. Saved screenshot keys, queue/favorites and mini holder. Ready-on-launch input; Play is manual. No remote presets."
+    },
+    {
+      "Id": "arsenal",
+      "Name": "Arsenal",
+      "File": "Nullx11-Arsenal.luau",
+      "Category": "Combat",
+      "Icon": "target",
+      "GamePlaceId": 286090429,
+      "Collection": "NULL Studio",
+      "Author": "Owner: NULL. Reviewed user-supplied client sources; see docs/ARSENAL-REVIEW.md.",
+      "Description": "Centered camera aim, real-input trigger, native box/skeleton/health ESP, movement and reversible lighting. All effects start off. Client hitbox experiment; no remote guesses or verified server-hit claims."
     }
   ]
 }
