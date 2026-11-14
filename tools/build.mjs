@@ -55,6 +55,29 @@ let main = read('src/loader.luau')
   .replace('-- @NULLX11_WORKSPACE', read('src/ui/Workspace.luau'));
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
+  if (entry.Id === 'finishword') {
+    const modules = [module('makeSession', session), module('makePatches', read('src/games/OwnedPatches.luau')), module('makeFinishWordDictionary', read('src/games/FinishWordDictionary.luau')), module('makeFinishWordBridge', read('src/games/FinishWordBridge.luau')), module('makeFinishWordEngine', read('src/games/FinishWordEngine.luau'))].join('\n');
+    output(`scripts/${entry.File}`, `${banner}-- Finish The Word / NULL edition. Original: Dave; see docs/FINISH-WORD-REVIEW.md.
+${factory}
+${modules}
+local function runGame(context)
+${read('src/games/FinishTheWord.luau')}
+end
+if not game:IsLoaded() then game.Loaded:Wait() end
+local environment=type(getgenv)=="function" and getgenv() or _G
+local library=createNullx11UI({Id="FinishWord",ReducedMotion=environment.Nullx11ReducedMotion==true})
+local context=makeSession("finishword",library)
+context.Patches=makePatches()
+context.MakeFinishWordDictionary=makeFinishWordDictionary
+context.MakeFinishWordBridge=makeFinishWordBridge
+context.MakeFinishWordEngine=makeFinishWordEngine
+context.FinishWordDataURL="https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/74dd400750d428e2bc76f0930a8d430055bfcb80/data/finish-word/"
+local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
+if not ok then library:Unload();error("[NULL Finish The Word] "..tostring(result),0) end
+return result
+`);
+    continue;
+  }
   if (entry.Id === 'autoplayer') {
     const modules = [module('makeSession',session), module('midiParser',read('src/games/MidiParser.luau')), module('midiFiles',read('src/games/MidiFiles.luau')), module('makeMidiPreferences',read('src/games/MidiPreferences.luau')), module('makeMidiOutput',read('src/games/MidiOutput.luau')), module('makeMidiTransport',read('src/games/MidiTransport.luau')), module('makeAutoPlayerView',read('src/ui/AutoPlayerView.luau'))].join('\n');
     output(`scripts/${entry.File}`, `${banner}-- Auto Player / NULL. Local MIDI data only; see docs/MIDI-REVIEW.md.
@@ -84,7 +107,7 @@ return result
     continue;
   }
   const hub = hubControllers[entry.Id];
-  const name = hub || ({rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick',eggchili:'StealAnEggChili'})[entry.Id];
+  const name = hub || ({arsenal:'Arsenal',rosu:'Rosu',huss:'Huss',forge:'Forge',egg:'StealAnEgg',stealabrainrot:'StealABrainrot',ttk:'TTKTesting',money:'MoneyPerClick',eggchili:'StealAnEggChili'})[entry.Id];
   if (!name) {
     // Other reviewed repository scripts can participate without being generated.
     if (!/^[\w/.-]+\.luau$/.test(entry.File) || entry.File.includes('..') || entry.File.startsWith('/')) throw new Error('Invalid external script path');
@@ -100,9 +123,10 @@ ${module('makeSession', session)}
 ${entry.Id === 'egg' ? module('makeWindAdapter', wind) : ''}
 ${entry.Id === 'stealabrainrot' ? module('makeOwnedRuntime', ownedRuntime) + '\n' + module('makeChilliAdapter', chilli) : ''}
 ${hub ? module('hubPolicy', read('src/games/HubPolicy.luau')) + '\n' + module('makeHubCore', read('src/games/HubCore.luau')) + (name === 'HubBrookhaven' ? '\n' + module('hubData', read('src/games/HubBrookhavenData.luau')) : '') : ''}
-${entry.Id === 'ttk' || hub ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
+${entry.Id === 'ttk' || entry.Id === 'arsenal' || hub ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
 ${entry.Id === 'money' ? module('makeMoneyData', 'return function()\n'+read('src/games/MoneyData.luau')+'\nend') : ''}
 ${entry.Id === 'eggchili' ? module('chiliPolicy', read('src/games/ChiliEggPolicy.luau')) : ''}
+${entry.Id === 'arsenal' ? module('arsenalPolicy', read('src/games/ArsenalPolicy.luau')) + '\n' + module('makeArsenalInput', read('src/games/ArsenalInput.luau')) + '\n' + module('arsenalGeometry', read('src/games/ArsenalGeometry.luau')) + '\n' + module('makeArsenalPerformance', read('src/games/ArsenalPerformance.luau')) : ''}
 ${module('wrongPlace', launcher)}
 local function runGame(context)
 ${controller}
@@ -158,17 +182,18 @@ end
 return true
 end
 if not compatible() then` : 'if game.PlaceId~=entry.GamePlaceId then'}
-wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/' + entry.File)})
+wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/' + (entry.Id === 'arsenal' ? 'arena/49cb1bfa-nullx11-loader' : 'arena/bc7610cd-nullx11-loader') + '/scripts/' + entry.File)})
 return
 end
 local context=makeSession(entry.Id,library)
 context.Adapter=makeAdapter(library,entry.Name,"Nullx11 "..${quote(scopeName)})
 ${entry.Id === 'egg' ? 'context.WindAdapter=makeWindAdapter(library,context.Adapter)' : ''}
 ${entry.Id === 'stealabrainrot' ? 'context.Runtime=makeOwnedRuntime(context)\ncontext.ChilliAdapter=makeChilliAdapter(library,context.Runtime)' : ''}
-${entry.Id === 'ttk' || hub ? 'context.Patches=makePatches()' : ''}
+${entry.Id === 'ttk' || entry.Id === 'arsenal' || hub ? 'context.Patches=makePatches()' : ''}
 ${hub ? 'context.HubPolicy=hubPolicy\ncontext.HubCore=makeHubCore\ncontext.Entry=entry' + (name === 'HubBrookhaven' ? '\ncontext.HubData=hubData' : '') : ''}
 ${entry.Id === 'money' ? 'context.MoneyData=makeMoneyData()' : ''}
 ${entry.Id === 'eggchili' ? 'context.ChiliPolicy=chiliPolicy' : ''}
+${entry.Id === 'arsenal' ? 'context.ArsenalPolicy=arsenalPolicy\ncontext.MakeArsenalInput=makeArsenalInput\ncontext.ArsenalGeometry=arsenalGeometry\ncontext.MakeArsenalPerformance=makeArsenalPerformance' : ''}
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
 if not ok then
 library:Unload()

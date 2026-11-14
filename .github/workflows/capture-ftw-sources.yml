@@ -1,0 +1,56 @@
+name: Capture Finish The Word source inputs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture-text:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arena/49cb1bfa-nullx11-loader
+      - name: Download fixed public text inputs (never execute them)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir inputs
+          base=https://ancestrychanged.com
+          for spec in \
+            'scripts/ftw_words.txt words.txt' \
+            'scripts/ftw_whitelist.txt whitelist.txt' \
+            'scripts/versions/ftw.json words-version.json' \
+            'scripts/version.json library-version.json' \
+            'scripts/uilib.lua uilib.lua.txt' \
+            'scripts/lucide-roblox-direct.lua lucide-roblox-direct.lua.txt' \
+            'scripts/savemanager.lua savemanager.lua.txt' \
+            'scripts/warningcard.lua warningcard.lua.txt'; do
+            read -r path filename <<< "$spec"
+            curl --fail --location --proto '=https' --proto-redir '=https' --max-time 35 --max-filesize 8388608 "$base/$path" --output "inputs/$filename"
+          done
+          curl --fail --location --proto '=https' --proto-redir '=https' --max-time 35 --max-filesize 262144 https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt --output inputs/frequency.txt
+          python3 - <<'PY'
+          import hashlib, json, pathlib, re
+          folder = pathlib.Path('inputs')
+          manifest = {}
+          for file in folder.iterdir():
+              data = file.read_bytes()
+              assert 0 < len(data) <= 8388608, file.name
+              text = data.decode('utf-8-sig')
+              if file.name in ('words.txt', 'whitelist.txt', 'frequency.txt'):
+                  lines = text.splitlines()
+                  assert len(lines) <= 600000 and all(re.fullmatch('[a-z]+', x) for x in lines if x), file.name
+              if file.suffix == '.json':
+                  assert isinstance(json.loads(text), dict)
+              manifest[file.name] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+          (folder / 'capture.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: finish-the-word-source-inputs
+          path: inputs/
+          retention-days: 7

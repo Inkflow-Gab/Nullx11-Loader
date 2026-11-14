@@ -15333,6 +15333,7 @@ local chiliPolicy = (function()
 	end
 	return policy
 end)()
+
 local wrongPlace = (function()
 	-- Compatibility notice only. Never teleports, queues code or starts a controller.
 	return function(library, entry, _url)
@@ -16114,6 +16115,7 @@ context.Adapter =
 	makeAdapter(library, entry.Name, "Nullx11 " .. "StealAnEggChili")
 
 context.ChiliPolicy = chiliPolicy
+
 local ok, result = xpcall(function()
 	return runGame(context)
 end, debug.traceback)

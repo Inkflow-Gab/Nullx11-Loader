@@ -1,6 +1,6 @@
 # Game integrations
 
-Fifteen editions are bundled (including the new local MIDI Auto Player): the eight prior editions (including a **partial recovered core**, not a full VM port), all five actual YARHM tool/game families, and a separate English Chaos Brookhaven reviewed subset. Game coverage is complete for YARHM; feature parity is not. NULL is the current visible owner brand. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
+Seventeen editions are bundled (including local MIDI Auto Player, Arsenal and Finish The Word): the eight prior editions (including a **partial recovered core**, not a full VM port), all five actual YARHM tool/game families, and a separate English Chaos Brookhaven reviewed subset. Game coverage is complete for YARHM; feature parity is not. NULL is the current visible owner brand. They are **real controller ports, not launch stubs**. The user supplied Rosu and +1 source files and reported permission from all three developers to modify/rebrand. Those are no longer open blockers. Original provenance and the Rosu no-resale restriction remain recorded in [SOURCE-PROVENANCE.md](../docs/SOURCE-PROVENANCE.md).
 
 | Nullx11 workspace | Exact target place | Published file | Implementation status |
 | --- | --- | --- | --- |
@@ -15,6 +15,10 @@ Fifteen editions are bundled (including the new local MIDI Auto Player): the eig
 
 | StealAnEgg-CHILI | EggState / Save / Assets modules + Networking signature | [Nullx11-StealAnEgg-CHILI.luau](Nullx11-StealAnEgg-CHILI.luau) | **Recovered core only**: nearby carry/filter/labels, explicit saved-point return and basic progression. VM-dependent full steal/events/finder unavailable. [Recovery boundary](../docs/CHILI-EGG-REVIEW.md). |
 
+| Arsenal | `286090429` | [Nullx11-Arsenal.luau](Nullx11-Arsenal.luau) | Mobile-only default-off centered aim/lock auto-fire, actual-input trigger, body-aligned native ESP, touch movement and reversible FPS/lighting; bounded local hitbox experiment, not verified server hits. [Review](../docs/ARSENAL-REVIEW.md). |
+
+| Finish The Word! | Explicit event bus + mounted gameplay signature; no invented place ID | [Nullx11-FinishTheWord.luau](Nullx11-FinishTheWord.luau) | Dave-source adaptation; full pinned 138,602-word data, Auto/Short/Neutral/Long/Longer, WPM/fixed delay, all-player accepted + match-wide attempted repeat prevention, learning/retries, owned cleanup. Default-off automation. [Review](../docs/FINISH-WORD-REVIEW.md). |
+
 ## Shared foundation
 
 `src/ui/Nullx11UI.luau` contains the supplied +1 UI library adapted to Nullx11: responsive tabs/groupboxes, controls, themes, vector/pixel art, dialogs/sheets, reactive state, spring motion, floating restore icon, configuration and language support. The default main workspace **actually constructs and uses this library**. It is embedded once as an inline function, not an unused source string. Mario logo assets/character sprites were removed. Header/restore branding is a static native geometric prism, not an animated icon or letter. Kanit fonts retain their OFL license. Seasonal decoration and particles default off.
@@ -23,9 +27,9 @@ Each game bundle contains this same shared library plus **only its selected game
 
 ## Launch / consent
 
-- Fifteen game/tool entries are available immediately; Refresh is optional.
+- Seventeen game/tool entries are available immediately; Refresh is optional.
 - Scripts/launch windows are opening actions, never ON/OFF navigation. Opening them runs no game code.
-- Wrong-place execution is blocked for the three known targets. Steal An Egg uses structural core-module detection and full required-module validation, not a fabricated place ID.
+- Wrong-place execution is blocked for the four original/Arsenal known targets (and the two Brookhaven editions). Steal An Egg uses structural core-module detection and full required-module validation, not a fabricated place ID.
 - Launcher teleport questions, destination teleports and arrival queues have been removed. Standalone incompatibility UI offers only a notice and Close.
 - Default shortcuts: **Right Shift** for the loader, **Left Control** for game windows. Each has an independently movable static graphical restore icon.
 - **Loader unload/rerun does not stop executed scripts.** Each game has its own cleanup; the separate confirmed stop-games action remains explicit.
