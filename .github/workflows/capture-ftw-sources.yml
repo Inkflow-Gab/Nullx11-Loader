@@ -31,6 +31,7 @@ jobs:
             'scripts/versions/ftw.json words-version.json' \
             'scripts/version.json library-version.json' \
             'scripts/uilib.lua uilib.lua.txt' \
+            'scripts/lucide-roblox-direct.lua lucide-roblox-direct.lua.txt' \
             'scripts/savemanager.lua savemanager.lua.txt' \
             'scripts/warningcard.lua warningcard.lua.txt'; do
             read -r path filename <<< "$spec"
