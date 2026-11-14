@@ -99,6 +99,56 @@
       "sha256": "ee8bca30475f172f61ae0bb987341bfb05187ae092d591c465a4885d8a42a280",
       "bytes": 38422,
       "status": "User upload; generic remote guesses and placeholder features excluded"
+    },
+    "finishtheword.lua.txt": {
+      "sha256": "abde9b78c47ba7312b73738d8385ef8dc70ea5627ee1b2d140b11fbcc865dfc4",
+      "bytes": 42799,
+      "status": "Dave / ancestrychanged.com user upload; original preserved; see FINISH-WORD-REVIEW.md"
+    },
+    "finish-word/words-version.json": {
+      "bytes": 16,
+      "sha256": "25d269e05e8aae00d55b18b16fcc01b92086b476f4de4a2cb9d3c0c1c29b9e8e",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
+    },
+    "finish-word/warningcard.lua.txt": {
+      "bytes": 27631,
+      "sha256": "913aa0669a8215881909140205972b8b0b1fe44c304efad28d9651ab3c10b5d6",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
+    },
+    "finish-word/library-version.json": {
+      "bytes": 20,
+      "sha256": "87f7faf80a084120d9551c9c304266859815777d2bc3ba939ea3aa283703239b",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
+    },
+    "finish-word/savemanager.lua.txt": {
+      "bytes": 18366,
+      "sha256": "33b3390735a780bea33fd3a3c145fa5d491f3a80b62ae081367dbe0fbb5fca5f",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
+    },
+    "finish-word/whitelist.txt": {
+      "bytes": 1369605,
+      "sha256": "dda1e6335e689972fd55173fe6d264311d62cd4dfd0733101b50dc940aafa3fb",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
+    },
+    "finish-word/lucide-roblox-direct.lua.txt": {
+      "bytes": 64751,
+      "sha256": "16a1735168e2478b08bde7b53f842ee0d4868af5d92c2f2f21aec57a522f3ab3",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
+    },
+    "finish-word/uilib.lua.txt": {
+      "bytes": 304524,
+      "sha256": "4c2c40ed78793d8eca55bf34f594cc9c4a60d069a5fc4b8ddcedafbb43056458",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
+    },
+    "finish-word/words.txt": {
+      "bytes": 1369605,
+      "sha256": "dda1e6335e689972fd55173fe6d264311d62cd4dfd0733101b50dc940aafa3fb",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
+    },
+    "finish-word/frequency.txt": {
+      "bytes": 75153,
+      "sha256": "d6b3e04f1ac30be6525d41474166c0bff28486ecd8c48dcb0ab9c7c9cc05ed86",
+      "status": "Complete captured text dependency; see FINISH-WORD-REVIEW.md. Lua snapshots are archival only."
     }
   },
   "Updated": "2026-10-31"

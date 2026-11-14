@@ -54,14 +54,14 @@ try {
   console.log(...await state.loadstring(coreChecks, 'shared-ui-core-contracts', true)());
   assert.ok(source.trimEnd().split('\n').length > 15000, 'meaningful main script exceeds requested minimum');
   assert.equal((source.match(/local function createNullx11UI\(scope\)/g) || []).length, 1, 'one shared UI factory, no repeated padding');
-  assert.equal(manifest.Scripts.length, 16);
+  assert.equal(manifest.Scripts.length, 17);
   assert.ok(source.includes('Universal = true'), 'generated embedded catalog serializes boolean values as booleans, not empty tables');
   assert.deepEqual(manifest.Scripts.filter(e => e.GamePlaceId).map(e => e.GamePlaceId), [9051087354, 107535308163741, 118805555015549, 4924922222, 4924922222, 286090429]);
   for (const entry of manifest.Scripts) {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
-    assert.ok(entry.Id === 'autoplayer' || bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) || /^(yarhm_|chaos_)/.test(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
+    assert.ok(['autoplayer', 'finishword'].includes(entry.Id) || bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) || /^(yarhm_|chaos_)/.test(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
     assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
     assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');
     assert.ok(Buffer.byteLength(bundle, 'utf8') < 2097152, 'bundle fits reviewed source size budget');
@@ -145,6 +145,23 @@ try {
     .replace('-- @ARSENAL_MODULES', [module('makeSession', 'src/games/Context.luau'), module('makePatches', 'src/games/OwnedPatches.luau'), module('arsenalPolicy', 'src/games/ArsenalPolicy.luau'), module('makeArsenalInput', 'src/games/ArsenalInput.luau'), module('arsenalGeometry', 'src/games/ArsenalGeometry.luau'), module('makeArsenalPerformance', 'src/games/ArsenalPerformance.luau')].join('\n'))
     .replace('-- @ARSENAL_CONTROLLER', read('src/games/Arsenal.luau'));
   console.log(...await state.loadstring(arsenalChecks, 'actual-arsenal-controller', true)());
+  const capturedFtw = JSON.parse(read('docs/source-archive/finish-word/dependencies/capture.json'));
+  for (const [name, input] of Object.entries(capturedFtw)) {
+    const path = ['words.txt', 'whitelist.txt', 'frequency.txt'].includes(name) ? `data/finish-word/${name}` : `docs/source-archive/finish-word/dependencies/${name}`;
+    const text = read(path);
+    assert.equal(Buffer.byteLength(text), input.bytes, `complete captured byte count: ${name}`);
+    assert.equal(createHash('sha256').update(text).digest('hex'), input.sha256, `captured source hash: ${name}`);
+  }
+  assert.equal(createHash('sha256').update(read('docs/source-archive/finish-word/finishtheword.lua.txt')).digest('hex'), 'abde9b78c47ba7312b73738d8385ef8dc70ea5627ee1b2d140b11fbcc865dfc4');
+  assert.ok(read('scripts/Nullx11-FinishTheWord.luau').includes('/74dd400750d428e2bc76f0930a8d430055bfcb80/data/finish-word/'), 'runtime dictionary uses a reviewed immutable repository revision');
+  for (const file of ['FinishTheWord', 'FinishWordDictionary', 'FinishWordBridge', 'FinishWordEngine']) assert.ok(!/loadstring|setidentity|setthreadidentity|127\.0\.0\.1|while true|hookmetamethod/.test(read(`src/games/${file}.luau`)), 'no vendor execution/escalation/RPC/global hooks/immortal worker in FTW runtime');
+  const ftwChecks = read('tests/roblox-mock.luau') + '\n' + read('tests/finish-word.luau')
+    .replace('-- @LIBRARY_FIXTURE', between(read('tests/game-port-contracts.luau'), 'local function fixtureLibrary()', '-- Insert the actual modules'))
+    .replace('-- @FTW_MODULES', [module('makeSession', 'src/games/Context.luau'), module('makePatches', 'src/games/OwnedPatches.luau'), module('makeFinishWordDictionary', 'src/games/FinishWordDictionary.luau'), module('makeFinishWordBridge', 'src/games/FinishWordBridge.luau'), module('makeFinishWordEngine', 'src/games/FinishWordEngine.luau')].join('\n'))
+    .replace('-- @REAL_DATA', `local fullWords=${JSON.stringify(read('data/finish-word/words.txt'))}\nlocal fullFrequency=${JSON.stringify(read('data/finish-word/frequency.txt'))}`)
+    .replace('-- @FTW_CONTROLLER', read('src/games/FinishTheWord.luau'));
+  console.log(...await state.loadstring(ftwChecks, 'actual-finish-word', true)());
+
 
   const chiliSource=read('src/games/StealAnEggChili.luau');
   assert.ok(!/loadstring|HttpGet|queue_on_teleport|queueonteleport|hookfunction|syn\.request|http_request|writefile|while true|chillihub\.pro|api\.luarmor/.test(chiliSource),'no raw VM, vendor API/bootstrap, queue, webhook or immortal worker in recovered core');
@@ -178,7 +195,7 @@ connect(gui.Destroying,function() State.Gui:Destroy() end)`;
   const enhancedIntro=read('tests/roblox-mock.luau')+'\nlocal function runEnhancedLoader()\n'+enhancedSource+'\nend\nlocal function runEnhancedReducedLoader()\n'+enhancedSource.replace('ReducedMotion = false','ReducedMotion = true')+'\nend\n'+read('tests/enhanced-intro.luau');
   console.log(...await state.loadstring(enhancedIntro,'enhanced-startup-contracts',true)());
   assert.ok(read('assets/fonts/OFL.txt').includes('SIL OPEN FONT LICENSE'));
-  console.log('PASS: sixteen published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
+  console.log('PASS: seventeen published controllers/recovered cores, place/module gates, source/default-state/budget/size, static icon and font license checks');
   const run = state.loadstring(
     read('tests/roblox-mock.luau') + '\nlocal function runLoader()\n' + logicSource
       + '\nend\n' + read('tests/interactions.luau'),

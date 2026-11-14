@@ -21718,6 +21718,16 @@ do
 					Author = "Owner: NULL. Reviewed user-supplied client sources; see docs/ARSENAL-REVIEW.md.",
 					Description = "Mobile-only Arsenal: centered aim + lock auto-fire, body-aligned native ESP, touch flight, movement and reversible FPS/lighting tools. All effects off at start. Complete originals archived; unsupported server claims clearly marked.",
 				},
+				{
+					Id = "finishword",
+					Name = "Finish The Word!",
+					File = "Nullx11-FinishTheWord.luau",
+					Category = "Word games",
+					Icon = "keyboard",
+					Collection = "NULL Studio",
+					Author = "Owner: NULL. Nullx11 edition. Original controller: Dave / ancestrychanged.com; source notices retained.",
+					Description = "Adaptive Auto / Short / Neutral / Long / Longer words, WPM and fixed typing delays, unused suggestions and all-player accepted-word tracking. Full pinned dictionary. Explicit source-signature attach; automation starts off.",
+				},
 			},
 		})
 		catalog.Loaded = true

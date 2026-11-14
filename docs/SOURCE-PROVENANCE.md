@@ -88,3 +88,7 @@ or written. [Setup and native limitations](AUTO-PLAYER.md).
 ## Arsenal supplied-source adaptation
 
 The two user uploads `Arsenal_opensrc.lua.txt` and `GAME_OPEN_SOURCE.txt` are adapted into the standalone Arsenal edition. Original author/license is unspecified in the inputs; NULL identifies the collection edition, not a transfer of upstream authorship. Input hashes, reviewed features, rejected remote guesses and validation limits are recorded in [ARSENAL-REVIEW.md](ARSENAL-REVIEW.md).
+
+## Finish The Word supplied-source adaptation
+
+The user supplied `finishtheword.lua.txt` (original Dave / ancestrychanged.com controller; header “open sourced @ 10/10/2026”, “enjoy”, “please don't skid”). The complete upload and linked Lua dependencies are preserved unmodified under `docs/source-archive/finish-word/`; essential dictionary/whitelist/frequency data is mirrored under `data/finish-word/` and pinned to a reviewed repository commit at runtime. NULL owns/brands the adaptation, not newly claimed upstream authorship. Required Obsidian/Lucide notices and the frequency corpus's personal/research/commercial limitations are retained. No blanket dataset license, copyright transfer or new commercial-use permission is asserted. See [FINISH-WORD-REVIEW.md](FINISH-WORD-REVIEW.md) for hashes, complete dependency inventory, protocol/feature decisions and live-game validation limits.

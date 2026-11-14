@@ -55,6 +55,29 @@ let main = read('src/loader.luau')
   .replace('-- @NULLX11_WORKSPACE', read('src/ui/Workspace.luau'));
 output('Nullx11.client.luau', main.replace('--!strict', `--!strict\n${banner}`));
 for (const entry of catalog.Scripts) {
+  if (entry.Id === 'finishword') {
+    const modules = [module('makeSession', session), module('makePatches', read('src/games/OwnedPatches.luau')), module('makeFinishWordDictionary', read('src/games/FinishWordDictionary.luau')), module('makeFinishWordBridge', read('src/games/FinishWordBridge.luau')), module('makeFinishWordEngine', read('src/games/FinishWordEngine.luau'))].join('\n');
+    output(`scripts/${entry.File}`, `${banner}-- Finish The Word / NULL edition. Original: Dave; see docs/FINISH-WORD-REVIEW.md.
+${factory}
+${modules}
+local function runGame(context)
+${read('src/games/FinishTheWord.luau')}
+end
+if not game:IsLoaded() then game.Loaded:Wait() end
+local environment=type(getgenv)=="function" and getgenv() or _G
+local library=createNullx11UI({Id="FinishWord",ReducedMotion=environment.Nullx11ReducedMotion==true})
+local context=makeSession("finishword",library)
+context.Patches=makePatches()
+context.MakeFinishWordDictionary=makeFinishWordDictionary
+context.MakeFinishWordBridge=makeFinishWordBridge
+context.MakeFinishWordEngine=makeFinishWordEngine
+context.FinishWordDataURL="https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/74dd400750d428e2bc76f0930a8d430055bfcb80/data/finish-word/"
+local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
+if not ok then library:Unload();error("[NULL Finish The Word] "..tostring(result),0) end
+return result
+`);
+    continue;
+  }
   if (entry.Id === 'autoplayer') {
     const modules = [module('makeSession',session), module('midiParser',read('src/games/MidiParser.luau')), module('midiFiles',read('src/games/MidiFiles.luau')), module('makeMidiPreferences',read('src/games/MidiPreferences.luau')), module('makeMidiOutput',read('src/games/MidiOutput.luau')), module('makeMidiTransport',read('src/games/MidiTransport.luau')), module('makeAutoPlayerView',read('src/ui/AutoPlayerView.luau'))].join('\n');
     output(`scripts/${entry.File}`, `${banner}-- Auto Player / NULL. Local MIDI data only; see docs/MIDI-REVIEW.md.
