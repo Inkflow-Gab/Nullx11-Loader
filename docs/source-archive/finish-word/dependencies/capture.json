@@ -19,6 +19,10 @@
     "bytes": 1369605,
     "sha256": "dda1e6335e689972fd55173fe6d264311d62cd4dfd0733101b50dc940aafa3fb"
   },
+  "lucide-roblox-direct.lua.txt": {
+    "bytes": 64751,
+    "sha256": "16a1735168e2478b08bde7b53f842ee0d4868af5d92c2f2f21aec57a522f3ab3"
+  },
   "uilib.lua.txt": {
     "bytes": 304524,
     "sha256": "4c2c40ed78793d8eca55bf34f594cc9c4a60d069a5fc4b8ddcedafbb43056458"
