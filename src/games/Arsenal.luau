@@ -9,6 +9,16 @@ local UIS, World, Lighting =
 	game:GetService("Workspace"),
 	game:GetService("Lighting")
 local LP = Players.LocalPlayer
+local bodyNames = {}
+for _, rig in pairs(policy.Bones) do
+	for _, pair in ipairs(rig) do
+		bodyNames[pair[1]], bodyNames[pair[2]] = true, true
+	end
+end
+local geometry = context.ArsenalGeometry
+local boost = context.MakeArsenalPerformance(patches, World, Lighting)
+local canvas, boundRender
+local renderName = "Nullx11ArsenalAfterCamera"
 local cfg = {
 	Aim = false,
 	Mode = "Auto",
@@ -21,6 +31,12 @@ local cfg = {
 	Forcefield = true,
 	Circle = false,
 	Trigger = false,
+	LockFire = false,
+	Performance = false,
+	AntiAFK = false,
+	ESPRange = 2000,
+	OffsetX = 0,
+	OffsetY = 0,
 	Interval = 0.15,
 	ESP = false,
 	Boxes = true,
@@ -84,6 +100,24 @@ local window = library:CreateWindow({
 	MenuKey = Enum.KeyCode.LeftControl,
 	ConfigFolder = "Nullx11 Arsenal",
 })
+-- This edition is mobile-only; desktop receives a notice, not an active
+-- controller. Touch capability alone is insufficient on touchscreen PCs.
+if not UIS.TouchEnabled or UIS.KeyboardEnabled or UIS.GamepadEnabled then
+	local unsupported =
+		window:AddTab("Mobile only", "info", "Touch-only Arsenal edition")
+	local group = unsupported:AddLeftGroupbox("Device not supported")
+	group:AddParagraph({
+		Title = "Use a mobile touch device",
+		Content = "This Arsenal edition requires touch input with no keyboard or gamepad. No gameplay features or input were started on this device.",
+	})
+	group:AddButton({
+		Text = "Close",
+		Func = function()
+			library:Unload()
+		end,
+	})
+	return { Nullx11Ready = true, Window = window, MobileUnsupported = true }
+end
 local aimTab =
 	window:AddTab("Aim", "target", "Centered FOV / opt-in camera steering")
 local espTab =
@@ -105,6 +139,12 @@ local function character()
 	local hum = model and model:FindFirstChildOfClass("Humanoid")
 	local root = model and model:FindFirstChild("HumanoidRootPart")
 	return model, hum, root
+end
+local function mobile()
+	-- Touchscreen laptops are not treated as mobile-only auto-fire devices.
+	return UIS.TouchEnabled
+		and not UIS.KeyboardEnabled
+		and not UIS.GamepadEnabled
 end
 local function safeFocus()
 	local _, hum = character()
@@ -131,7 +171,7 @@ local function eligible(other)
 	end
 	return model, hum, root
 end
-local overlay, circle, circleStroke, touchAim, upButton, downButton
+local overlay, circle, circleStroke, touchAim, upButton, downButton, highlightFolder
 local function make(class, parent, props)
 	local object = Instance.new(class)
 	for key, value in pairs(props or {}) do
@@ -179,6 +219,16 @@ local function host()
 		ScreenInsets = Enum.ScreenInsets.None,
 		DisplayOrder = 90,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	})
+	pcall(function()
+		overlay.ClipToDeviceSafeArea = false
+	end)
+	canvas = make("Frame", overlay, {
+		Name = "ArsenalPixelCanvas",
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromOffset(0, 0),
 	})
 end
 local function pad(name, caption, x, y, press, release)
@@ -236,14 +286,22 @@ local function ensurePads()
 end
 local function hideSlot(item)
 	item.Root.Visible = false
-	item.Highlight.Enabled = false
+	if item.Highlight then
+		item.Highlight.Enabled = false
+	end
 end
 local function clearVisuals()
 	for _, item in ipairs(slots) do
 		item.Root:Destroy()
-		item.Highlight:Destroy()
+		if item.Highlight then
+			item.Highlight:Destroy()
+		end
 	end
 	table.clear(slots)
+	if highlightFolder then
+		highlightFolder:Destroy()
+		highlightFolder = nil
+	end
 end
 local function slot(index)
 	if slots[index] then
@@ -251,7 +309,7 @@ local function slot(index)
 	end
 	host()
 	local item = {
-		Root = make("Frame", overlay, {
+		Root = make("Frame", canvas, {
 			Name = "ArsenalESP" .. index,
 			BackgroundTransparency = 1,
 			Size = UDim2.fromScale(1, 1),
@@ -285,13 +343,7 @@ local function slot(index)
 	for indexBone = 1, 14 do
 		item.Bones[indexBone] = line(item.Root)
 	end
-	item.Highlight = make("Highlight", overlay, {
-		Name = "NULLArsenalHighlight",
-		Enabled = false,
-		FillTransparency = 0.8,
-		OutlineTransparency = 0.1,
-		DepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
-	})
+
 	slots[index] = item
 	return item
 end
@@ -328,8 +380,19 @@ local function collect()
 		local model, hum, root = eligible(other)
 		if model then
 			local distance = (root.Position - camera.CFrame.Position).Magnitude
-			if distance <= cfg.Range then
+			if distance <= math.max(cfg.Range, cfg.ESPRange) then
 				local head = model:FindFirstChild("Head")
+				local parts = {}
+				for _, body in ipairs(model:GetChildren()) do
+					if
+						body:IsA("BasePart")
+						and bodyNames[body.Name]
+						and body ~= root
+						and #parts < 16
+					then
+						table.insert(parts, body)
+					end
+				end
 				local links = {}
 				local rig = model:FindFirstChild("UpperTorso") and "R15" or "R6"
 				for _, pair in ipairs(policy.Bones[rig]) do
@@ -346,6 +409,7 @@ local function collect()
 					Head = head,
 					Distance = distance,
 					Links = links,
+					Parts = parts,
 				})
 			end
 		end
@@ -362,27 +426,42 @@ end
 local function renderESP(camera)
 	local used = 0
 	for _, record in ipairs(records) do
-		if used >= cfg.Budget then
+		if
+			used >= (cfg.Performance and math.min(12, cfg.Budget) or cfg.Budget)
+		then
 			break
 		end
 		if not current(record) then
 			continue
 		end
 		local position = record.Root.Position
-		local top, on =
-			camera:WorldToViewportPoint(position + Vector3.new(0, 3, 0))
-		local bottom =
-			camera:WorldToViewportPoint(position - Vector3.new(0, 3, 0))
-		if not on or top.Z <= 0 or bottom.Z <= 0 then
+		local distance = (position - camera.CFrame.Position).Magnitude
+		if distance > cfg.ESPRange then
 			continue
 		end
+		local left, topY, right, bottomY = geometry.Bounds(camera, record.Parts)
+		if not left then
+			continue
+		end
+		host()
+		local top = geometry.Canvas(
+			Vector2.new((left + right) / 2, topY),
+			canvas,
+			cfg.OffsetX,
+			cfg.OffsetY
+		)
+		local bottom = geometry.Canvas(
+			Vector2.new((left + right) / 2, bottomY),
+			canvas,
+			cfg.OffsetX,
+			cfg.OffsetY
+		)
+		local h, width = bottom.Y - top.Y, right - left
 		if cfg.ESPVisible and not visible(camera, record, position) then
 			continue
 		end
 		used += 1
 		local item = slot(used)
-		local h = math.abs(bottom.Y - top.Y)
-		local width = h * 0.55
 		item.Root.Visible = true
 		item.Box.Position, item.Box.Size =
 			UDim2.fromOffset(top.X - width / 2, top.Y),
@@ -394,7 +473,7 @@ local function renderESP(camera)
 			cfg.Names
 		local info = {}
 		if cfg.Distance then
-			table.insert(info, math.floor(record.Distance) .. " studs")
+			table.insert(info, math.floor(distance) .. " studs")
 		end
 		if cfg.Health then
 			table.insert(info, math.floor(record.Humanoid.Health) .. " HP")
@@ -419,16 +498,23 @@ local function renderESP(camera)
 		if cfg.Tracers then
 			drawLine(
 				item.Tracer,
-				Vector2.new(
-					camera.ViewportSize.X / 2,
-					camera.ViewportSize.Y - 6
+				geometry.Canvas(
+					Vector2.new(
+						camera.ViewportSize.X / 2,
+						camera.ViewportSize.Y - 6
+					),
+					canvas,
+					0,
+					0
 				),
 				Vector2.new(top.X, bottom.Y)
 			)
 		end
 		for indexBone, bone in ipairs(item.Bones) do
 			bone.Visible = false
-			local link = cfg.Skeleton and record.Links[indexBone]
+			local link = cfg.Skeleton
+				and not cfg.Performance
+				and record.Links[indexBone]
 			if
 				link
 				and link[1]
@@ -439,13 +525,33 @@ local function renderESP(camera)
 				local a, aOn = camera:WorldToViewportPoint(link[1].Position)
 				local b, bOn = camera:WorldToViewportPoint(link[2].Position)
 				if aOn and bOn and a.Z > 0 and b.Z > 0 then
-					drawLine(bone, Vector2.new(a.X, a.Y), Vector2.new(b.X, b.Y))
+					drawLine(
+						bone,
+						geometry.Canvas(a, canvas, cfg.OffsetX, cfg.OffsetY),
+						geometry.Canvas(b, canvas, cfg.OffsetX, cfg.OffsetY)
+					)
 				end
 			end
 		end
-		item.Highlight.Adornee, item.Highlight.Enabled = record.Model, cfg.Chams
-		item.Highlight.FillColor, item.Highlight.OutlineColor =
-			colors[cfg.Color], colors[cfg.Color]
+		if cfg.Chams and not cfg.Performance and used <= 31 then
+			if not highlightFolder then
+				highlightFolder =
+					make("Folder", World, { Name = "Nullx11ArsenalHighlights" })
+			end
+			if not item.Highlight then
+				item.Highlight = make("Highlight", highlightFolder, {
+					Name = "NULLArsenalHighlight",
+					FillTransparency = 0.8,
+					OutlineTransparency = 0.1,
+					DepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
+				})
+			end
+			item.Highlight.Adornee, item.Highlight.Enabled = record.Model, true
+			item.Highlight.FillColor, item.Highlight.OutlineColor =
+				colors[cfg.Color], colors[cfg.Color]
+		elseif item.Highlight then
+			item.Highlight.Enabled = false
+		end
 	end
 	for index = used + 1, #slots do
 		hideSlot(slots[index])
@@ -455,6 +561,7 @@ local lastTrigger, scanElapsed, espElapsed, workElapsed, statusElapsed =
 	-math.huge, 0, 0, 0, 0
 local function aim(camera, delta)
 	state.Target = "None"
+	state.Lock = nil
 	if
 		not cfg.Aim
 		or not safeFocus()
@@ -467,6 +574,12 @@ local function aim(camera, delta)
 	local candidates = {}
 	for _, record in ipairs(records) do
 		if not current(record) then
+			continue
+		end
+		if
+			(record.Root.Position - camera.CFrame.Position).Magnitude
+			> cfg.Range
+		then
 			continue
 		end
 		local part = cfg.Part == "Head" and record.Head or record.Root
@@ -494,6 +607,7 @@ local function aim(camera, delta)
 			or visible(camera, target.Record, target.Part.Position)
 		then
 			state.Target = target.Record.Player.Name
+			state.Lock = target.Record
 			local alpha = policy.Alpha(cfg.Strength, delta)
 			if alpha > 0 then
 				camera.CFrame = camera.CFrame:Lerp(
@@ -507,7 +621,10 @@ local function aim(camera, delta)
 end
 local function trigger(camera)
 	if
-		not cfg.Trigger
+		not (
+			cfg.Trigger
+			or (cfg.LockFire and mobile() and cfg.Aim and state.Lock)
+		)
 		or not safeFocus()
 		or camera.CameraType == Enum.CameraType.Scriptable
 		or os.clock() - lastTrigger < cfg.Interval
@@ -526,10 +643,21 @@ local function trigger(camera)
 		return
 	end
 	for _, record in ipairs(records) do
-		if current(record) and hit.Instance:IsDescendantOf(record.Model) then
-			local ok, reason = pcall(input.Fire, center.X, center.Y)
+		if
+			current(record)
+			and (record.Root.Position - camera.CFrame.Position).Magnitude <= cfg.Range
+			and (cfg.Trigger or record == state.Lock)
+			and hit.Instance:IsDescendantOf(record.Model)
+		then
+			local ok, reason = pcall(
+				input.Fire,
+				center.X,
+				center.Y,
+				not cfg.Trigger and "VIM" or nil
+			)
 			if not ok then
 				controls.Trigger:SetValue(false)
+				controls.LockFire:SetValue(false)
 				report("Trigger stopped: " .. tostring(reason))
 			end
 			break
@@ -662,6 +790,9 @@ local function off()
 	for _, key in ipairs({
 		"Aim",
 		"Trigger",
+		"LockFire",
+		"Performance",
+		"AntiAFK",
 		"ESP",
 		"Circle",
 		"Speed",
@@ -678,6 +809,7 @@ local function off()
 			controls[key]:SetValue(false)
 		end
 	end
+	state.Lock, state.Target = nil, "None"
 	stopFlight()
 	patches.Clear()
 	clearVisuals()
@@ -699,6 +831,10 @@ local function off()
 	)
 end
 context.RegisterCleanup(function()
+	if boundRender then
+		RunService:UnbindFromRenderStep(renderName)
+	end
+	boost.Set(false)
 	stopFlight()
 	patches.Clear()
 	input.Release()
@@ -760,6 +896,7 @@ local aimGroup, aimOptions =
 	aimTab:AddRightGroupbox("Target and input")
 toggle(aimGroup, "Aim", "Enable aim assist", function(value)
 	if not value then
+		state.Lock, state.Target = nil, "None"
 		state.TouchHeld = false
 		if touchAim then
 			touchAim.Visible = false
@@ -782,6 +919,25 @@ slider(aimOptions, "Range", "Maximum range / studs", 100, 5000)
 toggle(aimOptions, "TeamCheck", "Skip teammates")
 toggle(aimOptions, "Visible", "Aim visibility check")
 toggle(aimOptions, "Forcefield", "Skip ForceFields")
+toggle(
+	aimOptions,
+	"LockFire",
+	"Auto-fire locked enemy / mobile only",
+	function(value)
+		if value then
+			assert(
+				mobile(),
+				"Lock auto-fire requires touch-only input (no keyboard/gamepad)"
+			)
+		else
+			input.Release()
+		end
+	end
+)
+aimOptions:AddParagraph({
+	Title = "Mobile lock auto-fire",
+	Content = "Enable Aim + this switch. Fires only when the current center ray reaches the locked living enemy, never through cover. Auto-fire stops on lock loss, typing, focus loss or input errors. Uses centered VIM clicks, not the last finger position. Touch-only; touchscreen PCs are excluded.",
+})
 toggle(aimOptions, "Trigger", "Crosshair trigger / real input", function(value)
 	if not value then
 		input.Release()
@@ -789,13 +945,14 @@ toggle(aimOptions, "Trigger", "Crosshair trigger / real input", function(value)
 end)
 slider(aimOptions, "Interval", "Trigger interval / seconds", 0.1, 1, 2)
 aimOptions:AddDropdown("Arsenal_Backend", {
-	Text = "Click backend (API support varies)",
+	Text = "Crosshair trigger backend (API varies)",
 	Values = { "Auto", "Mouse click", "VIM" },
 	Default = "Auto",
 	NoSave = true,
 	Callback = function(value)
 		if table.find({ "Auto", "Mouse click", "VIM" }, value) then
 			controls.Trigger:SetValue(false)
+			controls.LockFire:SetValue(false)
 			if input.Release() then
 				input.Backend = value
 			else
@@ -830,6 +987,9 @@ for _, spec in ipairs({
 end
 slider(espOptions, "Budget", "Maximum visible players", 1, 32)
 slider(espOptions, "Refresh", "Overlay refresh / Hz", 10, 60)
+slider(espOptions, "ESPRange", "ESP distance / studs", 100, 5000)
+slider(espOptions, "OffsetX", "Device alignment X / pixels", -120, 120)
+slider(espOptions, "OffsetY", "Device alignment Y / pixels", -120, 120)
 dropdown(
 	espOptions,
 	"Color",
@@ -921,6 +1081,21 @@ hitGroup:AddParagraph({
 	Title = "No hit-registration guarantee",
 	Content = "The generic source only resized replicated root parts on this client. This does not prove Arsenal accepts larger hitboxes. Changes are bounded and restored per original instance on disable, respawn, team change or unload.",
 })
+local perfGroup = worldTab:AddRightGroupbox("Mobile performance")
+local perfStatus = perfGroup:AddLabel("FPS boost off / scene unchanged")
+toggle(
+	perfGroup,
+	"Performance",
+	"FPS boost / reversible low effects",
+	function(value)
+		boost.Set(value)
+	end
+)
+perfGroup:AddParagraph({
+	Title = "Reduce work, not a zero-drop promise",
+	Content = "Disables shadows and supported effects incrementally; no map deletion. Caps ESP to 12 players at 15 Hz, skips skeleton/chams while enabled, but preserves your normal preferences for restore. Up to 8,000 objects / 60 nodes per heartbeat. Actual FPS depends on device/game.",
+})
+toggle(perfGroup, "AntiAFK", "Anti-AFK / idle jump request")
 local safety = sessionTab:AddRightGroupbox("Session control")
 safety:AddButton({ Text = "STOP ALL / F7", Style = "Danger", Func = off })
 safety:AddButton({
@@ -937,6 +1112,10 @@ safety:AddButton({
 	Func = function()
 		library:Unload()
 	end,
+})
+safety:AddParagraph({
+	Title = "Both complete originals preserved",
+	Content = "Unmodified uploads are archived in docs/source-archive/arsenal/. Source controls: movement, aim, ESP, lighting, trigger and hitboxes are adapted here; Anti-AFK uses an idle jump. Wall shooting, kill aura and local-health god mode are documented experiments without a verified Arsenal protocol. Auto Farm and Chest Collector had empty callbacks. Nothing is silently advertised as working.",
 })
 safety:AddParagraph({
 	Title = "Source boundary",
@@ -1007,7 +1186,26 @@ context.Connect(RunService.Stepped, function()
 		end
 	end
 end)
+context.Connect(LP.Idled, function()
+	if cfg.AntiAFK and safeFocus() then
+		local _, hum = character()
+		hum.Jump = true
+	end
+end)
+context.Connect(World.DescendantAdded, function(object)
+	boost.Add(object)
+end)
+context.Connect(Lighting.DescendantAdded, function(object)
+	boost.Add(object)
+end)
 context.Connect(RunService.Heartbeat, function(delta)
+	if boost.Enabled then
+		local ok, reason = pcall(boost.Step)
+		if not ok then
+			controls.Performance:SetValue(false)
+			report("Boost stopped: " .. tostring(reason))
+		end
+	end
 	workElapsed += delta
 	statusElapsed += delta
 	if workElapsed >= 0.1 then
@@ -1037,25 +1235,36 @@ context.Connect(RunService.Heartbeat, function(delta)
 			report("Character feature stopped: " .. tostring(reason))
 		end
 	end
-	if
-		statusElapsed >= 1
-		and window.Visible
-		and window.ActiveTab == sessionTab
-	then
+	if statusElapsed >= 1 and window.Visible then
 		statusElapsed = 0
-		report(
-			string.format(
-				"%d candidates / %s target / %d overlays / %d click requests / %d input errors. APIs do not prove game acceptance.",
-				state.Candidates,
-				state.Target,
-				#slots,
-				input.Sent,
-				input.Errors
+		if window.ActiveTab == worldTab then
+			perfStatus:SetText(
+				cfg.Performance
+						and string.format(
+							"Boost: %d nodes%s / ESP cap 12 at 15 Hz",
+							boost.Processed,
+							boost.Truncated and " (8,000-node cap reached)"
+								or ""
+						)
+					or "FPS boost off / owned scene changes restored"
 			)
-		)
+		elseif window.ActiveTab == sessionTab then
+			report(
+				string.format(
+					"%d candidates / %s target / %d overlays / %d clicks / %d input errors. Boost: %d nodes%s. API calls do not prove hits or device FPS.",
+					state.Candidates,
+					state.Target,
+					#slots,
+					input.Sent,
+					input.Errors,
+					boost.Processed,
+					boost.Truncated and " (capped)" or ""
+				)
+			)
+		end
 	end
 end)
-context.Connect(RunService.RenderStepped, function(delta)
+local function render(delta)
 	if
 		not (
 			cfg.Aim
@@ -1085,10 +1294,11 @@ context.Connect(RunService.RenderStepped, function(delta)
 		if cfg.Fly then
 			flyStep(camera)
 		end
+		state.Lock, state.Target = nil, "None"
 		if cfg.Aim then
 			aim(camera, delta)
 		end
-		if cfg.Trigger then
+		if cfg.Trigger or cfg.LockFire then
 			trigger(camera)
 		end
 		if cfg.Circle then
@@ -1116,11 +1326,18 @@ context.Connect(RunService.RenderStepped, function(delta)
 			ensurePads()
 		end
 		if touchAim then
-			touchAim.Visible = cfg.Aim and cfg.Mode == "Hold"
-			upButton.Visible, downButton.Visible = cfg.Fly, cfg.Fly
+			touchAim.Visible = UIS.TouchEnabled
+				and cfg.Aim
+				and cfg.Mode == "Hold"
+			upButton.Visible, downButton.Visible =
+				UIS.TouchEnabled and cfg.Fly, UIS.TouchEnabled and cfg.Fly
 		end
 		espElapsed += delta
-		if cfg.ESP and espElapsed >= 1 / cfg.Refresh then
+		if
+			cfg.ESP
+			and espElapsed
+				>= 1 / (cfg.Performance and math.min(15, cfg.Refresh) or cfg.Refresh)
+		then
 			espElapsed = 0
 			renderESP(camera)
 		end
@@ -1130,5 +1347,19 @@ context.Connect(RunService.RenderStepped, function(delta)
 		off()
 		report("Render feature stopped: " .. tostring(reason))
 	end
+end
+-- Run after the game's camera update, avoiding the previous-frame camera drift
+-- that made ESP trail the character while turning/moving.
+local renderOK = pcall(function()
+	RunService:BindToRenderStep(
+		renderName,
+		Enum.RenderPriority.Last.Value + 1,
+		render
+	)
 end)
+if renderOK then
+	boundRender = true
+else
+	context.Connect(RunService.RenderStepped, render)
+end
 return { Nullx11Ready = true, Window = window, Config = cfg, State = state }

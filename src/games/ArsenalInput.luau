@@ -34,12 +34,12 @@ return function(api)
 		end
 		return ok
 	end
-	function input.Fire(x, y)
+	function input.Fire(x, y, requestedBackend)
 		assert(
 			not input.Held,
 			"Previous mouse release failed; use Retry release / F7"
 		)
-		local mode = input.Backend
+		local mode = requestedBackend or input.Backend
 		if mode == "Auto" then
 			mode = type(api.Click) == "function" and "Mouse click" or "VIM"
 		end

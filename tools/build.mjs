@@ -103,7 +103,7 @@ ${hub ? module('hubPolicy', read('src/games/HubPolicy.luau')) + '\n' + module('m
 ${entry.Id === 'ttk' || entry.Id === 'arsenal' || hub ? module('makePatches', read('src/games/OwnedPatches.luau')) : ''}
 ${entry.Id === 'money' ? module('makeMoneyData', 'return function()\n'+read('src/games/MoneyData.luau')+'\nend') : ''}
 ${entry.Id === 'eggchili' ? module('chiliPolicy', read('src/games/ChiliEggPolicy.luau')) : ''}
-${entry.Id === 'arsenal' ? module('arsenalPolicy', read('src/games/ArsenalPolicy.luau')) + '\n' + module('makeArsenalInput', read('src/games/ArsenalInput.luau')) : ''}
+${entry.Id === 'arsenal' ? module('arsenalPolicy', read('src/games/ArsenalPolicy.luau')) + '\n' + module('makeArsenalInput', read('src/games/ArsenalInput.luau')) + '\n' + module('arsenalGeometry', read('src/games/ArsenalGeometry.luau')) + '\n' + module('makeArsenalPerformance', read('src/games/ArsenalPerformance.luau')) : ''}
 ${module('wrongPlace', launcher)}
 local function runGame(context)
 ${controller}
@@ -170,7 +170,7 @@ ${entry.Id === 'ttk' || entry.Id === 'arsenal' || hub ? 'context.Patches=makePat
 ${hub ? 'context.HubPolicy=hubPolicy\ncontext.HubCore=makeHubCore\ncontext.Entry=entry' + (name === 'HubBrookhaven' ? '\ncontext.HubData=hubData' : '') : ''}
 ${entry.Id === 'money' ? 'context.MoneyData=makeMoneyData()' : ''}
 ${entry.Id === 'eggchili' ? 'context.ChiliPolicy=chiliPolicy' : ''}
-${entry.Id === 'arsenal' ? 'context.ArsenalPolicy=arsenalPolicy\ncontext.MakeArsenalInput=makeArsenalInput' : ''}
+${entry.Id === 'arsenal' ? 'context.ArsenalPolicy=arsenalPolicy\ncontext.MakeArsenalInput=makeArsenalInput\ncontext.ArsenalGeometry=arsenalGeometry\ncontext.MakeArsenalPerformance=makeArsenalPerformance' : ''}
 local ok,result=xpcall(function() return runGame(context) end,debug.traceback)
 if not ok then
 library:Unload()

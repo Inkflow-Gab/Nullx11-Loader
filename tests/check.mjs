@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { LuauState } from 'luau-web';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -136,9 +137,12 @@ try {
       .replace('-- @TTK',read('src/games/TTKTesting.luau'))
       .replace('-- @MONEY',read('src/games/MoneyPerClick.luau'));
   console.log(...await state.loadstring(newPorts,'new-game-ports',true)());
+  for (const [filename, expected] of Object.entries({ 'Arsenal_opensrc.lua.txt': '3563b9e059a5aa22a96c77bab34009c259ab48991df5a5d4ec82b27891b6a12d', 'GAME_OPEN_SOURCE.txt': 'ee8bca30475f172f61ae0bb987341bfb05187ae092d591c465a4885d8a42a280' })) {
+    assert.equal(createHash('sha256').update(read(`docs/source-archive/arsenal/${filename}`)).digest('hex'), expected, 'complete original upload is preserved unchanged');
+  }
   const arsenalChecks = read('tests/roblox-mock.luau') + '\n' + read('tests/player-tools-mock.luau') + '\n' + read('tests/arsenal.luau')
     .replace('-- @LIBRARY_FIXTURE', between(read('tests/game-port-contracts.luau'), 'local function fixtureLibrary()', '-- Insert the actual modules'))
-    .replace('-- @ARSENAL_MODULES', [module('makeSession', 'src/games/Context.luau'), module('makePatches', 'src/games/OwnedPatches.luau'), module('arsenalPolicy', 'src/games/ArsenalPolicy.luau'), module('makeArsenalInput', 'src/games/ArsenalInput.luau')].join('\n'))
+    .replace('-- @ARSENAL_MODULES', [module('makeSession', 'src/games/Context.luau'), module('makePatches', 'src/games/OwnedPatches.luau'), module('arsenalPolicy', 'src/games/ArsenalPolicy.luau'), module('makeArsenalInput', 'src/games/ArsenalInput.luau'), module('arsenalGeometry', 'src/games/ArsenalGeometry.luau'), module('makeArsenalPerformance', 'src/games/ArsenalPerformance.luau')].join('\n'))
     .replace('-- @ARSENAL_CONTROLLER', read('src/games/Arsenal.luau'));
   console.log(...await state.loadstring(arsenalChecks, 'actual-arsenal-controller', true)());
 

@@ -15,7 +15,7 @@ Sixteen editions are bundled (including local MIDI Auto Player and Arsenal): the
 
 | StealAnEgg-CHILI | EggState / Save / Assets modules + Networking signature | [Nullx11-StealAnEgg-CHILI.luau](Nullx11-StealAnEgg-CHILI.luau) | **Recovered core only**: nearby carry/filter/labels, explicit saved-point return and basic progression. VM-dependent full steal/events/finder unavailable. [Recovery boundary](../docs/CHILI-EGG-REVIEW.md). |
 
-| Arsenal | `286090429` | [Nullx11-Arsenal.luau](Nullx11-Arsenal.luau) | Default-off centered camera aim, actual-input trigger, native skeleton/box/health ESP, movement and reversible lighting; bounded local hitbox experiment, not verified server hits. [Review](../docs/ARSENAL-REVIEW.md). |
+| Arsenal | `286090429` | [Nullx11-Arsenal.luau](Nullx11-Arsenal.luau) | Mobile-only default-off centered aim/lock auto-fire, actual-input trigger, body-aligned native ESP, touch movement and reversible FPS/lighting; bounded local hitbox experiment, not verified server hits. [Review](../docs/ARSENAL-REVIEW.md). |
 
 ## Shared foundation
 

@@ -21716,7 +21716,7 @@ do
 					GamePlaceId = 286090429,
 					Collection = "NULL Studio",
 					Author = "Owner: NULL. Reviewed user-supplied client sources; see docs/ARSENAL-REVIEW.md.",
-					Description = "Centered camera aim, real-input trigger, native box/skeleton/health ESP, movement and reversible lighting. All effects start off. Client hitbox experiment; no remote guesses or verified server-hit claims.",
+					Description = "Mobile-only Arsenal: centered aim + lock auto-fire, body-aligned native ESP, touch flight, movement and reversible FPS/lighting tools. All effects off at start. Complete originals archived; unsupported server claims clearly marked.",
 				},
 			},
 		})
