@@ -13,7 +13,12 @@ jobs:
   capture-text:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arena/49cb1bfa-nullx11-loader
       - name: Download fixed public text inputs (never execute them)
         shell: bash
         run: |
@@ -53,3 +58,17 @@ jobs:
           name: finish-the-word-source-inputs
           path: inputs/
           retention-days: 7
+      - name: Preserve validated inputs on this working branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/finish-word docs/source-archive/finish-word/dependencies
+          cp inputs/words.txt inputs/whitelist.txt inputs/frequency.txt data/finish-word/
+          cp inputs/capture.json inputs/*version.json inputs/*.lua.txt docs/source-archive/finish-word/dependencies/
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/finish-word docs/source-archive/finish-word/dependencies
+          if ! git diff --cached --quiet; then
+            git commit -m 'Preserve validated Finish The Word data and linked source snapshots'
+            git push origin HEAD:arena/49cb1bfa-nullx11-loader
+          fi
