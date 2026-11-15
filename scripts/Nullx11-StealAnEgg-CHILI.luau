@@ -39,7 +39,7 @@ local function createNullx11UI(scope)
 		PreloadTimeout = 5,
 		ThaiFont = {
 			Family = "Nullx11Kanit",
-			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/assets/fonts/Kanit-%s.ttf",
+			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/assets/fonts/Kanit-%s.ttf",
 			Weights = {
 				[400] = "Regular",
 				[500] = "Medium",
@@ -15333,6 +15333,7 @@ local chiliPolicy = (function()
 	end
 	return policy
 end)()
+
 local wrongPlace = (function()
 	-- Compatibility notice only. Never teleports, queues code or starts a controller.
 	return function(library, entry, _url)
@@ -16105,7 +16106,7 @@ if not compatible() then
 	wrongPlace(
 		library,
 		entry,
-		"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/Nullx11-StealAnEgg-CHILI.luau"
+		"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/scripts/Nullx11-StealAnEgg-CHILI.luau"
 	)
 	return
 end
@@ -16114,6 +16115,7 @@ context.Adapter =
 	makeAdapter(library, entry.Name, "Nullx11 " .. "StealAnEggChili")
 
 context.ChiliPolicy = chiliPolicy
+
 local ok, result = xpcall(function()
 	return runGame(context)
 end, debug.traceback)

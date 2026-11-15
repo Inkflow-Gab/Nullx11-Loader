@@ -264,3 +264,11 @@ During confirmed launch inspect the new four-stage loading sheet on desktop/mobi
   Never restore autoplay or hide STOP. Verify independent lifetime after unload.
 - API-double tests pass, but actual native visuals, touch, audio/input acceptance
   and device frame times still need the above manual checks.
+
+## Arsenal
+
+Published standalone `scripts/Nullx11-Arsenal.luau` targets place `286090429`. Run the seven on-device cases in [ARSENAL-REVIEW.md](../docs/ARSENAL-REVIEW.md#validation-boundary). Automated actual-controller contracts are API doubles only; device rendering/input, physics, FPS and Arsenal server acceptance remain unverified. F7 stops effects; Left Control/shared dock controls the window.
+
+## Finish The Word!
+
+Standalone `scripts/Nullx11-FinishTheWord.luau` opens the shared native GUI without startup HTTP, GC scans or automation. Load the complete word data, then explicitly attach during an active gameplay round. Test Auto/Short/Neutral/Long/Longer, WPM/fixed timing, global opponent `correct` words, started/submitted exclusions across STOP/settings/retries, and reset only on a new match. Source words used before attachment cannot be reconstructed without server evidence. On-device checklist: [FINISH-WORD-REVIEW.md](../docs/FINISH-WORD-REVIEW.md#validation-boundary-and-native-checklist). Native UI/input, source module compatibility, server acceptance and wins remain unverified.

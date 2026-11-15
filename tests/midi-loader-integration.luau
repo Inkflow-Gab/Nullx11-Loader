@@ -93,12 +93,8 @@ game.HttpGet = function(_, url)
 		return "autoManifest"
 	end
 	assert(
-		url:find(
-			"/arena/bc7610cd-nullx11-loader/scripts/Nullx11-AutoPlayer.luau",
-			1,
-			true
-		),
-		"launcher resolves current published bundle"
+		url:find("/main/scripts/Nullx11-AutoPlayer.luau", 1, true),
+		"launcher resolves the main-release bundle"
 	)
 	return "published-autoplayer-marker"
 end

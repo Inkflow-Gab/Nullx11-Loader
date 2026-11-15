@@ -35,7 +35,10 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by NULL",
-					Content = "One Nullx11 interface, native player tools and fifteen independent script workspaces. Nothing plays or farms until you enable it.",
+					Content = string.format(
+						"One Nullx11 interface, native player tools and %d independent script workspaces. Nothing plays or farms until you enable it.",
+						#catalog.Entries
+					),
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()

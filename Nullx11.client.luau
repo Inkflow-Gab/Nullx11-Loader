@@ -43,7 +43,7 @@ local function createNullx11UI(scope)
 		PreloadTimeout = 5,
 		ThaiFont = {
 			Family = "Nullx11Kanit",
-			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/assets/fonts/Kanit-%s.ttf",
+			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/assets/fonts/Kanit-%s.ttf",
 			Weights = {
 				[400] = "Regular",
 				[500] = "Medium",
@@ -14770,7 +14770,7 @@ local CONFIG = {
 	ReducedMotion = false,
 	StartupAnimation = true,
 	EnhancedWorkspace = true,
-	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/",
+	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/scripts/",
 }
 
 -- External runtimes may not provide the LocalScript instance.
@@ -21707,6 +21707,27 @@ do
 					Author = "Owner: NULL. Local MIDI piano edition; source review retained in docs/MIDI-REVIEW.md.",
 					Description = "Local MIDI library, tempo-aware playback, track mixer, speed/transpose and A-B loops. Saved screenshot keys, queue/favorites and mini holder. Ready-on-launch input; Play is manual. No remote presets.",
 				},
+				{
+					Id = "arsenal",
+					Name = "Arsenal",
+					File = "Nullx11-Arsenal.luau",
+					Category = "Combat",
+					Icon = "target",
+					GamePlaceId = 286090429,
+					Collection = "NULL Studio",
+					Author = "Owner: NULL. Reviewed user-supplied client sources; see docs/ARSENAL-REVIEW.md.",
+					Description = "Mobile-only Arsenal: centered aim + lock auto-fire, body-aligned native ESP, touch flight, movement and reversible FPS/lighting tools. All effects off at start. Complete originals archived; unsupported server claims clearly marked.",
+				},
+				{
+					Id = "finishword",
+					Name = "Finish The Word!",
+					File = "Nullx11-FinishTheWord.luau",
+					Category = "Word games",
+					Icon = "keyboard",
+					Collection = "NULL Studio",
+					Author = "Owner: NULL. Nullx11 edition. Original controller: Dave / ancestrychanged.com; source notices retained.",
+					Description = "Adaptive Auto / Short / Neutral / Long / Longer words, WPM and fixed typing delays, unused suggestions and all-player accepted-word tracking. Full pinned dictionary. Explicit source-signature attach; automation starts off.",
+				},
 			},
 		})
 		catalog.Loaded = true
@@ -22644,7 +22665,10 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by NULL",
-					Content = "One Nullx11 interface, native player tools and fifteen independent script workspaces. Nothing plays or farms until you enable it.",
+					Content = string.format(
+						"One Nullx11 interface, native player tools and %d independent script workspaces. Nothing plays or farms until you enable it.",
+						#catalog.Entries
+					),
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()

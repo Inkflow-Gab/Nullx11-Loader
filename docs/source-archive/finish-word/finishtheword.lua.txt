@@ -1,0 +1,2053 @@
+-- open sourced @ 10/10/2026
+-- enjoy
+-- please don't skid 🙏
+
+local executor = string.lower(identifyexecutor())
+
+if string.find(executor, "xeno") or string.find(executor, "solara") then
+	loadstring(game:HttpGet("https://ancestrychanged.com/scripts/warningcard.lua"))()()
+end
+
+local cloneref = cloneref or clone_ref or clonereference or clone_reference
+local gethui = gethui or get_hui or get_hidden_gui or get_hidden_ui or gethiddengui
+local makefolder = makefolder or make_folder or createfolder
+local setclipboard = setclipboard or toclipboard or set_clipboard or to_clipboard or (syn and syn.write_clipboard)
+local request = request or http_request or (http and http.request) or (syn and syn.request)
+local setid = setidentity or set_identity or setthreadidentity or set_thread_identity or setthreadcontext or set_thread_context or setcontext
+
+if not IB_OBFUSCATED then
+	IB_NO_VIRTUALIZE = function(f) return f end
+	IB_INLINE = function(f) return f end
+	IB_CRASH = function() end
+	IB_ENCSTR = function(s) return s end
+	IB_LINE = 1
+end
+
+assert(cloneref, 'your exploit is BULLSHIT (missing cloneref)')
+assert(getgc, 'your exploit is missing getgc()')
+assert(getgenv, 'your exploit is missing getgenv()')
+assert(gethui, 'your exploit is missing gethui()')
+assert(isfile, 'your exploit is missing isfile()')
+assert(readfile, 'your exploit is missing readfile()')
+assert(writefile, 'your exploit is missing writefile()')
+assert(listfiles, 'your exploit is missing listfiles()')
+assert(makefolder, 'your exploit is missing makefolder()')
+assert(isfolder, 'your exploit is missing isfolder()')
+assert(loadstring, 'your exploit is missing loadstring()')
+assert(setid, 'your exploit is missing setidentity()')
+
+if getgenv().FinishTheWordUnload then
+	getgenv().FinishTheWordUnload()
+end
+
+if gethui():FindFirstChild(IB_ENCSTR("Obsidian")) then
+	gethui():FindFirstChild(IB_ENCSTR("Obsidian")):Destroy()
+end
+
+setid(8)
+
+local players = game:GetService("Players")
+local httpServ = game:GetService("HttpService")
+local uis = game:GetService("UserInputService")
+local ts = cloneref(game:GetService("TeleportService"))
+local virtualUser = game:GetService("VirtualUser")
+local vim = Instance.new("VirtualInputManager")
+local player = players.LocalPlayer
+
+local event
+
+IB_NO_VIRTUALIZE(function()
+	local gc = getgc(true)
+
+	for _, v in gc do
+		if type(v) == "table" and rawget(v, "remoteFire") and rawget(v, "remoteConnect") and rawget(v, "fire") and rawget(v, "ping") then
+			event = v
+			break
+		end
+	end
+end)()
+
+assert(event, "couldn't find the game's event module")
+
+local libUrl = IB_ENCSTR("https://ancestrychanged.com/scripts/uilib.lua")
+local smUrl = IB_ENCSTR("https://ancestrychanged.com/scripts/savemanager.lua")
+local versionUrl = IB_ENCSTR("https://ancestrychanged.com/scripts/version.json")
+local wordsVersionUrl = IB_ENCSTR("https://ancestrychanged.com/scripts/versions/ftw.json")
+local wordsUrl = IB_ENCSTR("https://ancestrychanged.com/scripts/ftw_words.txt")
+local whitelistUrl = IB_ENCSTR("https://ancestrychanged.com/scripts/ftw_whitelist.txt")
+local freqUrl = "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt"
+local socialsUrl = IB_ENCSTR("https://ancestrychanged.com/socials")
+local inviteCode = IB_ENCSTR("abgb6kdWaJ")
+
+local cacheFolder = "FinishTheWord"
+local libPath = cacheFolder .. "/uilib.lua"
+local smPath = cacheFolder .. "/savemanager.lua"
+local verPath = cacheFolder .. "/lib.version.txt"
+local wordsPath = cacheFolder .. "/words.txt"
+local wordsVerPath = cacheFolder .. "/words.version.txt"
+local baseWlPath = cacheFolder .. "/whitelist.txt"
+local freqPath = cacheFolder .. "/freq.txt"
+local whitelistPath = cacheFolder .. `/whitelistedFtwWords_{player.Name}.txt`
+local blacklistPath = cacheFolder .. `/blacklistedFtwWords_{player.Name}.txt`
+
+local unloaded = false
+local wordsReady = false
+local wordCount = 0
+local roundId = 0
+local retries = 0
+local submitAt = 0
+local lastAttackAt = -1e9
+local successCount = 0
+local turnCount = 0
+local usedCount = 0
+local currentPrompt
+local turnPlayer
+local pendingWord
+local gameplay
+local gameInput
+local afkConn
+local inGameConn
+local shakeConn
+local gameCfg
+local afkThreshold
+local sessionWpm
+local currentWpm
+local refreshSuggestions
+local resumeRound
+
+local buckets = {}
+local freq = {}
+local usedWords = {}
+local triedThisRound = {}
+local whitelist = {}
+local blacklist = {}
+local manualWhitelist = {}
+local wordSet = {}
+
+local keys = {
+	q = {x = 0, y = 0, h = 0}, w = {x = 1, y = 0, h = 0}, e = {x = 2, y = 0, h = 0}, r = {x = 3, y = 0, h = 0}, t = {x = 4, y = 0, h = 0},
+	y = {x = 5, y = 0, h = 1}, u = {x = 6, y = 0, h = 1}, i = {x = 7, y = 0, h = 1}, o = {x = 8, y = 0, h = 1}, p = {x = 9, y = 0, h = 1},
+	a = {x = 0.5, y = 1, h = 0}, s = {x = 1.5, y = 1, h = 0}, d = {x = 2.5, y = 1, h = 0}, f = {x = 3.5, y = 1, h = 0}, g = {x = 4.5, y = 1, h = 0},
+	h = {x = 5.5, y = 1, h = 1}, j = {x = 6.5, y = 1, h = 1}, k = {x = 7.5, y = 1, h = 1}, l = {x = 8.5, y = 1, h = 1},
+	z = {x = 1, y = 2, h = 0}, x = {x = 2, y = 2, h = 0}, c = {x = 3, y = 2, h = 0}, v = {x = 4, y = 2, h = 0}, b = {x = 5, y = 2, h = 0},
+	n = {x = 6, y = 2, h = 1}, m = {x = 7, y = 2, h = 1},
+}
+
+local function ensureFolder()
+	if not isfolder(cacheFolder) then
+		makefolder(cacheFolder)
+	end
+end
+
+local indexWord = IB_NO_VIRTUALIZE(function(w)
+	if wordSet[w] then
+		return
+	end
+
+	local b = buckets[w:sub(1, 1)]
+
+	if not b then
+		b = {}
+		buckets[w:sub(1, 1)] = b
+	end
+
+	local pos = #b + 1
+
+	for i, v in b do
+		if #v > #w then
+			pos = i
+			break
+		end
+	end
+
+	table.insert(b, pos, w)
+	wordSet[w] = true
+	wordCount += 1
+end)
+
+local loadSet = IB_NO_VIRTUALIZE(function(path, set, intoIndex)
+	local n = 0
+
+	if isfile(path) then
+		for w in readfile(path):gmatch("[^\r\n]+") do
+			if w:match("^[a-z]+$") and not set[w] then
+				set[w] = true
+				n += 1
+
+				if intoIndex and wordsReady then
+					indexWord(w)
+				end
+			end
+		end
+	end
+
+	return n
+end)
+
+local loadLists = IB_NO_VIRTUALIZE(function()
+	if not isfolder(cacheFolder) then
+		return
+	end
+
+	local files = listfiles(cacheFolder)
+
+	for _, f in files do
+		if type(f) == "string" and string.find(f, "whitelistedFtwWords", 1, true) then
+			loadSet(f, whitelist, true)
+		end
+	end
+end)
+
+loadLists()
+loadSet(whitelistPath, manualWhitelist)
+loadSet(blacklistPath, blacklist)
+
+local findGameCfg = IB_NO_VIRTUALIZE(function()
+	if gameCfg then
+		return gameCfg
+	end
+
+	local gc = getgc(true)
+
+	for _, v in gc do
+		if type(v) == "table" and rawget(v, "PET") and type(rawget(v, "AFK")) == "table" then
+			if rawget(rawget(v, "AFK"), "Threshold") then
+				gameCfg = v
+				break
+			end
+		end
+	end
+
+	return gameCfg
+end)
+
+local function nudgeInput()
+	vim:SendKeyEvent(true, Enum.KeyCode.F15, false, game)
+	vim:SendKeyEvent(false, Enum.KeyCode.F15, false, game)
+end
+
+local readPrompt = IB_NO_VIRTUALIZE(function(v)
+	local props = rawget(v, "_Properties")
+	local children = rawget(v, "_Children")
+	local inst = rawget(v, "Instance")
+
+	if type(props) ~= "table" or type(children) ~= "table" or rawget(props, "Ui") ~= v or type(rawget(props, "Prompt")) ~= "table" or rawget(props, "RoundEnded") or typeof(inst) ~= "Instance" or inst.Parent ~= player.PlayerGui then
+		return
+	end
+
+	local top = rawget(children, "TopBar")
+
+	if type(top) == "table" and rawget(children, "ChoiceList") then
+		gameInput = rawget(rawget(top, "_Children"), "AnswerInput")
+		return rawget(props, "Prompt")
+	end
+end)
+
+local findPrompt = IB_NO_VIRTUALIZE(function()
+	if gameplay then
+		local prompt = readPrompt(gameplay)
+
+		if prompt then
+			return prompt
+		end
+	end
+
+	local gc = getgc(true)
+
+	for _, v in gc do
+		if type(v) == "table" and rawget(v, "_Mounted") then
+			local prompt = readPrompt(v)
+
+			if prompt then
+				gameplay = v
+				return prompt
+			end
+		end
+	end
+end)
+
+local coolrequest = IB_NO_VIRTUALIZE(function(url)
+	local zov = {
+		{
+			name = "request",
+			func = function(u)
+				local req = request
+
+				if req then
+					local res = req({Url = u, Method = "GET"})
+
+					if res.StatusCode ~= 200 then
+						error(`status {res.StatusCode}`)
+					end
+
+					return res.Body
+				end
+			end,
+		},
+
+		{
+			name = "game:HttpGet",
+			func = function(u) return game:HttpGet(u) end,
+		},
+	}
+
+	for _, v in zov do
+		local s, src = pcall(v.func, url)
+
+		if s and type(src) == "string" then
+			return src
+		else
+			warn(`{v.name} fail: {src}`)
+		end
+	end
+
+	return nil
+end)
+
+local function siteVersion(url)
+	local body = coolrequest(url)
+	local s, data = pcall(function() return httpServ:JSONDecode(body) end)
+
+	if s and type(data) == "table" and data.version ~= nil then
+		return tostring(data.version)
+	end
+
+	return nil
+end
+
+local function getFromSite()
+	return siteVersion(versionUrl)
+end
+
+local function getWordsVersion()
+	return siteVersion(wordsVersionUrl)
+end
+
+local function downloadLib()
+	local libSrc = coolrequest(libUrl)
+	local smSrc = coolrequest(smUrl)
+
+	ensureFolder()
+
+	if type(libSrc) == "string" then
+		writefile(libPath, libSrc)
+	end
+
+	if type(smSrc) == "string" then
+		writefile(smPath, smSrc)
+	end
+
+	return libSrc, smSrc
+end
+
+local function loadModule(src)
+	if type(src) ~= "string" then
+		return nil
+	end
+
+	local fn = loadstring(src)
+
+	if not fn then
+		return nil
+	end
+
+	local s, mod = pcall(fn)
+
+	return s and mod or nil
+end
+
+local Library
+local SaveManager
+local usedCache = false
+
+if isfile(libPath) and isfile(smPath) and not IB_OBFUSCATED then
+	Library = loadModule(readfile(libPath))
+	SaveManager = loadModule(readfile(smPath))
+	usedCache = (Library ~= nil and SaveManager ~= nil)
+end
+
+if not (Library and SaveManager) then
+	local libSrc, smSrc = downloadLib()
+	Library = loadModule(libSrc)
+	SaveManager = loadModule(smSrc)
+
+	local v = getFromSite()
+
+	if v then
+		writefile(verPath, v)
+	end
+end
+
+if usedCache then
+	task.spawn(function()
+		local remote = getFromSite()
+
+		if not remote then
+			return
+		end
+
+		local cached = (isfile(verPath) and readfile(verPath)) or nil
+
+		if cached ~= remote then
+			downloadLib()
+			writefile(verPath, remote)
+		end
+	end)
+end
+
+local Toggles = Library.Toggles
+local Options = Library.Options
+
+local buildIndex = IB_NO_VIRTUALIZE(function(src)
+	buckets = {}
+	wordCount = 0
+	wordSet = {}
+
+	local function add(w)
+		local b = buckets[w:sub(1, 1)]
+
+		if not b then
+			b = {}
+			buckets[w:sub(1, 1)] = b
+		end
+
+		b[#b + 1] = w
+		wordSet[w] = true
+		wordCount += 1
+	end
+
+	local n = 0
+
+	for w in src:gmatch("[^\r\n]+") do
+		if not wordSet[w] then
+			add(w)
+		end
+
+		n += 1
+
+		if n % 8000 == 0 then
+			task.wait()
+		end
+	end
+
+	for w in whitelist do
+		if not wordSet[w] then
+			add(w)
+		end
+	end
+
+	for _, v in buckets do
+		table.sort(v, function(a, b) return #a < #b end)
+	end
+end)
+
+local function loadWords()
+	local src
+	local fromCache = false
+
+	if isfile(wordsPath) then
+		src = readfile(wordsPath)
+		fromCache = true
+	end
+
+	if not src then
+		src = coolrequest(wordsUrl)
+
+		if src then
+			ensureFolder()
+			writefile(wordsPath, src)
+
+			local v = getWordsVersion()
+
+			if v then
+				writefile(wordsVerPath, v)
+			end
+		end
+	end
+
+	if fromCache then
+		task.spawn(function()
+			local remote = getWordsVersion()
+
+			if not remote then
+				return
+			end
+
+			local cached = (isfile(wordsVerPath) and readfile(wordsVerPath)) or nil
+
+			if cached ~= remote then
+				local fresh = coolrequest(wordsUrl)
+
+				if fresh then
+					writefile(wordsPath, fresh)
+					writefile(wordsVerPath, remote)
+				end
+
+				local wl = coolrequest(whitelistUrl)
+
+				if wl then
+					writefile(baseWlPath, wl)
+				end
+			end
+		end)
+	end
+
+	if src then
+		buildIndex(src)
+		wordsReady = true
+	end
+end
+
+local loadFreq = IB_NO_VIRTUALIZE(function()
+	local src
+
+	if isfile(freqPath) then
+		src = readfile(freqPath)
+	else
+		src = coolrequest(freqUrl)
+
+		if src then
+			ensureFolder()
+			writefile(freqPath, src)
+		end
+	end
+
+	if not src then
+		return
+	end
+
+	local rank = 0
+
+	for w in src:gmatch("[^\r\n]+") do
+		rank += 1
+		freq[w] = rank
+	end
+end)
+
+local function loadBaseWhitelist()
+	if not isfile(baseWlPath) then
+		local src = coolrequest(whitelistUrl)
+
+		if src then
+			ensureFolder()
+			writefile(baseWlPath, src)
+		end
+	end
+
+	loadSet(baseWlPath, whitelist, true)
+end
+
+local function saveWhitelist()
+	local lines = {}
+
+	for w in manualWhitelist do
+		lines[#lines + 1] = w
+	end
+
+	ensureFolder()
+	writefile(whitelistPath, table.concat(lines, "\n"))
+end
+
+local function saveBlacklist()
+	local lines = {}
+
+	for w in blacklist do
+		lines[#lines + 1] = w
+	end
+
+	ensureFolder()
+	writefile(blacklistPath, table.concat(lines, "\n"))
+end
+
+local function addWhitelist(w)
+	if blacklist[w] then
+		blacklist[w] = nil
+		saveBlacklist()
+	end
+
+	whitelist[w] = true
+	manualWhitelist[w] = true
+
+	if wordsReady then
+		indexWord(w)
+	end
+
+	saveWhitelist()
+end
+
+local function removeWhitelist(w)
+	whitelist[w] = nil
+	manualWhitelist[w] = nil
+	saveWhitelist()
+end
+
+local function addBlacklist(w)
+	if manualWhitelist[w] then
+		manualWhitelist[w] = nil
+		saveWhitelist()
+	end
+
+	whitelist[w] = nil
+	blacklist[w] = true
+	saveBlacklist()
+end
+
+local function removeBlacklist(w)
+	blacklist[w] = nil
+	saveBlacklist()
+end
+
+local function suffixList()
+	local out = {}
+
+	for s in string.lower(Options.EndsWith.Value):gmatch("[a-z]+") do
+		out[#out + 1] = s
+	end
+
+	return out
+end
+
+local findWords = IB_NO_VIRTUALIZE(function(prefix, skipTried, includeUsed, ignoreSuffix)
+	local b = buckets[prefix:sub(1, 1)]
+
+	if not b then
+		return {}
+	end
+
+	local sfxs = suffixList()
+
+	if ignoreSuffix or #sfxs == 0 then
+		sfxs = {""}
+	end
+
+	local groups = {}
+
+	for i = 1, #sfxs do
+		groups[i] = {}
+	end
+
+	for _, v in b do
+		if #v >= #prefix and v:sub(1, #prefix) == prefix and not blacklist[v] and (includeUsed or not usedWords[v]) and (not skipTried or not triedThisRound[v]) then
+			for i, sfx in sfxs do
+				if #sfx == 0 or (#v >= #sfx and v:sub(-#sfx) == sfx) then
+					local g = groups[i]
+					g[#g + 1] = v
+					break
+				end
+			end
+		end
+	end
+
+	for i = 1, #sfxs do
+		if #groups[i] > 0 then
+			return groups[i]
+		end
+	end
+
+	return {}
+end)
+
+local sortCmp = IB_NO_VIRTUALIZE(function()
+	local mode = Options.SuggestSort.Value
+
+	if mode == "Longest" then
+		return function(a, b)
+			if #a ~= #b then
+				return #a > #b
+			end
+
+			return a < b
+		end
+	elseif mode == "a-Z" then
+		return function(a, b)
+			return a < b
+		end
+	elseif mode == "Z-a" then
+		return function(a, b)
+			return a > b
+		end
+	elseif mode == "Most common" then
+		return function(a, b)
+			local ra = freq[a] or math.huge
+			local rb = freq[b] or math.huge
+
+			if ra ~= rb then
+				return ra < rb
+			end
+
+			return a < b
+		end
+	end
+
+	return nil
+end)
+
+local orderedCandidates = IB_NO_VIRTUALIZE(function(prefix, includeUsed, skipTried, ignoreSuffix)
+	local list = findWords(prefix, skipTried, includeUsed, ignoreSuffix)
+
+	local cmp = sortCmp()
+	local out = {}
+
+	if Toggles.ShowWhitelisted.Value then
+		local wl = {}
+		local rest = {}
+
+		for _, v in list do
+			if whitelist[v] then
+				wl[#wl + 1] = v
+			else
+				rest[#rest + 1] = v
+			end
+		end
+
+		if cmp then
+			table.sort(wl, cmp)
+			table.sort(rest, cmp)
+		end
+
+		for _, v in wl do
+			out[#out + 1] = {word = v, check = true}
+		end
+
+		for _, v in rest do
+			out[#out + 1] = {word = v}
+		end
+	else
+		if cmp then
+			table.sort(list, cmp)
+		end
+
+		for _, v in list do
+			out[#out + 1] = {word = v}
+		end
+	end
+
+	return out
+end)
+
+local pickCandidate = IB_NO_VIRTUALIZE(function(prefix)
+	local items = orderedCandidates(prefix, false, true)
+
+	if #items == 0 then
+		items = orderedCandidates(prefix, false, true, true)
+	end
+
+	local first = items[1]
+
+	return first and first.word or nil
+end)
+
+local adjacentKey = IB_NO_VIRTUALIZE(function(c)
+	local target = keys[c]
+
+	if not target then
+		return nil
+	end
+
+	local near = {}
+
+	for k, v in keys do
+		if k ~= c and math.sqrt((v.x - target.x) ^ 2 + (v.y - target.y) ^ 2) <= 1.2 then
+			near[#near + 1] = k
+		end
+	end
+
+	if #near == 0 then
+		return nil
+	end
+
+	return near[math.random(1, #near)]
+end)
+
+local function perCharDelay()
+	if Toggles.FixedDelay.Value then
+		return Options.TypeDelay.Value
+	end
+
+	local lo = math.min(Options.WpmMin.Value, Options.WpmMax.Value)
+	local hi = math.max(Options.WpmMin.Value, Options.WpmMax.Value)
+
+	if not sessionWpm then
+		sessionWpm = math.random(lo, hi)
+		currentWpm = sessionWpm
+	end
+
+	local wpm = currentWpm * math.clamp(0.7 + successCount * 0.1, 0.7, 1)
+
+	return 60 / (wpm * 5)
+end
+
+local function driftWpm()
+	if Toggles.FixedDelay.Value then
+		return
+	end
+
+	local lo = math.min(Options.WpmMin.Value, Options.WpmMax.Value)
+	local hi = math.max(Options.WpmMin.Value, Options.WpmMax.Value)
+
+	if not sessionWpm then
+		sessionWpm = math.random(lo, hi)
+		currentWpm = sessionWpm
+		return
+	end
+
+	currentWpm = math.clamp(currentWpm + (sessionWpm - currentWpm) * 0.3 + math.random(-4, 4), lo, hi)
+end
+
+local function curveShape(t, shape)
+	t = math.clamp(t, 0, 1)
+
+	if shape == "Exp" then
+		return (math.exp(2 * t) - 1) / (math.exp(2) - 1)
+	elseif shape == "Log" then
+		return math.log(1 + 2 * t) / math.log(3)
+	end
+
+	return t
+end
+
+local function thinkTime(prefix)
+	local lo = math.min(Options.StartMin.Value, Options.StartMax.Value)
+	local hi = math.max(Options.StartMin.Value, Options.StartMax.Value)
+	local base = lo + math.random() * (hi - lo)
+
+	if not Toggles.ThinkCurve.Value then
+		return base
+	end
+
+	local driver = Options.ThinkDriver.Value
+	local level
+
+	if driver == "Words used" then
+		level = usedCount
+	elseif driver == "Turn number" then
+		level = turnCount
+	else
+		level = 60 - math.min(#findWords(prefix, false, false, true), 60)
+	end
+
+	local extra = Options.ThinkExtra.Value * curveShape((level - Options.ThinkThreshold.Value) / 20, Options.ThinkShape.Value)
+
+	return math.clamp(base + extra, base, Options.ThinkCap.Value)
+end
+
+local humanDelays = IB_NO_VIRTUALIZE(function(word, from)
+	local delays = {}
+	local total = 0
+	local prev = word:sub(from - 1, from - 1)
+
+	for i = from, #word do
+		local c = word:sub(i, i)
+		local d = 1.2
+		local a = keys[c]
+		local b = keys[prev]
+
+		if a and b then
+			if c == prev then
+				d = 0.2
+			elseif a.h ~= b.h then
+				d = 0.5
+			else
+				d = 0.8 + math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) * 0.3
+			end
+		end
+
+		d *= math.random(90, 110) / 100
+		delays[#delays + 1] = d
+		total += d
+		prev = c
+	end
+
+	local target = #delays * perCharDelay()
+
+	if #delays < 6 then
+		target = math.clamp(target, 0.1, 0.7)
+	else
+		target = math.clamp(target, 0.28, 2.5)
+	end
+
+	for i, v in delays do
+		delays[i] = v / total * target
+	end
+
+	return delays
+end)
+
+local submitNext = IB_NO_VIRTUALIZE(function(token)
+	if unloaded or token ~= roundId or not Toggles.AutoAnswer.Value or turnPlayer ~= player then
+		return
+	end
+
+	task.wait()
+
+	if token ~= roundId then
+		return
+	end
+
+	if not (currentPrompt and currentPrompt.RequiredLetter) then
+		return
+	end
+
+	local prefix = string.lower(currentPrompt.RequiredLetter)
+	local word = pickCandidate(prefix)
+
+	if not word then
+		Library:Notify(`no words left for "{prefix}"`, 3)
+		return
+	end
+
+	triedThisRound[word] = true
+	pendingWord = nil
+
+	local delays
+
+	if Toggles.HumanType.Value and not Toggles.InstantAnswer.Value then
+		delays = humanDelays(word, #prefix + 1)
+	end
+
+	if retries == 0 and not Toggles.InstantAnswer.Value then
+		local preDelay = thinkTime(prefix)
+
+		if Toggles.HumanType.Value then
+			preDelay *= math.random(85, 120) / 100
+		end
+
+		local waited = 0
+
+		while token == roundId and waited < preDelay do
+			task.wait(0.05)
+			waited += 0.05
+		end
+
+		if token ~= roundId then
+			return
+		end
+	end
+
+	local prompt = findPrompt()
+	local input = gameInput
+
+	if not prompt or prompt.Choices or prompt.RequiredLetter ~= currentPrompt.RequiredLetter or not input then
+		return
+	end
+
+	local typed = string.lower(input:currentWord())
+
+	if typed:sub(1, #prefix) ~= prefix then
+		return
+	end
+
+	for _ = #prefix + 1, #typed do
+		if token ~= roundId then
+			return
+		end
+
+		event.fire("tryKeystroke", -1)
+
+		if Toggles.HumanType.Value and not Toggles.InstantAnswer.Value then
+			task.wait(math.random(9, 14) / 100)
+		end
+	end
+
+	local typos = Toggles.Typos.Value and not Toggles.InstantAnswer.Value and successCount >= Options.TypoWarmup.Value
+	local typoChance = 0
+
+	if typos and #word > Options.TypoSafeLen.Value then
+		typoChance = Options.TypoChance.Value * (1 + (#word - Options.TypoSafeLen.Value) * 0.4)
+	end
+
+	for i = #prefix + 1, #word do
+		if token ~= roundId then
+			return
+		end
+
+		local ch = word:sub(i, i)
+
+		if typoChance > 0 and math.random(1, 1000) <= typoChance * 10 then
+			local wrong = adjacentKey(ch)
+
+			if wrong then
+				event.fire("tryKeystroke", string.upper(wrong))
+				task.wait(math.random(180, 320) / 1000)
+
+				if token ~= roundId then
+					return
+				end
+
+				event.fire("tryKeystroke", -1)
+				task.wait(math.random(60, 120) / 1000)
+
+				if token ~= roundId then
+					return
+				end
+			end
+		end
+
+		event.fire("tryKeystroke", string.upper(ch))
+
+		if not Toggles.InstantAnswer.Value then
+			task.wait(delays and delays[i - #prefix] or perCharDelay())
+		end
+	end
+
+	if token ~= roundId then
+		return
+	end
+
+	if not Toggles.InstantAnswer.Value then
+		task.wait(Options.AnswerDelay.Value)
+	end
+
+	if token ~= roundId or string.lower(input:currentWord()) ~= word then
+		return
+	end
+
+	submitAt = os.clock()
+	pendingWord = word
+	event.fire("tryAnswer")
+end)
+
+local bestChoice = IB_NO_VIRTUALIZE(function(choices)
+	local best
+	local bestN = -1
+
+	for _, v in choices do
+		local n = #findWords(string.lower(tostring(v)), false, false, true)
+
+		if n > bestN then
+			best = v
+			bestN = n
+		end
+	end
+
+	return best
+end)
+
+local Window = Library:CreateWindow({
+	Title = "FINISH THE WORD!",
+	Footer = "Made with <3 by Dave | ancestrychanged.com | Always keyless",
+	Icon = "keyboard",
+	Center = true,
+	AutoShow = true,
+	ToggleKeybind = Enum.KeyCode.RightShift,
+	ShowCustomCursor = false,
+})
+
+if Library.IsMobile then
+	Library:SetDPIScale(60)
+end
+
+local Tabs = {
+	Main = Window:AddTab("Main", "code-xml"),
+	Settings = Window:AddTab("Settings", "settings"),
+	Credits = Window:AddTab("Credits", "heart"),
+}
+
+local AnswerBox = Tabs.Main:AddLeftGroupbox("Auto Answer", "zap")
+
+AnswerBox:AddDropdown("Preset", {
+	Text = "Humanization preset",
+	Values = {"Off", "Light", "Realistic", "Paranoid"},
+	Default = "Realistic",
+})
+
+AnswerBox:AddToggle("AutoAnswer", {
+	Text = "Auto answer",
+	Default = false,
+}):AddKeyPicker("AutoAnswerKey", {
+	Default = "End",
+	Mode = "Toggle",
+	Text = "Auto answer",
+	SyncToggleState = true,
+})
+
+AnswerBox:AddToggle("InstantAnswer", {
+	Text = "Instant (no typing delays)",
+	Default = false,
+	Wrap = true,
+})
+
+AnswerBox:AddToggle("HumanType", {
+	Text = "Humanized typing",
+	Default = true,
+	Wrap = true,
+})
+
+AnswerBox:AddToggle("FixedDelay", {
+	Text = "Use fixed typing delay instead of WPM",
+	Default = false,
+	Wrap = true,
+})
+
+AnswerBox:AddSlider("TypeDelay", {
+	Text = "Typing delay",
+	Default = 0.12,
+	Min = 0.05,
+	Max = 0.5,
+	Rounding = 2,
+	Suffix = "s",
+})
+
+AnswerBox:AddSlider("WpmMin", {
+	Text = "Typing speed min",
+	Default = 45,
+	Min = 20,
+	Max = 140,
+	Rounding = 0,
+	Suffix = " wpm",
+})
+
+AnswerBox:AddSlider("WpmMax", {
+	Text = "Typing speed max",
+	Default = 85,
+	Min = 20,
+	Max = 140,
+	Rounding = 0,
+	Suffix = " wpm",
+})
+
+AnswerBox:AddSlider("StartMin", {
+	Text = "Wait before typing min",
+	Default = 0.3,
+	Min = 0,
+	Max = 5,
+	Rounding = 2,
+	Suffix = "s",
+})
+
+AnswerBox:AddSlider("StartMax", {
+	Text = "Wait before typing max",
+	Default = 0.9,
+	Min = 0,
+	Max = 5,
+	Rounding = 2,
+	Suffix = "s",
+})
+
+AnswerBox:AddSlider("AnswerDelay", {
+	Text = "Delay before submit",
+	Default = 0.8,
+	Min = 0,
+	Max = 5,
+	Rounding = 1,
+	Suffix = "s",
+})
+
+AnswerBox:AddSlider("MaxRetries", {
+	Text = "Max tries per turn",
+	Default = 6,
+	Min = 1,
+	Max = 20,
+	Rounding = 0,
+})
+
+AnswerBox:AddToggle("AutoChoose", {
+	Text = "Auto pick choice letter",
+	Default = false,
+	Wrap = true,
+})
+
+local AdvBox = Tabs.Settings:AddRightGroupbox("Advanced humanization", "sparkles")
+
+AdvBox:AddToggle("Typos", {
+	Text = "Make typos and fix them",
+	Default = false,
+	Wrap = true,
+})
+
+AdvBox:AddSlider("TypoChance", {
+	Text = "Typo chance per key",
+	Default = 3,
+	Min = 0.1,
+	Max = 30,
+	Rounding = 1,
+	Suffix = "%",
+})
+
+AdvBox:AddSlider("TypoWarmup", {
+	Text = "Stay perfect for first N words",
+	Default = 3,
+	Min = 0,
+	Max = 20,
+	Rounding = 0,
+})
+
+AdvBox:AddSlider("TypoSafeLen", {
+	Text = "No typos up to word length",
+	Default = 5,
+	Min = 1,
+	Max = 12,
+	Rounding = 0,
+})
+
+AdvBox:AddToggle("ThinkCurve", {
+	Text = "Thinking time grows as it gets harder",
+	Default = false,
+	Wrap = true,
+})
+
+AdvBox:AddDropdown("ThinkDriver", {
+	Text = "Thinking scales with",
+	Values = {"Difficulty", "Words used", "Turn number"},
+	Default = "Difficulty",
+})
+
+AdvBox:AddDropdown("ThinkShape", {
+	Text = "Thinking curve",
+	Values = {"Linear", "Exp", "Log"},
+	Default = "Linear",
+})
+
+AdvBox:AddSlider("ThinkThreshold", {
+	Text = "Start thinking harder after",
+	Default = 20,
+	Min = 0,
+	Max = 60,
+	Rounding = 0,
+})
+
+AdvBox:AddSlider("ThinkExtra", {
+	Text = "Extra thinking time at hardest",
+	Default = 1.5,
+	Min = 0,
+	Max = 6,
+	Rounding = 1,
+	Suffix = "s",
+})
+
+AdvBox:AddSlider("ThinkCap", {
+	Text = "Max thinking time",
+	Default = 3.5,
+	Min = 0.5,
+	Max = 10,
+	Rounding = 1,
+	Suffix = "s",
+})
+
+local function applyPreset(name)
+	if name == "Off" then
+		Toggles.FixedDelay:SetValue(true)
+		Toggles.Typos:SetValue(false)
+		Toggles.ThinkCurve:SetValue(false)
+	elseif name == "Light" then
+		Toggles.FixedDelay:SetValue(false)
+		Options.WpmMin:SetValue(70)
+		Options.WpmMax:SetValue(110)
+		Options.StartMin:SetValue(0.2)
+		Options.StartMax:SetValue(0.5)
+		Toggles.Typos:SetValue(false)
+		Toggles.ThinkCurve:SetValue(false)
+	elseif name == "Realistic" then
+		Toggles.FixedDelay:SetValue(false)
+		Options.WpmMin:SetValue(45)
+		Options.WpmMax:SetValue(85)
+		Options.StartMin:SetValue(0.3)
+		Options.StartMax:SetValue(0.9)
+		Toggles.Typos:SetValue(true)
+		Options.TypoChance:SetValue(3)
+		Options.TypoWarmup:SetValue(3)
+		Options.TypoSafeLen:SetValue(5)
+		Toggles.ThinkCurve:SetValue(true)
+		Options.ThinkDriver:SetValue("Difficulty")
+		Options.ThinkShape:SetValue("Linear")
+		Options.ThinkThreshold:SetValue(20)
+		Options.ThinkExtra:SetValue(1.5)
+		Options.ThinkCap:SetValue(3.5)
+	elseif name == "Paranoid" then
+		Toggles.FixedDelay:SetValue(false)
+		Options.WpmMin:SetValue(35)
+		Options.WpmMax:SetValue(70)
+		Options.StartMin:SetValue(0.6)
+		Options.StartMax:SetValue(1.6)
+		Toggles.Typos:SetValue(true)
+		Options.TypoChance:SetValue(5)
+		Options.TypoWarmup:SetValue(2)
+		Options.TypoSafeLen:SetValue(4)
+		Toggles.ThinkCurve:SetValue(true)
+		Options.ThinkDriver:SetValue("Difficulty")
+		Options.ThinkShape:SetValue("Exp")
+		Options.ThinkThreshold:SetValue(15)
+		Options.ThinkExtra:SetValue(2.5)
+		Options.ThinkCap:SetValue(4.5)
+	end
+end
+
+Options.Preset:OnChanged(function()
+	applyPreset(Options.Preset.Value)
+end)
+
+applyPreset(Options.Preset.Value)
+
+local function cleanWord()
+	local w = string.lower(Options.WordEntry.Value)
+
+	if not w:match("^[a-z]+$") then
+		Library:Notify("enter a single word (letters only)", 3)
+		return nil
+	end
+
+	return w
+end
+
+local WordListBox = Tabs.Main:AddLeftGroupbox("Word lists", "list")
+
+WordListBox:AddToggle("AutoLearn", {
+	Text = "Auto-learn words",
+	Default = true,
+	Wrap = true,
+})
+
+WordListBox:AddInput("WordEntry", {
+	Text = "Word",
+	Default = "",
+	Finished = false,
+	Placeholder = "type a word",
+})
+
+WordListBox:AddButton({
+	Text = "Add to whitelist",
+	Func = function()
+		local w = cleanWord()
+
+		if w then
+			addWhitelist(w)
+			Library:Notify(`whitelisted "{w}"`, 3)
+
+			if currentPrompt then
+				refreshSuggestions(currentPrompt)
+			end
+		end
+	end,
+})
+
+WordListBox:AddButton({
+	Text = "Remove from whitelist",
+	Func = function()
+		local w = cleanWord()
+
+		if w then
+			removeWhitelist(w)
+			Library:Notify(`removed "{w}" from whitelist`, 3)
+
+			if currentPrompt then
+				refreshSuggestions(currentPrompt)
+			end
+		end
+	end,
+})
+
+WordListBox:AddButton({
+	Text = "Add to blacklist",
+	Func = function()
+		local w = cleanWord()
+
+		if w then
+			addBlacklist(w)
+			Library:Notify(`blacklisted "{w}"`, 3)
+
+			if currentPrompt then
+				refreshSuggestions(currentPrompt)
+			end
+		end
+	end,
+})
+
+WordListBox:AddButton({
+	Text = "Remove from blacklist",
+	Func = function()
+		local w = cleanWord()
+
+		if w then
+			removeBlacklist(w)
+			Library:Notify(`removed "{w}" from blacklist`, 3)
+
+			if currentPrompt then
+				refreshSuggestions(currentPrompt)
+			end
+		end
+	end,
+})
+
+local SuggestBox = Tabs.Main:AddRightGroupbox("Suggestions", "lightbulb")
+
+SuggestBox:AddToggle("ShowWhitelisted", {
+	Text = "Show whitelisted words",
+	Default = true,
+	Wrap = true,
+})
+
+SuggestBox:AddToggle("RemoveUsed", {
+	Text = "Remove used words",
+	Default = true,
+	Wrap = true,
+})
+
+SuggestBox:AddSlider("SuggestCount", {
+	Text = "Suggestion count",
+	Default = 30,
+	Min = 1,
+	Max = 100,
+	Rounding = 0,
+})
+
+SuggestBox:AddDropdown("SuggestSort", {
+	Text = "Sort suggestions",
+	Values = {"Shortest", "Longest", "a-Z", "Z-a", "Most common"},
+	Default = "Shortest",
+})
+
+local endsInput = SuggestBox:AddInput("EndsWith", {
+	Text = "Word endings",
+	Default = "",
+	Finished = false,
+	Placeholder = "x, ns, y",
+})
+
+local endsBox = endsInput.Holder:FindFirstChildOfClass("TextBox")
+endsBox.Size = UDim2.new(1, -52, 0, 21)
+
+local resetEnds = Instance.new("TextButton")
+resetEnds.AnchorPoint = Vector2.new(1, 1)
+resetEnds.Position = UDim2.fromScale(1, 1)
+resetEnds.Size = UDim2.new(0, 48, 0, 21)
+resetEnds.BackgroundColor3 = Library.Scheme.MainColor
+resetEnds.FontFace = endsBox.FontFace
+resetEnds.Text = "Reset"
+resetEnds.TextSize = 14
+resetEnds.TextColor3 = Library.Scheme.FontColor
+resetEnds.TextTransparency = 0.4
+
+local endsCorner = Instance.new("UICorner")
+endsCorner.CornerRadius = UDim.new(0, Library.CornerRadius / 2)
+endsCorner.Parent = resetEnds
+
+local endsStroke = Instance.new("UIStroke")
+endsStroke.Color = Library.Scheme.OutlineColor
+endsStroke.Parent = resetEnds
+
+resetEnds.Parent = endsInput.Holder
+
+resetEnds.MouseButton1Click:Connect(function()
+	Options.EndsWith:SetValue("")
+end)
+
+local wordsLabel = SuggestBox:AddLabel("words: downloading...", true)
+local suggestLabel = SuggestBox:AddLabel("waiting for a round", true)
+
+local rowsHolder = Instance.new("Frame")
+rowsHolder.BackgroundTransparency = 1
+rowsHolder.Size = UDim2.new(1, 0, 0, 0)
+rowsHolder.AutomaticSize = Enum.AutomaticSize.Y
+rowsHolder.Visible = false
+rowsHolder.Parent = suggestLabel.Container
+
+local rowsLayout = Instance.new("UIListLayout")
+rowsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+rowsLayout.Padding = UDim.new(0, 2)
+rowsLayout.Parent = rowsHolder
+
+rowsHolder:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+	SuggestBox:Resize()
+end)
+
+local rowPool = {}
+
+local getRow = IB_NO_VIRTUALIZE(function(i)
+	if rowPool[i] then
+		return rowPool[i]
+	end
+
+	local frame = Instance.new("Frame")
+	frame.BackgroundTransparency = 1
+	frame.Size = UDim2.new(1, 0, 0, 16)
+	frame.LayoutOrder = i
+
+	local word = Instance.new("TextLabel")
+	word.BackgroundTransparency = 1
+	word.Size = UDim2.new(1, -16, 1, 0)
+	word.Font = suggestLabel.TextLabel.Font
+	word.TextSize = suggestLabel.TextLabel.TextSize
+	word.TextColor3 = suggestLabel.TextLabel.TextColor3
+	word.TextXAlignment = Enum.TextXAlignment.Left
+	word.TextYAlignment = Enum.TextYAlignment.Center
+	word.Parent = frame
+
+	local check = Instance.new("TextLabel")
+	check.BackgroundTransparency = 1
+	check.AnchorPoint = Vector2.new(1, 0)
+	check.Position = UDim2.new(1, 0, 0, 0)
+	check.Size = UDim2.new(0, 14, 1, 0)
+	check.Text = "\u{2713}"
+	check.Font = suggestLabel.TextLabel.Font
+	check.TextSize = suggestLabel.TextLabel.TextSize
+	check.TextColor3 = suggestLabel.TextLabel.TextColor3
+	check.TextTransparency = 0.45
+	check.TextXAlignment = Enum.TextXAlignment.Right
+	check.TextYAlignment = Enum.TextYAlignment.Center
+	check.Parent = frame
+
+	rowPool[i] = {frame = frame, word = word, check = check}
+	frame.Parent = rowsHolder
+
+	return rowPool[i]
+end)
+
+local setRows = IB_NO_VIRTUALIZE(function(items)
+	suggestLabel:SetVisible(false)
+	rowsHolder.Visible = true
+
+	for i, v in items do
+		local row = getRow(i)
+		row.word.Text = v.text
+		row.check.Visible = v.check == true
+		row.frame.Visible = true
+	end
+
+	for i = #items + 1, #rowPool do
+		rowPool[i].frame.Visible = false
+	end
+
+	SuggestBox:Resize()
+end)
+
+local function setStatus(text)
+	rowsHolder.Visible = false
+	suggestLabel:SetVisible(true)
+	suggestLabel:SetText(text)
+end
+
+local ServerBox = Tabs.Settings:AddLeftGroupbox("Server", "globe")
+
+local function applyAntiAfk(v)
+	if v then
+		if not afkConn then
+			afkConn = player.Idled:Connect(function()
+				virtualUser:CaptureController()
+				virtualUser:ClickButton2(Vector2.new())
+			end)
+		end
+
+		task.spawn(function()
+			local cfg = findGameCfg()
+
+			if cfg then
+				if not afkThreshold then
+					afkThreshold = cfg.AFK.Threshold
+				end
+
+				cfg.AFK.Threshold = math.huge
+			end
+		end)
+	else
+		if afkConn then
+			afkConn:Disconnect()
+			afkConn = nil
+		end
+
+		if gameCfg and afkThreshold then
+			nudgeInput()
+			gameCfg.AFK.Threshold = afkThreshold
+		end
+	end
+end
+
+ServerBox:AddToggle("AntiAFK", {
+	Text = "Anti-AFK",
+	Default = true,
+	Wrap = true,
+}):OnChanged(applyAntiAfk)
+
+applyAntiAfk(Toggles.AntiAFK.Value)
+
+ServerBox:AddButton({
+	Text = "Rejoin",
+	Func = function()
+		if #players:GetPlayers() <= 1 then
+			player:Kick("\nRejoining...")
+			task.wait()
+			ts:Teleport(game.PlaceId, player)
+		else
+			ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+		end
+	end,
+})
+
+ServerBox:AddButton({
+	Text = "Server Hop",
+	Func = function()
+		local servers = {}
+		local body = coolrequest("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true")
+
+		if body then
+			local s, data = pcall(function() return httpServ:JSONDecode(body) end)
+
+			if s and data and data.data then
+				for _, v in data.data do
+					if type(v) == "table" and tonumber(v.playing) and tonumber(v.maxPlayers) and v.playing < v.maxPlayers and v.id ~= game.JobId then
+						servers[#servers + 1] = v.id
+					end
+				end
+			end
+		end
+
+		if #servers > 0 then
+			ts:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], player)
+		else
+			Library:Notify("Server Hop: couldn't find a server.", 4)
+		end
+	end,
+})
+
+local CreditsBox = Tabs.Credits:AddLeftGroupbox("Credits", "heart")
+
+CreditsBox:AddLabel("if you have a suggestion let me know on discord", true)
+CreditsBox:AddLabel("want a script for another game? just ask on discord!", true)
+
+local function dowehavediscord()
+	if not request then
+		return false
+	end
+
+	for port = 6463, 6472 do
+		local s, res = pcall(request, {
+			Url = "http://127.0.0.1:" .. port .. "/rpc?v=1",
+			Method = "GET",
+			Headers = {["Origin"] = "https://discord.com"},
+		})
+
+		if s and res and res.StatusCode then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function openInvite()
+	local body = string.format('{"cmd":"INVITE_BROWSER","args":{"code":"%s"},"nonce":"%s"}', inviteCode, math.random())
+
+	for port = 6463, 6472 do
+		local s, res = pcall(request, {
+			Url = "http://127.0.0.1:" .. port .. "/rpc?v=1",
+			Method = "POST",
+			Headers = {
+				["Content-Type"] = "application/json",
+				["Origin"] = "https://discord.com",
+			},
+			Body = body,
+		})
+
+		if s and res and res.StatusCode and res.StatusCode < 400 then
+			return
+		end
+	end
+end
+
+task.spawn(function()
+	if dowehavediscord() then
+		CreditsBox:AddButton({
+			Text = "Open Discord Server",
+			Func = function()
+				task.spawn(openInvite)
+			end,
+		})
+	else
+		CreditsBox:AddButton({
+			Text = "Copy socials link",
+			Func = function()
+				setclipboard(socialsUrl)
+				Library:Notify("Copied!", 3)
+			end,
+		})
+	end
+end)
+
+local MenuGroup = Tabs.Settings:AddLeftGroupbox("Menu", "menu")
+
+MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", {
+	Default = "RightShift",
+	NoUI = true,
+	Text = "Menu keybind",
+})
+
+Library.ToggleKeybind = Options.MenuKeybind
+
+local function applyShakeHide(v)
+	if v then
+		if shakeConn or not uis.AccelerometerEnabled then
+			return
+		end
+
+		local lastShake = 0
+		local spikes = 0
+		local windowStart = 0
+
+		shakeConn = uis.DeviceAccelerationChanged:Connect(function(accel)
+			if os.clock() - lastShake < 1 then
+				return
+			end
+
+			if accel.Position.Magnitude < 3.5 then
+				return
+			end
+
+			local now = os.clock()
+
+			if now - windowStart > 0.6 then
+				spikes = 0
+				windowStart = now
+			end
+
+			spikes += 1
+
+			if spikes >= 2 then
+				spikes = 0
+				lastShake = now
+				Library:Toggle()
+			end
+		end)
+	elseif shakeConn then
+		shakeConn:Disconnect()
+		shakeConn = nil
+	end
+end
+
+MenuGroup:AddToggle("ShakeHide", {
+	Text = "Shake phone to hide/show UI",
+	Default = false,
+	Wrap = true,
+}):OnChanged(applyShakeHide)
+
+MenuGroup:AddButton({
+	Text = "Unload",
+	Func = function()
+		Library:Unload()
+	end,
+	DoubleClick = true,
+})
+
+Library.KeybindFrame.Visible = true
+
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({"MenuKeybind", "WordEntry", "EndsWith", "Preset"})
+SaveManager:SetFolder(cacheFolder)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+task.spawn(function()
+	loadBaseWhitelist()
+	loadWords()
+
+	if unloaded then
+		return
+	end
+
+	if wordsReady then
+		wordsLabel:SetText(`words: {wordCount}`)
+
+		local token = roundId
+
+		task.defer(function()
+			if token == roundId then
+				resumeRound()
+			end
+		end)
+	else
+		wordsLabel:SetText("words: download failed, suggestions are dead")
+		Library:Notify("Word list download failed!", 5)
+	end
+
+	loadFreq()
+end)
+
+SaveManager:LoadAutoloadConfig()
+
+getgenv().FinishTheWordUnload = function()
+	if not Library.Unloaded then
+		Library:Unload()
+	end
+end
+
+Library:Notify("Loaded successfully!", 5)
+
+refreshSuggestions = IB_NO_VIRTUALIZE(function(prompt)
+	if not wordsReady then
+		setStatus("words still downloading...")
+		return
+	end
+
+	if prompt.Choices then
+		local rows = {}
+
+		for _, v in prompt.Choices do
+			rows[#rows + 1] = {text = `{string.upper(tostring(v))}: {#findWords(string.lower(tostring(v)), false, false, true)} words`}
+		end
+
+		setRows(rows)
+	elseif prompt.RequiredLetter then
+		local prefix = string.lower(prompt.RequiredLetter)
+		local items = orderedCandidates(prefix, not Toggles.RemoveUsed.Value, false)
+		local rows = {}
+
+		for _, v in items do
+			if #rows >= Options.SuggestCount.Value then
+				break
+			end
+
+			rows[#rows + 1] = {text = v.word, check = v.check}
+		end
+
+		if #rows > 0 then
+			setRows(rows)
+		elseif #suffixList() > 0 then
+			setStatus(`no words with those endings for "{prefix}"`)
+		else
+			setStatus(`no words for "{prefix}"`)
+		end
+	end
+end)
+
+Options.SuggestSort:OnChanged(function()
+	if currentPrompt then
+		refreshSuggestions(currentPrompt)
+	end
+end)
+
+Toggles.ShowWhitelisted:OnChanged(function()
+	if currentPrompt then
+		refreshSuggestions(currentPrompt)
+	end
+end)
+
+Toggles.RemoveUsed:OnChanged(function()
+	if currentPrompt then
+		refreshSuggestions(currentPrompt)
+	end
+end)
+
+Options.EndsWith:OnChanged(function()
+	if currentPrompt then
+		refreshSuggestions(currentPrompt)
+	end
+end)
+
+local function onRound(prompt, turnPlr)
+	roundId += 1
+	currentPrompt = prompt
+	turnPlayer = turnPlr
+	triedThisRound = {}
+	retries = 0
+	pendingWord = nil
+
+	refreshSuggestions(prompt)
+
+	if turnPlr ~= player or not wordsReady then
+		return
+	end
+
+	turnCount += 1
+	driftWpm()
+
+	if prompt.Choices then
+		if Toggles.AutoChoose.Value then
+			local pick = bestChoice(prompt.Choices)
+
+			if pick then
+				local token = roundId
+
+				task.spawn(function()
+					if not unloaded and token == roundId and Toggles.AutoChoose.Value then
+						event.remoteFire("chooseLetter", string.lower(tostring(pick)))
+					end
+				end)
+			end
+		end
+
+		return
+	end
+
+	if prompt.RequiredLetter and Toggles.AutoAnswer.Value then
+		local token = roundId
+		task.spawn(function() submitNext(token) end)
+	end
+end
+
+resumeRound = function()
+	if unloaded or not player:GetAttribute("IsTurn") then
+		return
+	end
+
+	local prompt = findPrompt()
+
+	if prompt then
+		onRound(prompt, player)
+	end
+end
+
+Toggles.AutoAnswer:OnChanged(function()
+	if Toggles.AutoAnswer.Value then
+		if wordsReady then
+			resumeRound()
+		end
+	else
+		roundId += 1
+		pendingWord = nil
+	end
+end)
+
+local function onCorrect(word)
+	local w
+
+	if type(word) == "string" and string.lower(word):match("^[a-z]+$") then
+		w = string.lower(word)
+
+		if not usedWords[w] then
+			usedWords[w] = true
+			usedCount += 1
+		end
+	end
+
+	if pendingWord and w == pendingWord then
+		successCount += 1
+	end
+
+	if Toggles.AutoLearn.Value and w and (not whitelist[w] or blacklist[w]) then
+		addWhitelist(w)
+	end
+
+	roundId += 1
+	pendingWord = nil
+end
+
+local function petCutsceneActive()
+	return os.clock() - lastAttackAt < 1.5 or workspace.CurrentCamera.CameraType == Enum.CameraType.Scriptable
+end
+
+local function onStrike(uid, alreadyUsed)
+	if uid ~= player.UserId then
+		return
+	end
+
+	if not (pendingWord and Toggles.AutoAnswer.Value) then
+		return
+	end
+
+	if petCutsceneActive() then
+		return
+	end
+
+	local w = pendingWord
+	pendingWord = nil
+	roundId += 1
+
+	if alreadyUsed then
+		if not usedWords[w] then
+			usedWords[w] = true
+			usedCount += 1
+		end
+	elseif Toggles.AutoLearn.Value and not blacklist[w] and os.clock() - submitAt < 3 then
+		addBlacklist(w)
+
+		if currentPrompt then
+			refreshSuggestions(currentPrompt)
+		end
+	end
+
+	retries += 1
+
+	if retries >= Options.MaxRetries.Value then
+		return
+	end
+
+	local token = roundId
+
+	task.spawn(function()
+		submitNext(token)
+	end)
+end
+
+local bridge = Instance.new("BindableEvent")
+
+bridge.Event:Connect(function(kind, ...)
+	if kind == "round" then
+		onRound(...)
+	elseif kind == "strike" then
+		onStrike(...)
+	elseif kind == "correct" then
+		onCorrect(...)
+	end
+end)
+
+local roundConn = event.remoteConnect("updateRound", function(prompt, _, turnPlr)
+	if type(prompt) ~= "table" then
+		return
+	end
+
+	bridge:Fire("round", prompt, turnPlr)
+end)
+
+local correctConn = event.remoteConnect("correct", function(word)
+	bridge:Fire("correct", word)
+end)
+
+local strikeConn = event.remoteConnect("strike", function(uid, _, alreadyUsed)
+	bridge:Fire("strike", uid, alreadyUsed)
+end)
+
+local damageConn = event.remoteConnect("takeDamage", function(uid)
+	if uid ~= player.UserId then
+		return
+	end
+
+	roundId += 1
+	pendingWord = nil
+end)
+
+local attackConn = event.remoteConnect("attack", function()
+	lastAttackAt = os.clock()
+end)
+
+task.defer(resumeRound)
+
+inGameConn = player:GetAttributeChangedSignal("InGame"):Connect(function()
+	if player:GetAttribute("InGame") then
+		usedWords = {}
+		usedCount = 0
+		turnCount = 0
+	end
+end)
+
+Library:OnUnload(function()
+	unloaded = true
+	roundId += 1
+
+	event.disconnect(roundConn)
+	event.disconnect(correctConn)
+	event.disconnect(strikeConn)
+	event.disconnect(damageConn)
+	event.disconnect(attackConn)
+
+	bridge:Destroy()
+
+	if afkConn then
+		afkConn:Disconnect()
+		afkConn = nil
+	end
+
+	if inGameConn then
+		inGameConn:Disconnect()
+		inGameConn = nil
+	end
+
+	if shakeConn then
+		shakeConn:Disconnect()
+		shakeConn = nil
+	end
+
+	if gameCfg and afkThreshold then
+		nudgeInput()
+		gameCfg.AFK.Threshold = afkThreshold
+	end
+
+	getgenv().FinishTheWordUnload = nil
+end)

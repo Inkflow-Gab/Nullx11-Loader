@@ -124,6 +124,10 @@ local score = {
 	},
 	Tempos = { { Time = 0, BPM = 120 } },
 }
+assert(find("EmptyPiano").Visible)
+view.SetPage("Player")
+find("BrowseSongs").Activated:Fire()
+assert(view.Page == "Library")
 view.Score(score, "Actual snapshot fixture")
 local playback = {
 	Position = 0.2,
@@ -149,6 +153,13 @@ local output = {
 }
 view.Snapshot(playback, output)
 assert(view.Bars[1].Visible and find("Clock").Text == "00:00 / 00:01")
+assert(not find("EmptyPiano").Visible and find("play").Text == "Pause")
+local pausedByPrimary = false
+view.Actions.pause = function()
+	pausedByPrimary = true
+end
+find("play").Activated:Fire()
+assert(pausedByPrimary, "primary transport toggles Play/Pause")
 assert(view.Bars[1].Position.X.Scale == view.KeyGeometry[60].X)
 playback.Gate = 0.1
 playback.Sustain = false
@@ -157,6 +168,82 @@ assert(
 	not view.Bars[1].Visible,
 	"roll honors the effective sustain/gate settings"
 )
+-- Long-held notes remain in the bounded roll after their first second.
+score.Duration, score.Notes[1].End = 5, 5
+view.Score(score, "Long chord")
+playback.Position, playback.Gate, playback.Sustain = 2, 1, true
+view.Snapshot(playback, output)
+assert(view.Bars[1].Visible, "long sustained note stays visible")
+playback.Gate = 0.1
+view.Snapshot(playback, output)
+assert(not view.Bars[1].Visible, "expired gated note is excluded")
+-- Drag commits exactly one seek, and another finger cannot move it.
+local seekBar, seeks, destination = find("SeekBar"), 0, nil
+seekBar.AbsolutePosition, seekBar.AbsoluteSize =
+	Vector2.new(100, 0), Vector2.new(200, 24)
+view.Actions.seek = function(ratio)
+	seeks += 1
+	destination = ratio
+end
+local touch =
+	{ UserInputType = Enum.UserInputType.Touch, Position = Vector2.new(150, 0) }
+seekBar.InputBegan:Fire(touch)
+inputService.InputChanged:Fire({
+	UserInputType = Enum.UserInputType.Touch,
+	Position = Vector2.new(300, 0),
+})
+assert(find("SeekFill").Size.X.Scale == 0.25 and seeks == 0)
+touch.Position = Vector2.new(250, 0)
+inputService.InputChanged:Fire(touch)
+view.Snapshot(playback, output)
+assert(
+	find("SeekFill").Size.X.Scale == 0.75,
+	"snapshot does not fight dragging"
+)
+inputService.InputEnded:Fire(touch)
+assert(seeks == 1 and destination == 0.75)
+local mouse = {
+	UserInputType = Enum.UserInputType.MouseButton1,
+	Position = Vector2.new(100, 0),
+}
+seekBar.InputBegan:Fire(mouse)
+inputService.InputChanged:Fire({
+	UserInputType = Enum.UserInputType.MouseMovement,
+	Position = Vector2.new(500, 0),
+})
+assert(find("SeekFill").Size.X.Scale == 1, "drag clamps to song end")
+mouse.Position = Vector2.new(500, 0)
+inputService.InputEnded:Fire(mouse)
+assert(seeks == 2 and destination == 1)
+assert(
+	seekBar.Size.Y.Offset >= 24,
+	"touch target does not shrink to the thin track"
+)
+local speedBox = find("PlaybackSpeed")
+speedBox.Text = "1.5" -- also covers restored preferences
+speedBox.Focused:Fire()
+view.Actions.speed = function()
+	error("invalid speed")
+end
+speedBox.Text = "not a number"
+speedBox.FocusLost:Fire()
+assert(
+	speedBox.Text == "1.5",
+	"invalid input rolls back to last accepted value"
+)
+view.Actions.speed = function() end
+speedBox.Text = "1.25"
+speedBox.FocusLost:Fire()
+assert(speedBox.Text == "1.25" and view.Dispatch("speed", "1.25"))
+local cancelledOperation = false
+view.Actions.cancel = function()
+	cancelledOperation = true
+	view.Loading(false)
+end
+view.Loading(true, "Cancelable read")
+find("CancelLoading").Activated:Fire()
+assert(cancelledOperation)
+stepUI(0.2)
 view.Loading(true, "Reading selected file")
 assert(find("LoadingStage").Visible)
 view.Loading(false)

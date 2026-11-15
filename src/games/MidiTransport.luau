@@ -19,7 +19,7 @@ return function(output, clock)
 		Active = {},
 		Cursor = 1,
 	}
-	local events = {}
+	local events, spans, prefixEnds = {}, {}, {}
 	local function release()
 		output.ReleaseAll()
 		table.clear(player.Active)
@@ -55,7 +55,7 @@ return function(output, clock)
 	end
 	function player.Rebuild()
 		player.Pause()
-		events = {}
+		events, spans, prefixEnds = {}, {}, {}
 		if not player.Score then
 			return
 		end
@@ -66,12 +66,17 @@ return function(output, clock)
 				and note.Velocity >= player.MinimumVelocity
 			then
 				local ending = player.Sustain and note.End or note.RawEnd
+				ending = note.Start + (ending - note.Start) * player.Gate
+				-- Empty notes must not sort their release before their press.
+				if ending <= note.Start then
+					continue
+				end
 				table.insert(
 					events,
 					{ Time = note.Start, Down = true, Note = note }
 				)
 				table.insert(events, {
-					Time = note.Start + (ending - note.Start) * player.Gate,
+					Time = ending,
 					Down = false,
 					Note = note,
 				})
@@ -86,6 +91,23 @@ return function(output, clock)
 			end
 			return a.Note.Id < b.Note.Id
 		end)
+		local endings = {}
+		for _, event in ipairs(events) do
+			if not event.Down then
+				endings[event.Note.Id] = event.Time
+			end
+		end
+		local furthest = 0
+		for _, event in ipairs(events) do
+			if event.Down then
+				table.insert(
+					spans,
+					{ Note = event.Note, End = endings[event.Note.Id] }
+				)
+				furthest = math.max(furthest, endings[event.Note.Id])
+				table.insert(prefixEnds, furthest)
+			end
+		end
 		player.EventCount = #events
 		player.Cursor = cursorAt(player.Position)
 	end
@@ -121,7 +143,48 @@ return function(output, clock)
 			player.Play()
 		end
 	end
+	local function press(note)
+		local count = 0
+		for _ in pairs(player.Active) do
+			count += 1
+		end
+		if count >= 64 then
+			player.Dropped += 1
+			return
+		end
+		local pitch = note.Pitch + player.Transpose
+		if player.Preview or output.On(note.Id, pitch) then
+			player.Active[note.Id] = pitch
+		else
+			player.Dropped += 1
+		end
+	end
+	local function restoreHeld()
+		-- Binary-search interval prefixes, not just note starts: a long chord
+		-- can still be sounding many seconds after its original attack.
+		local low, high = 1, #spans + 1
+		while low < high do
+			local middle = math.floor((low + high) / 2)
+			if prefixEnds[middle] <= player.Position then
+				low = middle + 1
+			else
+				high = middle
+			end
+		end
+		for index = low, #spans do
+			local span = spans[index]
+			if span.Note.Start >= player.Position then
+				break
+			end
+			if span.End > player.Position then
+				press(span.Note)
+			end
+		end
+	end
 	function player.Play()
+		if player.State == "Playing" then
+			return
+		end
 		assert(
 			player.Preview or (output.LastReleaseFailures or 0) == 0,
 			"Pending key releases failed; retry emergency stop before playback"
@@ -142,6 +205,7 @@ return function(output, clock)
 		player.BaseClock = clock()
 		player.LastClock = clock()
 		player.State = "Playing"
+		restoreHeld()
 	end
 	function player.Tick()
 		if player.State ~= "Playing" then
@@ -181,20 +245,7 @@ return function(output, clock)
 			end
 			local id = event.Note.Id
 			if event.Down then
-				local count = 0
-				for _ in pairs(player.Active) do
-					count += 1
-				end
-				if count < 64 then
-					local pitch = event.Note.Pitch + player.Transpose
-					if player.Preview or output.On(id, pitch) then
-						player.Active[id] = pitch
-					else
-						player.Dropped += 1
-					end
-				else
-					player.Dropped += 1
-				end
+				press(event.Note)
 			else
 				if not player.Preview then
 					output.Off(id)
@@ -214,6 +265,7 @@ return function(output, clock)
 				player.BasePosition = player.Position
 				player.BaseClock = now
 				player.Cursor = cursorAt(player.Position)
+				restoreHeld()
 			else
 				player.State = "Finished"
 			end

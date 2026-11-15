@@ -1,10 +1,10 @@
 -- Nullx11 optional external-runtime launcher (not a Roblox LocalScript).
--- Source is hosted on the PR branch below, not main.
--- Keep the URL in sync if you publish or merge a different version.
+-- Source and the built-in script library use the published main release.
+-- Keep the URL in sync if you host a different reviewed version.
 -- Review remote code before running it. Prefer pinning a reviewed commit SHA
 -- instead of a mutable branch once you publish a version you trust.
 local SOURCE_URL =
-	"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/Nullx11.client.luau"
+	"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/Nullx11.client.luau"
 
 local ok, reason = pcall(function()
 	assert(

@@ -388,7 +388,7 @@ now += 0.1
 transport.Tick()
 assert(math.abs(transport.Position - 0.4) < 0.000001)
 transport.Seek(0.1)
-assert(next(output.Held) == nil)
+assert(output.Held[1], "seeking during playback restores the crossing note")
 transport.Stop()
 assert(transport.Position == 0 and next(output.Held) == nil)
 transport.Preview = true
@@ -459,6 +459,75 @@ assert(
 	"128-event guard releases and skips the backlog"
 )
 densePlayer.Destroy()
+-- Sustained crossings restore on resume/speed/seek/loop, never on paused seek.
+local heldScore = {
+	Duration = 4,
+	Notes = {
+		{
+			Id = 1,
+			Pitch = 60,
+			Track = 1,
+			Channel = 0,
+			Velocity = 100,
+			Start = 0,
+			End = 4,
+			RawEnd = 3,
+		},
+		{
+			Id = 2,
+			Pitch = 64,
+			Track = 1,
+			Channel = 0,
+			Velocity = 100,
+			Start = 1,
+			End = 1,
+			RawEnd = 1,
+		},
+	},
+}
+local heldPlayer = MakeMidiTransport(output, function()
+	return now
+end)
+heldPlayer.Load(heldScore)
+assert(
+	heldPlayer.EventCount == 2,
+	"zero-length notes are excluded, not left held"
+)
+heldPlayer.Armed = true
+heldPlayer.Seek(2)
+assert(next(output.Held) == nil, "paused seeking never starts input")
+heldPlayer.Play()
+assert(output.Held[1] and heldPlayer.Active[1] == 60)
+local repeatedPlay = #keys
+heldPlayer.Play()
+assert(#keys == repeatedPlay, "Play is idempotent while playing")
+heldPlayer.SetSpeed(1.5)
+assert(output.Held[1], "speed changes preserve the sounding chord")
+heldPlayer.Seek(3.5)
+assert(output.Held[1], "pedal extension is restored")
+heldPlayer.Pause()
+heldPlayer.Sustain = false
+heldPlayer.Rebuild()
+heldPlayer.Play()
+assert(
+	next(output.Held) == nil,
+	"raw end prevents expired notes from being restored"
+)
+heldPlayer.Stop()
+heldPlayer.Sustain = true
+heldPlayer.Rebuild()
+heldPlayer.Loop = true
+heldPlayer.LoopA, heldPlayer.LoopB = 2, 2.2
+heldPlayer.Seek(2.1)
+heldPlayer.Play()
+now += 0.1
+heldPlayer.Tick()
+assert(
+	heldPlayer.Position == 2 and output.Held[1],
+	"loop restores notes crossing A"
+)
+heldPlayer.Destroy()
+assert(next(output.Held) == nil)
 -- Actual controller with asynchronous local operations and a UI boundary double.
 local threads, cancelled = {}, {}
 local task = {}
@@ -688,6 +757,21 @@ assert(
 	reads == firstRead,
 	"old read thread is cancelled, not resumed into a stale load"
 )
+-- Explicit Cancel also invalidates a blocked read without replacing the song.
+local previousScore = controller.Transport.Score
+blocked = true
+fakeView.Dispatch("select", fakeView.Rows[1])
+step(0)
+step(0)
+fakeView.Dispatch("cancel")
+blocked = false
+step(0)
+step(0)
+assert(
+	controller.Transport.Score == previousScore
+		and controller.Transport.State == "Ready"
+)
+assert(next(controller.Output.Held) == nil)
 fakeView.Dispatch("select", fakeView.Rows[1])
 step(0)
 step(0)

@@ -152,7 +152,9 @@ return function(context)
 			if not success then
 				view.Message(reason, true)
 			end
+			return success
 		end
+		return false
 	end
 	local function button(parent, name, text, action, shade)
 		local object = create("TextButton", parent, {
@@ -317,6 +319,40 @@ return function(context)
 			Size = UDim2.new(0, 1, 1, 0),
 		})
 	end
+	local emptyState = create("Frame", roll, {
+		Name = "EmptyPiano",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+	})
+	local emptyTitle =
+		label(emptyState, "EmptyTitle", "Your piano is ready", 18)
+	emptyTitle.Font = Enum.Font.GothamBold
+	emptyTitle.TextXAlignment = Enum.TextXAlignment.Center
+	emptyTitle.Position = UDim2.new(0, 12, 0.2, 0)
+	emptyTitle.Size = UDim2.new(1, -24, 0, 28)
+	local emptyHelp = label(
+		emptyState,
+		"EmptyHelp",
+		"Select a local MIDI, test the game piano, then press Play. Preview is visual only.",
+		12,
+		color.Muted
+	)
+	emptyHelp.TextWrapped = true
+	emptyHelp.TextXAlignment = Enum.TextXAlignment.Center
+	emptyHelp.Position = UDim2.new(0, 18, 0.4, 0)
+	emptyHelp.Size = UDim2.new(1, -36, 0, 44)
+	local browseSongs = button(
+		emptyState,
+		"BrowseSongs",
+		"Open Songs",
+		function()
+			view.SetPage("Library")
+		end,
+		color.Cyan
+	)
+	browseSongs.AnchorPoint = Vector2.new(0.5, 0.5)
+	browseSongs.Position = UDim2.fromScale(0.5, 0.78)
+	browseSongs.Size = UDim2.fromOffset(130, 34)
 	local hitLine = create("Frame", roll, {
 		Name = "HitLine",
 		BorderSizePixel = 0,
@@ -403,6 +439,19 @@ return function(context)
 		view.Settings[action] = set
 		return set
 	end
+	local function commitBox(box, action)
+		local accepted = box.Text
+		context.Connect(box.Focused, function()
+			accepted = box.Text
+		end)
+		context.Connect(box.FocusLost, function()
+			if view.Dispatch(action, box.Text) then
+				accepted = box.Text
+			else
+				box.Text = accepted
+			end
+		end)
+	end
 	function view.Value(page, heading, detail, initial, action)
 		local row = settingRow(page, heading, detail)
 		local box = create("TextBox", row, {
@@ -418,9 +467,7 @@ return function(context)
 			BorderSizePixel = 0,
 		})
 		corner(box, 8)
-		context.Connect(box.FocusLost, function()
-			view.Dispatch(action, box.Text)
-		end)
+		commitBox(box, action)
 		view.Inputs[action] = box
 		return box
 	end
@@ -518,25 +565,64 @@ return function(context)
 	)
 	local footer = frame(panel, "Transport", color.Panel)
 	local seek = button(footer, "SeekBar", "", function() end)
-	seek.BackgroundColor3 = color.Border
-	seek.Size = UDim2.new(1, -28, 0, 10)
-	seek.Position = UDim2.fromOffset(14, 10)
-	local seekFill = frame(seek, "SeekFill", color.Cyan)
+	-- A 24px transparent hit target around a quiet 4px track.
+	seek.BackgroundTransparency = 1
+	local seekTrack = frame(seek, "SeekTrack", color.Border)
+	seekTrack.Position = UDim2.fromOffset(0, 10)
+	seekTrack.Size = UDim2.new(1, 0, 0, 4)
+	local seekFill = frame(seekTrack, "SeekFill", color.Cyan)
 	seekFill.Size = UDim2.fromScale(0, 1)
+	local seekThumb = frame(seekTrack, "SeekThumb", color.Text)
+	seekThumb.AnchorPoint = Vector2.new(0.5, 0.5)
+	seekThumb.Position = UDim2.fromScale(0, 0.5)
+	seekThumb.Size = UDim2.fromOffset(10, 10)
+	corner(seekThumb, 5)
+	local scrubbing, scrubRatio
+	local function updateScrub(event)
+		scrubRatio = math.clamp(
+			(event.Position.X - seek.AbsolutePosition.X)
+				/ math.max(1, seek.AbsoluteSize.X),
+			0,
+			1
+		)
+		seekFill.Size = UDim2.fromScale(scrubRatio, 1)
+		seekThumb.Position = UDim2.fromScale(scrubRatio, 0.5)
+	end
 	context.Connect(seek.InputBegan, function(event)
 		if
-			event.UserInputType == Enum.UserInputType.MouseButton1
-			or event.UserInputType == Enum.UserInputType.Touch
+			not scrubbing
+			and (view.Duration or 0) > 0
+			and (
+				event.UserInputType == Enum.UserInputType.MouseButton1
+				or event.UserInputType == Enum.UserInputType.Touch
+			)
 		then
-			view.Dispatch(
-				"seek",
-				math.clamp(
-					(event.Position.X - seek.AbsolutePosition.X)
-						/ math.max(1, seek.AbsoluteSize.X),
-					0,
-					1
+			scrubbing = event
+			updateScrub(event)
+		end
+	end)
+	context.Connect(input.InputChanged, function(event)
+		if
+			scrubbing
+			and (
+				event == scrubbing
+				or (
+					scrubbing.UserInputType
+						== Enum.UserInputType.MouseButton1
+					and event.UserInputType
+						== Enum.UserInputType.MouseMovement
 				)
 			)
+		then
+			updateScrub(event)
+		end
+	end)
+	context.Connect(input.InputEnded, function(event)
+		if event == scrubbing then
+			updateScrub(event)
+			scrubbing = nil
+			-- Commit once: dragging must not hammer the piano with retriggers.
+			view.Dispatch("seek", scrubRatio)
 		end
 	end)
 	local transport = {}
@@ -547,13 +633,11 @@ return function(context)
 		{ "Stop", "stop" },
 		{ "Next", "next" },
 	}) do
-		transport[#transport + 1] = button(
-			footer,
-			spec[2],
-			spec[1],
-			spec[2],
-			spec[2] == "play" and color.Cyan or nil
-		)
+		local action = spec[2]
+		transport[#transport + 1] =
+			button(footer, spec[2], spec[1], action == "play" and function()
+				view.Dispatch(view.Playing and "pause" or "play")
+			end or action, spec[2] == "play" and color.Cyan or nil)
 	end
 	local clockLabel = label(footer, "Clock", "00:00 / 00:00", 12, color.Muted)
 	local stateLabel = label(footer, "State", "DISARMED", 10, color.Violet)
@@ -590,12 +674,8 @@ return function(context)
 	end
 	local pitchTitle =
 		label(bottom, "TransposeCaption", "SEMITONES", 9, color.Muted)
-	context.Connect(speed.FocusLost, function()
-		view.Dispatch("speed", speed.Text)
-	end)
-	context.Connect(transpose.FocusLost, function()
-		view.Dispatch("transpose", transpose.Text)
-	end)
+	commitBox(speed, "speed")
+	commitBox(transpose, "transpose")
 	local addQueue = button(bottom, "QueueSelected", "+ Queue", "enqueue")
 	local favorite = button(bottom, "Favorite", "Favorite", "favorite")
 	local loopA = button(bottom, "LoopA", "Set A", "loopA")
@@ -719,6 +799,13 @@ return function(context)
 	dismiss.Position = UDim2.fromScale(0.5, 0.76)
 	dismiss.Size = UDim2.fromOffset(170, 40)
 	dismiss.ZIndex = 21
+	local cancelLoading =
+		button(overlay, "CancelLoading", "Cancel operation", "cancel")
+	cancelLoading.AnchorPoint = Vector2.new(0.5, 0.5)
+	cancelLoading.Position = UDim2.fromScale(0.5, 0.88)
+	cancelLoading.Size = UDim2.fromOffset(170, 36)
+	cancelLoading.ZIndex = 21
+	cancelLoading.Visible = false
 	local strip = frame(overlay, "LoadingSweepTrack", color.Card)
 	strip.Size = UDim2.fromOffset(180, 3)
 	strip.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -737,6 +824,8 @@ return function(context)
 	local loadingSerial, loadingBusy, loadingOperation = 0, false, nil
 	local openingUntil, shownAt = os.clock() + 0.55, os.clock()
 	function view.Loading(visible, phase, operationId)
+		cancelLoading.Visible = visible
+		closeLoading.Visible = not visible
 		loadingSerial += 1
 		local serial = loadingSerial
 		if phase then
@@ -959,7 +1048,15 @@ return function(context)
 			seconds % 60
 		)
 	end
+	local indexedScore, rollEnds = nil, {}
 	function view.Score(score, name)
+		scrubbing = nil
+		indexedScore, rollEnds = score, {}
+		local furthest = 0
+		for _, note in ipairs(score.Notes) do
+			furthest = math.max(furthest, note.End, note.RawEnd)
+			table.insert(rollEnds, furthest)
+		end
 		song.Text = name
 		miniTitle.Text = name
 		stageTag.Text = "LOCAL MIDI / " .. #score.Tracks .. " TRACKS"
@@ -970,6 +1067,9 @@ return function(context)
 			.. time(score.Duration)
 	end
 	function view.Snapshot(player, output)
+		emptyState.Visible = player.Score == nil
+		view.Duration = player.Score and player.Score.Duration or 0
+		transport[2].Text = player.State == "Playing" and "Pause" or "Play"
 		view.Playing = player.State == "Playing"
 		miniPlay.Text = view.Playing and "Pause" or "Play"
 		if view.BackendStatus then
@@ -978,18 +1078,24 @@ return function(context)
 		if not view.Visible then
 			return
 		end
-		clockLabel.Text = time(player.Position)
-			.. " / "
-			.. time(player.Score and player.Score.Duration or 0)
+		clockLabel.Text = time(
+			scrubbing and scrubRatio * view.Duration or player.Position
+		) .. " / " .. time(player.Score and player.Score.Duration or 0)
+		stateLabel.TextColor3 = player.Preview and color.Muted
+			or player.Armed and color.Cyan
+			or color.Red
 		stateLabel.Text = player.Preview and "PREVIEW / NO GAME INPUT"
 			or player.Armed and "ARMED / " .. player.State:upper()
 			or "INPUT OFF / " .. player.State:upper()
-		seekFill.Size = UDim2.fromScale(
-			player.Score
-					and player.Position / math.max(0.001, player.Score.Duration)
-				or 0,
-			1
-		)
+		if not scrubbing then
+			local ratio = math.clamp(
+				player.Position / math.max(0.001, view.Duration),
+				0,
+				1
+			)
+			seekFill.Size = UDim2.fromScale(ratio, 1)
+			seekThumb.Position = UDim2.fromScale(ratio, 0.5)
+		end
 		if not stage.Visible then
 			return
 		end
@@ -1043,7 +1149,16 @@ return function(context)
 		local low, high = 1, #notes + 1
 		while low < high do
 			local middle = math.floor((low + high) / 2)
-			if notes[middle].Start < player.Position - 1 then
+			if
+				(
+					indexedScore == player.Score
+					and rollEnds[middle] <= player.Position
+				)
+				or (
+					indexedScore ~= player.Score
+					and notes[middle].Start < player.Position - 1
+				)
+			then
 				low = middle + 1
 			else
 				high = middle
@@ -1429,6 +1544,8 @@ return function(context)
 		stage.Size = if stageFull
 			then UDim2.fromScale(1, 1)
 			else UDim2.new(1, -railWidth - 16, 1, 0)
+		emptyTitle.Visible, emptyHelp.Visible = not short, not short
+		browseSongs.Position = UDim2.fromScale(0.5, short and 0.5 or 0.78)
 		stageTag.Visible, meta.Visible = true, true
 		song.Position, song.Size, song.TextSize =
 			UDim2.fromOffset(16, 35), UDim2.new(1, -32, 0, 31), 22
@@ -1468,8 +1585,8 @@ return function(context)
 		list.Size = UDim2.new(1, -16, 1, short and -48 or -126)
 		footer.Position = UDim2.new(0, 14, 1, short and -118 or -150)
 		footer.Size = UDim2.new(1, -28, 0, short and 66 or 96)
-		seek.Position = UDim2.fromOffset(12, short and 0 or 12)
-		seek.Size = UDim2.new(1, -24, 0, 4)
+		seek.Position = UDim2.fromOffset(12, short and -10 or 0)
+		seek.Size = UDim2.new(1, -24, 0, 24)
 		local widths = if contentWidth < 320
 			then { 32, 80, 44, 44, 32 }
 			else {

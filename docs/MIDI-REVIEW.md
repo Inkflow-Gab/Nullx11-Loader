@@ -115,3 +115,28 @@ playback position and preview are not rehydrated. Unit and published-chunk tests
 cover false flags, corrupt/oversized/denied JSON, reload, manual holder actions,
 auto-arm without automatic notes, explicit opt-out and actual window-fit logic.
 Native device rendering, filesystem permissions and game input remain unverified.
+
+## MIDI piano usability / playback reliability revision
+
+- Kept all six workspaces, saved settings, 61/88-key mapping, scoped local file
+  access, explicit Preview and capability-dependent arming. No restored autoplay.
+- Enlarged the seek hit area to 24px with a position thumb. Mouse/touch dragging
+  is single-pointer-owned, clamps to the song, survives snapshot refreshes and
+  commits once on release. Loading another score clears an old scrub gesture.
+- Primary Play now toggles Pause during playback. Added empty-piano onboarding,
+  mode-colored input status and numeric-field rollback after rejected edits.
+- Loading now has a real generation-invalidating Cancel action, separate from
+  hiding its view or unloading the player. Cancelling preserves the previous
+  score and releases input; blocked executor calls remain executor-controlled.
+- Transport builds sorted note-interval prefixes. Resume, playing seek, speed
+  change and A–B loop restore crossing notes with the existing 64-voice cap,
+  filters, preview separation and effective gate/pedal ends. Repeated Play is
+  idempotent. Zero-duration notes no longer emit off-before-on stuck-key pairs.
+- Waterfall interval prefixes include long-held notes instead of dropping them
+  after one second; its existing 72-bar / 257-candidate visualization budget stays
+  in place. This remains a bounded preview, not a full dense-score renderer.
+- Regression tests exercise those actual modules plus one-touch/mouse seeking,
+  foreign-finger rejection, thumb clamping, field rollback, primary-button pause,
+  long-held roll visibility and blocked-read cancellation. Structural doubles
+  still do not certify native Roblox rendering, Delta touch, sound, API permission
+  or a particular game's keyboard acceptance. Test on the target device.
