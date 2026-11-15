@@ -170,15 +170,15 @@ Baseline text is now **at least 14 px**, toggle headings 16 px, and the main tit
 
 [`bootstrap.luau`](bootstrap.luau) is a small launcher for a runtime that provides **both** client `loadstring` and `game:HttpGet`. Standard Roblox LocalScripts do not provide these capabilities.
 
-The launcher targets the public PR branch `arena/bc7610cd-nullx11-loader`. Its source is separate from `main`; merging the PR is not required to load this branch version. Download failures are reported by the bootstrap.
+The published launcher, script catalog, standalone script links and optional font assets target `main`. All 17 catalog entries, including Arsenal, Finish The Word and Auto Player, are connected to the loader. Scripts are downloaded only after explicit launch; they are not all initialized with the loader. Download failures are reported by the bootstrap.
 
-For a short launcher targeting the PR branch:
+For the published loader:
 
 ```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/Nullx11.client.luau"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/Nullx11.client.luau"))()
 ```
 
-Or execute `bootstrap.luau` to get clearer download/compile/startup errors; change `SOURCE_URL` if you host your own reviewed copy. Its current URL targets the session's fixed branch `arena/bc7610cd-nullx11-loader`, not `main`. Do not assume a file exists on `main` until it is actually merged there.
+Or execute `bootstrap.luau` to get clearer download/compile/startup errors; change `SOURCE_URL` if you host your own reviewed copy. Its URL and the loader's script base both target `main`. For a frozen release, pin both to the same reviewed commit; pinning only the outer loadstring does not freeze later script downloads.
 
 Remote code runs with the capabilities of your runtime. Review the source; ideally pin the raw URL to a reviewed commit SHA rather than a mutable branch. There is no remote executable UI download at startup. Refresh fetches catalog data; confirmed Run fetches game code. Optional Thai fonts fetch data assets from this repository. Forge can request Roblox public-server data for an explicitly enabled server-hop flow.
 

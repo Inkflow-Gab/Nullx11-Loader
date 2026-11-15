@@ -15,6 +15,14 @@ try {
   state.loadstring(read('diagnostics/RobloxRuntimeCheck.client.luau'), 'native-runtime-diagnostic', true);
   const manifest = JSON.parse(read('scripts/manifest.json'));
   assert.equal(manifest.Version, 1);
+  assert.deepEqual(manifest, JSON.parse(read('src/games/catalog.json')), 'published manifest matches the embedded catalog source');
+  const releaseBase = 'https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/';
+  assert.ok(read('bootstrap.luau').includes(releaseBase + 'Nullx11.client.luau'), 'bootstrap launches main release');
+  assert.ok(source.includes('ScriptBaseURL = "' + releaseBase + 'scripts/"'), 'loader fetches its catalog and script files from main');
+  for (const id of ['arsenal', 'finishword', 'autoplayer']) {
+    const entry = manifest.Scripts.find(entry => entry.Id === id);
+    assert.ok(entry && source.includes('Id = "' + id + '"') && source.includes(entry.File), `${id} is connected to the embedded loader catalog`);
+  }
   assert.ok(Array.isArray(manifest.Scripts) && manifest.Scripts.length <= 64);
   const ids = new Set();
   for (const entry of manifest.Scripts) {
@@ -61,6 +69,7 @@ try {
     const bundle = read(`scripts/${entry.File}`);
     assert.ok(!/sirius\.menu|rscripts\.net\/api|Roblox-Scripts[^"\n]*(ui|loader)\.lua/.test(bundle), 'no telemetry or upstream UI/loader execution');
     assert.ok(!bundle.includes('Nullx11.client.luau'), 'selected game bundle must never load the main client');
+    assert.ok(!/https:\/\/raw\.githubusercontent\.com\/Inkflow-Gab\/Nullx11-Loader\/arena\//.test(bundle), 'published runtime links do not depend on a PR branch');
     assert.ok(['autoplayer', 'finishword'].includes(entry.Id) || bundle.includes(['egg', 'stealabrainrot', 'ttk', 'money', 'eggchili'].includes(entry.Id) || /^(yarhm_|chaos_)/.test(entry.Id) ? 'if not compatible() then' : 'if game.PlaceId ~= entry.GamePlaceId then'), 'compatibility gate before controller startup');
     assert.ok(!read('src/games/BundleLauncher.luau').includes('TeleportService'));
     assert.ok(!bundle.includes('silencedevs/SilenceScripts'), 'no remote WindUI');

@@ -43,7 +43,7 @@ local function createNullx11UI(scope)
 		PreloadTimeout = 5,
 		ThaiFont = {
 			Family = "Nullx11Kanit",
-			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/assets/fonts/Kanit-%s.ttf",
+			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/assets/fonts/Kanit-%s.ttf",
 			Weights = {
 				[400] = "Regular",
 				[500] = "Medium",
@@ -14770,7 +14770,7 @@ local CONFIG = {
 	ReducedMotion = false,
 	StartupAnimation = true,
 	EnhancedWorkspace = true,
-	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/49cb1bfa-nullx11-loader/scripts/",
+	ScriptBaseURL = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/scripts/",
 }
 
 -- External runtimes may not provide the LocalScript instance.
@@ -22665,7 +22665,10 @@ do
 					home:AddLeftGroupbox("Nullx11 / session", "star")
 				welcomeGroup:AddParagraph({
 					Title = "Nullx11 / Developed by NULL",
-					Content = "One Nullx11 interface, native player tools and fifteen independent script workspaces. Nothing plays or farms until you enable it.",
+					Content = string.format(
+						"One Nullx11 interface, native player tools and %d independent script workspaces. Nothing plays or farms until you enable it.",
+						#catalog.Entries
+					),
 				})
 				local live = welcomeGroup:AddLabel("Reading current session...")
 				library:Every(1, function()

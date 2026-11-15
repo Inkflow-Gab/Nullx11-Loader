@@ -182,7 +182,7 @@ end
 return true
 end
 if not compatible() then` : 'if game.PlaceId~=entry.GamePlaceId then'}
-wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/' + (entry.Id === 'arsenal' ? 'arena/49cb1bfa-nullx11-loader' : 'arena/bc7610cd-nullx11-loader') + '/scripts/' + entry.File)})
+wrongPlace(library,entry,${quote('https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/scripts/' + entry.File)})
 return
 end
 local context=makeSession(entry.Id,library)

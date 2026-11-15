@@ -39,7 +39,7 @@ local function createNullx11UI(scope)
 		PreloadTimeout = 5,
 		ThaiFont = {
 			Family = "Nullx11Kanit",
-			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/assets/fonts/Kanit-%s.ttf",
+			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/assets/fonts/Kanit-%s.ttf",
 			Weights = {
 				[400] = "Regular",
 				[500] = "Medium",
@@ -15317,7 +15317,7 @@ local function runGame(context)
 		ReloadSource = [[
 if not game:IsLoaded() then game.Loaded:Wait() end
 if game.PlaceId ~= 118805555015549 then return end
-local body = game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/Nullx11-Forge.luau", true)
+local body = game:HttpGet("https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/scripts/Nullx11-Forge.luau", true)
 assert(type(body) == "string" and #body <= 2097152, "Invalid selected game bundle")
 local run, reason = loadstring(body, "Nullx11Forge")
 assert(run, reason)
@@ -23850,7 +23850,7 @@ if game.PlaceId ~= entry.GamePlaceId then
 	wrongPlace(
 		library,
 		entry,
-		"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/scripts/Nullx11-Forge.luau"
+		"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/scripts/Nullx11-Forge.luau"
 	)
 	return
 end

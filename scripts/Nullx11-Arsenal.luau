@@ -39,7 +39,7 @@ local function createNullx11UI(scope)
 		PreloadTimeout = 5,
 		ThaiFont = {
 			Family = "Nullx11Kanit",
-			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/bc7610cd-nullx11-loader/assets/fonts/Kanit-%s.ttf",
+			Source = "https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/assets/fonts/Kanit-%s.ttf",
 			Weights = {
 				[400] = "Regular",
 				[500] = "Medium",
@@ -16942,7 +16942,7 @@ if game.PlaceId ~= entry.GamePlaceId then
 	wrongPlace(
 		library,
 		entry,
-		"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/arena/49cb1bfa-nullx11-loader/scripts/Nullx11-Arsenal.luau"
+		"https://raw.githubusercontent.com/Inkflow-Gab/Nullx11-Loader/main/scripts/Nullx11-Arsenal.luau"
 	)
 	return
 end
