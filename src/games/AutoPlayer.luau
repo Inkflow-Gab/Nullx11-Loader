@@ -424,6 +424,18 @@ local function testNote(pitch)
 	render()
 end
 view.Actions = {
+	cancel = function()
+		generation += 1
+		if operation and operation ~= coroutine.running() then
+			pcall(task.cancel, operation)
+		end
+		operation = nil
+		stop()
+		view.Loading(false)
+		view.Message(
+			"Operation cancelled / previous song kept / press Play when ready"
+		)
+	end,
 	placement = function() end,
 	autoarm = function(value)
 		autoArm = value

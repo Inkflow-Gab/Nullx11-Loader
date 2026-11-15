@@ -17,7 +17,10 @@ remote song catalog, upload service, announcement, decal or font download runs.
    **Library → Refresh**. Folder changes do not silently start a scan or play.
 4. Search, then select a song. Selection **loads but does not play**. The loading
    overlay reports real file-read/decode phases; its sweeping accent is decorative,
-   not a fabricated completion percentage.
+   not a fabricated completion percentage. **Cancel operation** invalidates the
+   current scan/read/decode and preserves the previous loaded song, stopped.
+   **Hide loading view** only dismisses the overlay; it does not cancel work.
+   A synchronous executor file call cannot be interrupted until it returns.
 5. Open/focus the game piano first. **Arm on launch** is now enabled by default
    when an input API is available; **Play is still manual**. STOP INPUT disarms
    until you re-arm or start a new session. In **Keys**, choose the **61-key screenshot profile** for
@@ -45,9 +48,14 @@ preview, never passed off as successful game input. This is not an audio synth.
   It stops at the end, not an endless playlist. Clear under Settings. Limit 128.
 - **Favorites:** toggle the loaded song; search **`fav:`** (optionally followed by
   text). Favorites, queue and last-song loop marks save locally when storage is available.
-- **Transport:** Play, Pause, Stop, seek by tapping the progress bar, and accurate
-  elapsed/duration display. Seeking/pause releases held notes; resume starts at
-  the next onset rather than replaying already-active notes.
+- **Transport:** a primary Play/Pause toggle, separate Pause/Stop controls and an
+  elapsed/duration display. Tap or drag the progress bar with a mouse or one
+  finger; its 24px hit area surrounds a thin track and position thumb. Dragging
+  previews the position and commits one seek on release, not repeated piano
+  retriggers. Playback continues until release. Paused seeking stays paused.
+  Resume, playing seeks, speed changes and loop restarts restore notes whose
+  effective gate/pedal interval crosses that position (up to 64 voices), rather
+  than dropping the rest of a sustained chord. Empty-length notes are skipped.
 - **Practice:** speed **0.25–2x**, transpose **−24…+24** semitones, gate length
   **0.1–1.0**, minimum velocity **1–127**, sustain-pedal handling, per-track mute
   and opt-in MIDI channel 10 percussion (off by default).
@@ -56,7 +64,9 @@ preview, never passed off as successful game input. This is not an audio synth.
 - **Keyboard:** source-informed 61-key mapping, MIDI 36–96 (C2–C7), or opt-in
   88-key Ctrl extension, MIDI 21–108 (A0–C8). Out-of-range octave folding can be
   disabled. Different game bindings require a different mapping; none is guessed.
-- **Visuals:** animated opening and file-loading stage, restrained blue piano roll,
+- **Input editing:** invalid numeric edits show the validation reason and restore
+  the previous field value instead of leaving a rejected setting on screen.
+- **Visuals:** an empty-piano guide with an Open Songs shortcut, animated opening and file-loading stage, restrained blue piano roll,
   live key highlights/BPM, a static graphical piano icon in a movable mini holder, centered window,
   dedicated Songs/Piano/Queue/Tracks/Keys/Setup views, responsive portrait/landscape layouts and
   reduced-motion option. The dock icon has no idle animation or letter monogram.
